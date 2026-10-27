@@ -1,0 +1,87 @@
+// TALENTO & RIESGO LAB (v2) — añadir este bloque DENTRO DE
+// match /databases/{database}/documents { ... }
+// Mantener las reglas actuales de los demás simuladores.
+// El atributo facilitator=true debe asignarse CON ADMIN SDK,
+// no desde código del navegador.
+
+function talentoFacilitator() {
+  return request.auth != null && request.auth.token.facilitator == true;
+}
+
+function talentoHost(roomCode) {
+  return talentoFacilitator()
+    && exists(/databases/$(database)/documents/talento_lab_rooms/$(roomCode))
+    && get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.hostUid == request.auth.uid;
+}
+
+function talentoLobby(roomCode) {
+  return exists(/databases/$(database)/documents/talento_lab_rooms/$(roomCode))
+    && get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.phase == 'lobby';
+}
+
+function talentoPlaying(roomCode) {
+  return exists(/databases/$(database)/documents/talento_lab_rooms/$(roomCode))
+    && get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.phase == 'playing';
+}
+
+match /talento_lab_rooms/{roomCode} {
+  // Código de sala conocido, autenticación anónima para los participantes.
+  allow get: if request.auth != null;
+  allow list: if talentoFacilitator();
+
+  allow create: if talentoFacilitator()
+    && request.resource.data.hostUid == request.auth.uid
+    && request.resource.data.gameId == 'talento-riesgo-v2'
+    && request.resource.data.phase == 'lobby'
+    && request.resource.data.round == -1;
+
+  allow update: if talentoHost(roomCode)
+    && request.resource.data.hostUid == resource.data.hostUid
+    && request.resource.data.gameId == resource.data.gameId;
+  allow delete: if talentoHost(roomCode);
+
+  match /teams/{teamId} {
+    // Ranking por sala: únicamente nombres inventados de equipos, nada sensible.
+    allow read: if request.auth != null
+      && exists(/databases/$(database)/documents/talento_lab_rooms/$(roomCode));
+
+    allow create: if request.auth != null
+      && teamId == request.auth.uid
+      && talentoLobby(roomCode)
+      && request.resource.data.ownerUid == request.auth.uid
+      && request.resource.data.name is string
+      && request.resource.data.name.size() >= 2
+      && request.resource.data.name.size() <= 40
+      && request.resource.data.score == 0
+      && request.resource.data.budget == 100
+      && request.resource.data.submittedRound == -1
+      && request.resource.data.choice == -1
+      && request.resource.data.history == []
+      && request.resource.data.effects == []
+      && request.resource.data.stats == {
+        'cap': 45,
+        'trust': 55,
+        'fair': 55,
+        'ops': 65,
+        'risk': 15
+      };
+
+    // El facilitador es el único que liquida puntajes y consecuencias.
+    // El participante solo puede enviar UNA opción por ronda.
+    allow update: if talentoHost(roomCode)
+      || (request.auth != null
+      && teamId == request.auth.uid
+      && resource.data.ownerUid == request.auth.uid
+      && talentoPlaying(roomCode)
+      && resource.data.submittedRound != get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.round
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'choice', 'submittedRound', 'submittedAt'
+      ])
+      && request.resource.data.submittedRound == get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.round
+      && request.resource.data.choice is int
+      && request.resource.data.choice >= 0
+      && request.resource.data.choice <= 2);
+
+    allow delete: if talentoHost(roomCode);
+  }
+}
