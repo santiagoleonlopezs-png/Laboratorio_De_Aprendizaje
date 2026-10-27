@@ -9,7 +9,7 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'
 const clamp=(n,l=0,h=100)=>Math.max(l,Math.min(h,n));
 const normal=s=>String(s||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
 let app=null,auth=null,db=null,ready=false,role=null,code='',room=null,teams=[],selfId='',chosen=null,legalChosen=null,teamsReady=false,lastRenderedRound=-1,unsubscribe=[],settling=false,localDemo=false;
-const DURATIONS=[60,120,180,300,480];let durationDraft=null,clockHandle=null,clockWasExpired=false,autoSettlingFor=-1;
+const ROUND_SECONDS=420;let clockHandle=null,clockWasExpired=false,autoSettlingFor=-1;
 const show=name=>{['home','hostSetup','game'].forEach(id=>$(id).classList.toggle('hidden',name!==id));window.scrollTo({top:0,behavior:'instant'});};
 function toast(message,error=false){const t=$('toast');t.textContent=message;t.classList.remove('hidden');t.classList.toggle('error',error);clearTimeout(toast.handle);toast.handle=setTimeout(()=>t.classList.add('hidden'),4700)}
 function fail(err){console.error(err);let msg=String(err?.message||err);if(/permission-denied|Missing or insufficient permissions/i.test(msg))msg='Firestore rechazó la operación. Debes añadir las reglas de Talento & Riesgo y comprobar tu rol.';else if(/auth\/operation-not-allowed/i.test(msg))msg='Activa Anonymous y Email/Password en Firebase Authentication.';else if(/auth\/invalid-credential|auth\/wrong-password/i.test(msg))msg='Correo o contraseña inválidos.';else if(/auth\/unauthorized-domain/i.test(msg))msg='Agrega el dominio de GitHub Pages en Authentication → Authorized domains.';toast(msg,true)}
@@ -17,10 +17,12 @@ function init(){if(ready)return;const conf=window.FIREBASE_CONFIG;if(!conf?.apiK
 function codeGen(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';const bytes=new Uint8Array(6);crypto.getRandomValues(bytes);for(const b of bytes)r+=chars[b%chars.length];return r}
 function ref(){return db.collection(ROOT).doc(code)}
 function myRef(){return ref().collection('teams').doc(selfId)}
-function cleanup(){unsubscribe.forEach(f=>{try{f()}catch{}});unsubscribe=[];settling=false;chosen=null;legalChosen=null;teamsReady=false;lastRenderedRound=-1;durationDraft=null;clockWasExpired=false;autoSettlingFor=-1;if(clockHandle!==null){clearInterval(clockHandle);clockHandle=null}}
+function cleanup(){unsubscribe.forEach(f=>{try{f()}catch{}});unsubscribe=[];settling=false;chosen=null;legalChosen=null;teamsReady=false;lastRenderedRound=-1;clockWasExpired=false;autoSettlingFor=-1;if(clockHandle!==null){clearInterval(clockHandle);clockHandle=null}}
 
-function validDuration(seconds){return DURATIONS.includes(Number(seconds))?Number(seconds):180}
-function nextRoundDuration(){return validDuration(durationDraft??room?.roundDurationSec??180)}
+// Todas las rondas nuevas duran siete minutos. Respetar la duración de rondas antiguas
+// que ya estén jugando evita cambiar el plazo mientras hay respuestas en curso.
+function validDuration(seconds){const n=Number(seconds);return Number.isInteger(n)&&n>=60&&n<=480?n:ROUND_SECONDS}
+function nextRoundDuration(){return ROUND_SECONDS}
 function roundStartMillis(){
  const t=room?.roundStartedAt;
  if(t&&typeof t.toMillis==='function')return t.toMillis();
@@ -66,7 +68,6 @@ function statsRef(){const t=host()?null:me();return t||{stats:INITIAL,budget:100
 function renderSidebar(){let t=statsRef();$('metrics').innerHTML=metricHtml(t.stats);$('budget').textContent=host()?'—':`${Number(t.budget??100)} cr`;$('statScope').textContent=host()?'BASE DE JUEGO':localDemo?'TU PARTIDA':'TU EQUIPO';$('teamCount').textContent=`${teams.length} EQUIPO${teams.length===1?'':'S'}`;
 $('rankings').innerHTML=teams.length?sorted().map((t,i)=>`<div class="rankrow ${t.id===selfId?'mine':''}"><span class="rankno">${i===0?'★':('#'+(i+1))}</span><span class="rankname" title="${teamName(t)}">${teamName(t)}</span><span class="rankscore">${Math.round(t.score||0)}<small> pts</small></span></div>`).join(''):'<p class="muted">Aún no se han inscrito equipos.</p>';
 const hostTools=$('hostTools');if(hostTools){hostTools.classList.toggle('hidden',!host()||localDemo);if(host()&&!localDemo){$('teamManager').innerHTML=teams.length?sorted().map(t=>`<div class="manage-team"><span>${teamName(t)}</span><button type="button" class="remove-team" data-team-id="${esc(t.id)}" aria-label="Eliminar equipo ${teamName(t)}" title="Eliminar equipo">Eliminar</button></div>`).join(''):'<p class="muted">Sin equipos inscritos.</p>';$('teamManager').querySelectorAll('[data-team-id]').forEach(button=>button.onclick=()=>deleteTeam(button.dataset.teamId));$('resetRoomBtn').onclick=resetRoom;}}
-const timerControls=$('timerControls');if(timerControls){const visible=host()&&!localDemo&&room.phase!=='finished';timerControls.classList.toggle('hidden',!visible);if(visible){const select=$('roundDurationSelect');select.value=String(nextRoundDuration());select.disabled=room.phase==='playing';select.onchange=()=>{durationDraft=validDuration(select.value);updateClock()}}}
 const submissions=teams.filter(t=>t.submittedRound===room.round).length;$('participation').innerHTML=room.phase==='playing'?`<strong>${submissions} / ${teams.length}</strong> equipos han enviado su decisión. ${host()?'<p>Cierra la ronda cuando termine el tiempo de debate.</p>':''}`:room.phase==='lobby'?`<strong>${teams.length}</strong> equipos listos para participar.`:room.phase==='debrief'?`Ronda ${room.round+1} cerrada. Consecuencias publicadas.`:room.phase==='finished'?'La competencia terminó. Consulta el ranking final.':'Preparando experiencia.';
 }
 function header(){const r=Math.max(0,Number(room.round??-1));$('roomTitle').textContent=room.className||'SESIÓN';$('roomCode').textContent=code||'DEMO';$('rolePill').textContent=host()?'FACILITADOR':localDemo?'PRÁCTICA':'EQUIPO';$('phaseText').textContent=({'lobby':'LOBBY · ESPERANDO','playing':'DECISIÓN ABIERTA','debrief':'CONSECUENCIAS REVELADAS','finished':'SIMULACIÓN FINALIZADA'})[room.phase]||'PREPARANDO';$('roundText').textContent=room.phase==='lobby'?`0 / ${String(TOTAL).padStart(2,'0')}`:`RONDA ${String(r+1).padStart(2,'0')} / ${String(TOTAL).padStart(2,'0')}`;$('roundProgress').style.width=`${room.phase==='lobby'?0:(r+1)*100/TOTAL}%`}
