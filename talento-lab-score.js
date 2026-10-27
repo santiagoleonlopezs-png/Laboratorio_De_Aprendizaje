@@ -2,14 +2,14 @@
 function resolveTeam(t,round,decision,legalAnswer){const scenario=CASES[round], valid=Number.isInteger(decision)&&decision>=0&&decision<3;const opt=valid?scenario.choices[decision]:null;const delta=opt?[...opt.d]:[-5,-4,-4,-10,6],cost=opt?.cost||0,history=Array.isArray(t.history)?[...t.history]:[],future=Array.isArray(t.effects)?[...t.effects]:[],late=[];
 // Consecuencias temporizadas que proceden de decisiones anteriores.
 const law=LAWS[round],lawValid=valid&&Number.isInteger(legalAnswer)&&legalAnswer>=0&&legalAnswer<3,lawCorrect=lawValid&&legalAnswer===law?.correct,lawPoints=lawCorrect?25:-15;
-// Reconocer la norma mejora el juicio jurídico del equipo, pero no borra el riesgo operativo asumido.
-delta[4]+=lawCorrect?-4:7;
+// El ajuste legal del riesgo se aplica DESPUÉS de calcular el puntaje estratégico.
 const still=[];for(const effect of future){if(effect.at===round){for(let i=0;i<5;i++)delta[i]+=Number(effect.d[i]||0);late.push(effect.note||'Efecto acumulado')}else if(effect.at>round)still.push(effect)}
 if(opt?.delayed){still.push({...opt.delayed,at:opt.delayed.at})}
 let stats={...(t.stats||INITIAL)};METRICS.forEach(([key],i)=>{stats[key]=clamp((Number(stats[key])||0)+delta[i])});let budget=Number(t.budget??100)-cost;
 // Escasez presupuestal: una penalización con costo extra para el sistema.
 if(budget<0){stats.trust=clamp(stats.trust-4);stats.ops=clamp(stats.ops-5);stats.risk=clamp(stats.risk+5);late.push('Presupuesto agotado: sobrecostos y deterioro operativo.')}
-let points=Math.round(65+delta[0]*2.2+delta[1]*1.8+delta[2]*2.2+delta[3]*1.6-delta[4]*2.8-cost*.7-(budget<0?38:0));points=Math.max(-95,points+lawPoints);
+let points=Math.round(65+delta[0]*2.2+delta[1]*1.8+delta[2]*2.2+delta[3]*1.6-delta[4]*2.8-cost*.7-(budget<0?38:0));points=Math.max(-95,points)+lawPoints;
+stats.risk=clamp(stats.risk+(lawCorrect?-4:7));
 history.push({round,choice:valid?decision:-1,legalChoice:lawValid?legalAnswer:-1,legalCorrect:lawCorrect,legalPoints:lawPoints,points,cost,late,at:Date.now()});return {stats,budget,score:Math.max(0,Number(t.score||0)+points),effects:still,history};}
 async function settleRound(){if(!host()||settling||room?.phase!=='playing')return;if(!teams.length){toast('Primero deben ingresar equipos.');return}settling=true;const btn=$('settle');if(btn)btn.disabled=true;try{const idx=room.round;const batch=db.batch();for(const team of teams){const decision=team.submittedRound===idx?Number(team.choice):-1;batch.update(ref().collection('teams').doc(team.id),resolveTeam(team,idx,decision,team.submittedRound===idx?Number(team.legalChoice):-1))}batch.update(ref(),{phase:'debrief',updatedAt:firebase.firestore.FieldValue.serverTimestamp()});await batch.commit();toast('Consecuencias reveladas y ranking actualizado.')}catch(e){fail(e)}finally{settling=false;render()}}
 function settleDemo(){const idx=room.round;if(idx<0||room.phase!=='playing')return;teams.forEach((t,i)=>{if(i>0){t.choice=([2,1,2,2,2,2,2,2][idx]+i)%3;t.legalChoice=i===1?LAWS[idx].correct:(LAWS[idx].correct+1)%3;t.submittedRound=idx}Object.assign(t,resolveTeam(t,idx,t.choice,t.legalChoice))});room.phase='debrief';chosen=null;render()}
