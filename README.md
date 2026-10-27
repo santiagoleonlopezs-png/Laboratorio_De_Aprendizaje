@@ -8,10 +8,20 @@ Abre `index.html` con servidor HTTP o publícalo con GitHub Pages desde la rama 
 
 Experiencias: **Talento & Riesgo**, **Knowledge Challenge**, **Las reglas del juego** (Ultimátum y Empresa en crisis), **Proyecto NEXUS**, **El Flaco** y **SATURNO**.
 
-- Talento & Riesgo y SATURNO funcionan en el navegador.
+- Talento & Riesgo Lab v2 es una **competencia por equipos en una misma sala**: 8 escenarios (legislación y formación, ascensos, movilidad laboral y dilemas de desarrollo), presupuesto y métricas acumuladas, consecuencias diferidas, ranking en tiempo real y descarga CSV para el facilitador. Incluye modo práctica individual sin servidor.
+- SATURNO funciona en el navegador y guarda el progreso localmente.
 - Knowledge Challenge, Las reglas del juego y El Flaco utilizan Firebase; NEXUS usa Supabase.
 - Estudiantes ingresan mediante nombre y código de sala según cada experiencia.
 - El acceso de facilitadores se autentica mediante correo y contraseña (Firebase Auth o Supabase Auth). Ya no hay contraseñas de facilitador escritas en el código público.
+
+## Talento & Riesgo Lab v2: habilitación multijugador
+
+1. En Firebase Authentication habilita proveedores **Correo/Contraseña** (facilitadores) y **Anónimo** (equipos). Verifica que el dominio de GitHub Pages figure en **Authorized domains**.
+2. Asigna el atributo de autorización `facilitator: true` a la cuenta docente usando **Firebase Admin SDK** en un entorno confiable; la interfaz exige el atributo.
+3. Abre `FIRESTORE_TALENTO_LAB.rules` y **agrega su contenido dentro** de `service cloud.firestore { match /databases/{database}/documents { ... } }`, antes de la regla final de cierre. No reemplaces el conjunto de reglas actual: este archivo es un complemento.
+4. Publica las reglas en Firebase Console → Firestore Database → Rules. **Subir el archivo a GitHub no cambia las reglas activas de Firebase.**
+5. El facilitador crea una sala, comunica el código de seis caracteres, cada equipo entra desde un dispositivo y una identidad de autenticación anónima persistente; al cerrar una ronda se asignan los puntajes y se actualiza el ranking. Si el equipo cambia de navegador o borra sus datos locales no recuperará la identidad automáticamente.
+6. Para juego competitivo con premios o calificaciones de alta integridad, traslada la liquidación de puntajes del navegador del facilitador a Cloud Functions o un servidor confiable. Este MVP usa resultados pedagógicos calculados en el cliente autorizado.
 
 ## Configuración obligatoria antes de sesiones grupales
 
