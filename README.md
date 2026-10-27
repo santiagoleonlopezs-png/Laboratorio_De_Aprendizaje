@@ -14,6 +14,18 @@ Experiencias: **Talento & Riesgo**, **Knowledge Challenge**, **Las reglas del ju
 - Estudiantes ingresan mediante nombre y código de sala según cada experiencia.
 - El acceso de facilitadores se autentica mediante correo y contraseña (Firebase Auth o Supabase Auth). Ya no hay contraseñas de facilitador escritas en el código público.
 
+## Talento & Riesgo Lab V2.3 — bitácora de decisiones para el facilitador
+
+Sin cambiar las partidas, los puntajes o las reglas de acceso existentes, el facilitador propietario dispone de un **resumen para conversar sobre las decisiones de sus equipos**:
+
+- Acceso desde el lateral de su sala y después del debriefing y del ranking final. No se presenta a los participantes.
+- **Por ronda cerrada:** distribución de estrategias (cantidades y porcentajes), nivel de participación, aciertos normativos, decisiones que elevaron el riesgo, norma más pertinente y preguntas de reflexión contextualizadas.
+- **Por equipo:** alternativa estratégica elegida, fundamento/efecto pedagógico, norma que seleccionó, descripción, corrección y puntos de esa ronda, costo y consecuencias diferidas.
+- **Consolidado:** comparación transversal de equipos, aciertos, omisiones y puntos; se puede desplegar el historial por equipo para volver a las ocho decisiones.
+- **Exportar bitácora CSV:** una fila por equipo y ronda cerrada, con las decisiones y consecuencias explicadas, lista para analizar posteriormente.
+- Todo se reconstruye con el campo `history` que ya guardan los equipos en `talento_lab_rooms/{codigo}/teams/{uid}`; no se crean colecciones nuevas ni se requieren permisos adicionales en Firebase. La bitácora comienza a llenarse cuando el facilitador **cierra y liquida** cada ronda. Reiniciar la partida o eliminar un equipo elimina su historial correspondiente, de acuerdo con el funcionamiento previo.
+- Los casos y las referencias legales son orientaciones didácticas. No sustituyen una valoración jurídica individualizada.
+
 ## Talento & Riesgo Lab V2.2 — siete minutos por ronda
 
 - **Cada ronda nueva dura exactamente 7 minutos (420 segundos), sin selector de duración.** Ese tiempo único incluye la decisión estratégica y la selección de la referencia normativa.
