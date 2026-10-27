@@ -29,3 +29,21 @@
 .reset-game{width:100%;margin-top:20px}
 .tiny-warning{font-size:12px;line-height:1.6;color:#a6b7d0}
 @media(max-width:600px){.law-challenge{padding:19px}.law-challenge h3{font-size:23px}.law-question{font-size:16px}.law-option{padding:12px}.law-option strong{font-size:14px}.law-option small{font-size:12px}.law-stakes span{display:none}}
+
+
+/* V2.2 · Cronómetro por ronda y controles de duración */
+.round-clock{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 19px;border:1px solid #37527d;border-radius:13px;margin:16px 0 12px;background:linear-gradient(120deg,#11223b,#0a1425);box-shadow:inset 0 1px 0 #aacbff0b}
+.round-clock-label{display:flex;align-items:center;gap:9px;color:#b9cff0;font-size:12px;letter-spacing:.12em;font-weight:750}
+.round-clock-dot{width:8px;height:8px;border-radius:50%;background:#6ecbff;box-shadow:0 0 13px #73b7ff77;flex-shrink:0}
+.round-clock-value{color:#f4f8ff;font-size:34px;line-height:1.2;letter-spacing:.05em;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;font-weight:850}
+.round-clock.clock-urgent{border-color:#e0a455;background:linear-gradient(120deg,#392718,#172034)}
+.clock-urgent .round-clock-value{color:#ffd284}
+.clock-urgent .round-clock-dot{background:#ffbf64;box-shadow:0 0 13px #eaa351}
+.round-clock.clock-expired{border-color:#b65a72;background:linear-gradient(120deg,#391c2c,#141927)}
+.clock-expired .round-clock-value{color:#ffa5b9}
+.clock-expired .round-clock-dot{background:#ff779e;box-shadow:0 0 12px #c34470}
+.duration-select{display:block;width:100%;max-width:100%;padding:12px 14px;border:1px solid #405b84;background:#101d31;color:#e9f3ff;border-radius:9px;margin:8px 0 18px;min-height:44px;font-size:15px;cursor:pointer}
+.duration-select:focus-visible{outline:3px solid #a6c7ff;outline-offset:3px}
+.duration-select:disabled{opacity:.65;cursor:not-allowed}
+.timer-form-label{font-size:11px;font-weight:700;letter-spacing:.1em;color:#aec7ed}
+@media(max-width:600px){.round-clock{padding:12px 15px;margin:14px 0}.round-clock-label{font-size:10px;letter-spacing:.08em}.round-clock-value{font-size:28px}.duration-select{font-size:16px}}
