@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Laboratorio de Liderazgo del Cambio</title>
+  <style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f5f5f2;color:#171717}header{position:sticky;top:0;z-index:9;background:#111;color:white;padding:14px 4vw;display:flex;justify-content:space-between;gap:12px}header span{margin-left:18px}.topstats{font-weight:700}main{max-width:1380px;margin:auto;padding:28px}.hero{background:#171717;color:white;padding:32px;border-radius:20px;margin-bottom:20px}.hero h1{font-size:42px;margin:5px 0}.eyebrow{letter-spacing:2px;font-size:12px}.rule{margin-top:18px;padding:14px;background:#292929;border-radius:10px}.grid{display:grid;grid-template-columns:1.55fr 1fr;gap:20px}.card{background:white;border:1px solid #ddd;border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 4px 16px #0000000a}.card h2{margin-top:0}.card small,.muted{color:#777;font-weight:400}.sticky{position:sticky;top:72px}.signals{display:grid;grid-template-columns:1fr 1fr;gap:10px}.signal{padding:12px;border-left:4px solid #222;background:#f4f4f4;border-radius:8px}.diagrow,.betrow,.metricrow{display:grid;grid-template-columns:160px 1fr 50px;gap:10px;align-items:center;margin:10px 0}.metricrow{grid-template-columns:150px 1fr 45px}.bar{height:10px;background:#e5e5e5;border-radius:8px;overflow:hidden}.fill{height:100%;background:#222}.sum{margin-top:14px;padding:10px;background:#eee;border-radius:8px}textarea,select{width:100%;padding:12px;border:1px solid #ccc;border-radius:9px;margin:7px 0 14px;font:inherit}textarea{height:88px}.practices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 18px}.practice{border:1px solid #ccc;border-radius:9px;padding:10px;cursor:pointer}.practice.selected{background:#171717;color:white;border-color:#171717}.practice b{display:block}.practice small{font-size:11px}button{width:100%;padding:15px;border:0;border-radius:10px;background:#111;color:#fff;font-weight:800;cursor:pointer;margin-top:12px}.secondary{background:#e8e8e8;color:#111}.rankrow{display:grid;grid-template-columns:45px 1fr 90px 50px;padding:9px 0;border-bottom:1px solid #eee}.me{font-weight:800}.feedback{margin-top:14px;padding:14px;background:#f0f0ed;border-radius:10px}.delta{font-weight:700}.historyitem{border-left:3px solid #222;padding:8px 12px;margin:10px 0}@media(max-width:900px){.grid{grid-template-columns:1fr}.sticky{position:static}.signals{grid-template-columns:1fr}.hero h1{font-size:32px}}
+
+.historyitem{
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  white-space:normal;
+}
+#history{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+}
+.historyitem small{
+  display:block;
+  max-width:100%;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  white-space:normal;
+}
+.grid, section, aside, .card{min-width:0;}
+
+
+.chartwrap{width:100%;overflow:hidden}
+#evolutionChart{display:block;width:100%;height:340px;max-width:100%}
+.chartlegend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;font-size:12px}
+.chartlegend span{display:inline-flex;align-items:center;gap:5px}
+.chartdot{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+
+.budgetbox{padding:12px;background:#f1f1ef;border-radius:10px;margin:8px 0 14px}
+.budgetbox>div:first-child{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px}
+.budgetbox small{display:block;margin-top:7px;line-height:1.3}.budgetdetails{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:12px}
+.budgetbar{height:9px;background:#ddd;border-radius:10px;overflow:hidden}
+#budgetFill{height:100%;width:0;background:#171717;transition:width .2s}
+.practice{position:relative;padding-bottom:32px}
+.practice .cost{position:absolute;bottom:8px;left:10px;font-size:11px;font-weight:800;background:#ececec;color:#171717;padding:4px 7px;border-radius:999px}
+.practice.selected .cost{background:#fff;color:#171717}
+.practice.unaffordable{opacity:.42}
+
+
+.joinOverlay{position:fixed;inset:0;z-index:999;background:#111;display:flex;align-items:center;justify-content:center;padding:22px}
+.joinCard{width:min(470px,100%);background:#fff;border-radius:20px;padding:30px;box-shadow:0 24px 70px #0008}
+.joinCard h1{margin:4px 0 8px;font-size:32px}
+.joinCard label{display:block;font-weight:700;margin-top:15px}
+.joinCard input{width:100%;padding:13px;border:1px solid #bbb;border-radius:9px;margin-top:6px;font:inherit;text-transform:none}
+#joinCode{text-transform:uppercase}
+#joinError{min-height:20px;margin-top:10px;font-size:13px;font-weight:700}
+.eyebrow.dark{color:#333}
+
+.delta.loss{font-weight:900;text-decoration:underline}.delta.gain{font-weight:700}
+.roundResultOverlay{position:fixed;inset:0;z-index:1200;display:none;background:#f5f5f2;overflow:auto;padding:28px}.roundResultOverlay.show{display:block}.roundResultCard{max-width:1280px;margin:auto}.resultTop{background:#171717;color:#fff;border-radius:20px;padding:30px;display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:18px}.resultTop h1{font-size:38px;margin:5px 0}.resultScoreBox{background:#292929;border-radius:14px;padding:18px;text-align:center;min-width:230px}.resultScoreBox span{display:block;font-size:12px;color:#ccc}.resultScoreBox b{font-size:32px}.resultGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.resultPanel{background:#fff;border:1px solid #ddd;border-radius:16px;padding:20px}.resultPracticeTags{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}.resultPracticeTags span{background:#171717;color:#fff;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800}.resultDelta{display:grid;grid-template-columns:145px 1fr 85px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #eee}.resultDeltaBar{height:9px;background:#e5e5e5;border-radius:8px;overflow:hidden}.resultDeltaBar i{display:block;height:100%;background:#222}.resultDelta b{text-align:right}.resultDelta .down{text-decoration:underline}.resultWarning{margin-top:9px;padding:10px 12px;background:#f0f0ed;border-left:4px solid #171717;border-radius:8px}.resultBudgetStats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.resultBudgetStats div{background:#f1f1ef;border-radius:10px;padding:14px}.resultBudgetStats span{display:block;color:#777;font-size:12px}.resultBudgetStats b{display:block;font-size:22px;margin-top:4px}@media(max-width:800px){.roundResultOverlay{padding:14px}.resultTop{display:block}.resultScoreBox{margin-top:15px}.resultGrid{grid-template-columns:1fr}.resultBudgetStats{grid-template-columns:1fr}}
+
+/* Ranking competitivo */
+.rankingLive{font-size:.72rem;font-weight:700;color:#6b7280;margin-left:8px;white-space:nowrap}
+#refreshRanking{width:34px;height:34px;padding:0;border-radius:10px;display:inline-grid;place-items:center}
+
+/* Ranking limpio */
+.rankingLive{font-size:.68rem;font-weight:600;color:#8a8a8a;margin-left:8px;white-space:nowrap}
+#refreshRanking{width:30px;height:30px;padding:0;border:0;border-radius:9px;background:#171717;color:#fff;display:inline-grid;place-items:center;font-size:15px;cursor:pointer;vertical-align:middle}
+
+.rankingTitle{display:flex;align-items:center;gap:10px}
+.rankingTitle h2{margin:0}
+#refreshRanking{width:30px!important;height:30px!important;padding:0!important;margin:0!important;border:0;border-radius:9px;background:#171717;color:#fff;display:inline-grid;place-items:center;cursor:pointer}
+.rankPos{font-size:1.15rem;line-height:1}
+
+
+/* ===== Pantalla del facilitador ===== */
+.facAccess{margin-top:10px;background:transparent!important;color:#222!important;border:1px solid #aaa!important}
+.facOverlay{position:fixed;inset:0;z-index:12000;background:#f4f1ea;display:none;overflow:auto;color:#171717}
+.facOverlay.show{display:block}
+.facShell{max-width:1180px;margin:auto;padding:28px}
+.facTop{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+.facTop h1{margin:0}.facTop p{margin:4px 0 0;color:#666}
+.facActions{display:flex;gap:8px;flex-wrap:wrap}
+.facActions button{width:auto;margin:0;padding:10px 14px}
+.facControls{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;background:white;border:1px solid #ddd;border-radius:16px;padding:16px;margin-bottom:16px}
+.facControls input{margin:0}
+.facBoard{background:white;border:1px solid #ddd;border-radius:16px;overflow:hidden}
+.facSummary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.facStat{background:#171717;color:white;border-radius:14px;padding:15px}.facStat span{display:block;font-size:12px;opacity:.7}.facStat b{font-size:24px}
+.facTable{width:100%;border-collapse:collapse}.facTable th,.facTable td{padding:13px 14px;border-bottom:1px solid #eee;text-align:left}.facTable th{font-size:12px;text-transform:uppercase;color:#777;background:#fafafa}.facTable tr:last-child td{border-bottom:0}
+.facMedal{font-size:20px}.facMuted{color:#777;font-size:13px}.facError{color:#a52323;margin-top:8px}
+.facLogin{max-width:430px;margin:12vh auto;background:white;border:1px solid #ddd;border-radius:18px;padding:24px}.facLogin h2{margin-top:0}
+@media(max-width:760px){.facControls{grid-template-columns:1fr}.facSummary{grid-template-columns:repeat(2,1fr)}.facTable{font-size:12px}.facTable th,.facTable td{padding:9px 7px}}
+
+.helpTip{display:inline-block;position:relative;margin-left:5px;vertical-align:middle}.helpTip summary{list-style:none;cursor:pointer;border:1px solid #64748b;border-radius:50%;width:19px;height:19px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#334155}.helpTip summary::-webkit-details-marker{display:none}.helpTip[open] div{position:absolute;z-index:100;left:0;top:25px;background:#fff;color:#1f2937;border:1px solid #cbd5e1;box-shadow:0 6px 18px #0002;border-radius:9px;padding:10px;width:240px;font-size:13px;line-height:1.4;font-weight:400}
+</style>
+</head>
+<body><div style="position:relative;z-index:100;background:#070b13;border-bottom:1px solid #27334b;padding:14px 22px;font:13px system-ui;display:flex;justify-content:space-between;gap:16px"><a href="index.html#experiencias" style="color:#c2d5ff;text-decoration:none">← Volver al laboratorio</a><span style="color:#91a2bc">Santiago León López</span></div>
+
+<div id="joinOverlay" class="joinOverlay">
+  <div class="joinCard">
+    <p class="eyebrow dark">LABORATORIO DE LIDERAZGO DEL CAMBIO</p>
+    <h1>Ingresa a la simulación</h1>
+    <p class="muted">Identifica tu organización para competir con los demás equipos de la clase.</p>
+    <label>Nombre del equipo / organización</label>
+    <input id="joinTeam" type="text" maxlength="35" placeholder="Ej. NOVA">
+    <label>Código de la clase</label>
+    <input id="joinCode" type="text" maxlength="30" placeholder="Ej. LIDERAZGO-CAMBIO">
+    <button id="joinBtn" type="button">INGRESAR AL JUEGO</button><button id="facOpen" class="facAccess" type="button">PANTALLA DEL FACILITADOR</button>
+    <div id="joinError"></div>
+  </div>
+</div>
+
+<header>
+  <div><b>LABORATORIO DE LIDERAZGO DEL CAMBIO</b><span id="teamTag"></span></div>
+  <div class="topstats"><span id="roundTag">Ronda 1/4</span><span id="timer">07:00</span><span id="scoreTag">0 pts</span></div>
+</header>
+<main>
+<section class="hero">
+  <p class="eyebrow">SIMULACIÓN DE LIDERAZGO DEL CAMBIO</p>
+  <h1>Proyecto NEXUS</h1>
+  <p>La organización está transformando su modelo operativo. El proyecto avanza, pero las personas no necesariamente al mismo ritmo. El equipo de liderazgo deberá leer señales incompletas, formular hipótesis, intervenir y aprender antes que sus competidores.</p>
+  <div class="rule">No gana quien aplica más prácticas. Gana quien comprende mejor el sistema y logra resultados sostenibles.</div>
+</section>
+
+<div class="grid">
+<section>
+  <div class="card ranking"><div class="rankingTitle"><h2>Ranking de equipos</h2><button id="refreshRanking" type="button" title="Actualizar ranking">↻</button></div><p class="muted">Puntaje general del estado del cambio y el resultado del negocio.</p><div id="ranking"></div></div>
+  <div class="card"><h2 id="roundTitle"></h2><p id="situation"></p><div id="signals" class="signals"></div></div>
+  <div class="card"><h2>1. Lee el sistema</h2><p>Distribuye 100 puntos de atención según dónde crees que está el problema.</p><div id="diagnosis"></div><div class="sum">Atención asignada: <b id="diagSum">0</b>/100</div></div>
+  <div class="card"><h2>Evolución de tu organización</h2><div id="metrics"></div></div>
+  <div class="card">
+  <h2>Gráfica de evolución</h2>
+  <p class="muted">Observa cómo suben o bajan las dimensiones de tu organización después de cada decisión.</p>
+  <div class="chartwrap"><canvas id="evolutionChart" width="820" height="340"></canvas></div>
+</div>
+<div class="card"><h2>Historial de aprendizaje</h2><div id="history">Aún no has ejecutado decisiones.</div></div>
+</section>
+
+<aside>
+  <div class="card sticky">
+    <h2>2. Formula tu hipótesis</h2>
+    <textarea id="hypothesis" maxlength="180" placeholder="Si hacemos..., entonces esperamos que..., porque..."></textarea>
+    <h2>3. Diseña la intervención</h2>
+    <label>¿Qué quieres movilizar?</label><select id="target"></select>
+    <label>¿Sobre quién?</label><select id="audience"></select>
+    <label>Arsenal de cambio <small>cada intervención consume capacidad</small></label>
+    <div class="budgetbox">
+      <div><span>Bolsa total de transformación</span><b><span id="budgetRemaining">120</span> créditos disponibles</b></div>
+      <div class="budgetbar"><div id="budgetFill"></div></div>
+      <div class="budgetdetails"><span>Invertidos esta ronda: <b id="budgetUsed">0</b></span><span>Invertidos acumulados: <b id="budgetSpent">0</b>/120</span></div>
+      <small>Estos 120 créditos son para toda la transformación. Lo que inviertas hoy reduce tu capacidad para responder en las siguientes rondas.</small>
+    </div>
+    <div id="practices" class="practices"></div>
+    <h2>4. Haz tu apuesta</h2>
+    <p class="muted">Predice el efecto de tu intervención.</p><div id="bets"></div>
+    <button id="execute">EJECUTAR INTERVENCIÓN</button>
+    <div id="feedback"></div>
+    <button id="next" class="secondary" hidden>SIGUIENTE RONDA →</button>
+  </div>
+</aside>
+</div>
+</main>
+<div id="roundResultOverlay" class="roundResultOverlay"><div class="roundResultCard">
+<div class="resultTop"><div><p class="eyebrow">RESULTADO DE LA RONDA <span id="resultRoundNumber">1</span></p><h1 id="resultVerdict">Decisión ejecutada</h1><p>Observa las consecuencias antes de continuar.</p></div><div class="resultScoreBox"><span>Índice de desempeño sostenible</span><b id="resultScore">0/100</b></div></div>
+<div class="resultGrid">
+<section class="resultPanel"><h2>Decisión tomada</h2><p><b>Objetivo:</b> <span id="resultTarget"></span></p><p><b>Audiencia:</b> <span id="resultAudience"></span></p><div id="resultPractices" class="resultPracticeTags"></div><p><b>Hipótesis:</b> <span id="resultHypothesis"></span></p></section>
+<section class="resultPanel"><h2>Evolución de indicadores</h2><div id="resultDeltas"></div></section>
+<section class="resultPanel"><h2>Lectura de lo ocurrido</h2><p id="resultReading"></p><div id="resultWarnings"></div></section>
+<section class="resultPanel"><h2>Recursos de transformación</h2><div class="resultBudgetStats"><div><span>Invertidos esta ronda</span><b id="resultSpentRound"></b></div><div><span>Saldo disponible</span><b id="resultBudgetLeft"></b></div><div><span>KPI del negocio</span><b id="resultBusiness"></b></div></div></section>
+</div><button id="resultContinue">CONTINUAR A LA SIGUIENTE RONDA →</button></div></div>
+
+<div id="facOverlay" class="facOverlay">
+  <div id="facLogin" class="facLogin">
+    <p class="eyebrow dark">PROYECTO NEXUS</p>
+    <h2>Acceso del facilitador</h2>
+    <label>Correo de facilitador</label>
+    <input id="facEmail" type="email" autocomplete="username" placeholder="facilitador@institucion.edu">
+    <label>Contraseña de cuenta</label>
+    <input id="facPassword" type="password" autocomplete="current-password" placeholder="Contraseña">
+    <button id="facLoginBtn" type="button">INGRESAR</button>
+    <button id="facCancel" class="secondary" type="button">VOLVER</button>
+    <div id="facLoginError" class="facError"></div>
+  </div>
+  <div id="facDashboard" class="facShell" style="display:none">
+    <div class="facTop">
+      <div><p class="eyebrow dark">LABORATORIO DE LIDERAZGO DEL CAMBIO</p><h1>Panel del facilitador</h1><p>Seguimiento de equipos · actualización automática cada 5 segundos</p></div>
+      <div class="facActions"><button id="facRefresh" type="button">↻ Actualizar</button><button id="facExit" class="secondary" type="button">Salir</button></div>
+    </div>
+    <div class="facControls">
+      <div><label>Código de clase</label><input id="facClassCode" type="text" placeholder="Ej. LID-CAMBIO"></div>
+      <div><label>Buscar equipo</label><input id="facSearch" type="text" placeholder="Nombre del equipo"></div>
+      <button id="facLoad" type="button">CARGAR SALA</button>
+    </div>
+    <div class="facSummary">
+      <div class="facStat"><span>Equipos</span><b id="facTeams">0</b></div>
+      <div class="facStat"><span>Promedio</span><b id="facAvg">0</b></div>
+      <div class="facStat"><span>Ronda más avanzada</span><b id="facRound">0</b></div>
+      <div class="facStat"><span>Última actualización</span><b id="facUpdated" style="font-size:16px">—</b></div>
+    </div>
+    <div class="facBoard">
+      <table class="facTable">
+        <thead><tr><th>#</th><th>Equipo</th><th>Puntaje</th><th>Ronda</th><th>KPI negocio</th><th>Apropiación</th><th>Actualizado</th></tr></thead>
+        <tbody id="facRows"><tr><td colspan="7" class="facMuted">Ingresa el código de clase y carga la sala.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="facBoard" style="margin-top:16px">
+      <div style="padding:16px 16px 8px"><h2 style="margin:0">Decisiones por ronda</h2><p class="facMuted">Estrategia, hipótesis y consecuencia registrada por cada equipo.</p></div>
+      <div id="facDecisions" style="padding:0 16px 16px"><div class="facMuted">Carga una sala para ver las decisiones.</div></div>
+    </div>
+    <div id="facError" class="facError"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+window.CHANGE_LAB_CONFIG = {
+  allowLocalFallback: true,
+  supabaseUrl: 'https://pcosytbiduzzvhiyfatx.supabase.co',
+  supabaseAnonKey: 'sb_publishable_dX1E2-tcy0WcPL0XxCmWOA_Ufuo55J1',
+  classCode: 'LID-CAMBIO'
+};
+</script>
+
+<script>
+const C=window.CHANGE_LAB_CONFIG||{};
+const definitions={"Conciencia": "Saber que habrá un cambio y entender por qué es necesario.", "Confianza": "Creer que los líderes cumplen lo que dicen y que el cambio se maneja con honestidad.", "Energía": "Tener tiempo, ánimo y fuerzas para participar sin agotarse.", "Compromiso": "Querer apoyar el cambio y estar dispuesto a hacer algo por él.", "Conocimiento": "Saber qué hay que hacer y cómo funciona la nueva manera de trabajar.", "Capacidad": "Poder aplicar lo aprendido con las habilidades y recursos disponibles.", "Apropiación": "Usar el cambio en el trabajo diario, sin depender de recordatorios constantes."};
+const vars=["Conciencia","Confianza","Energía","Compromiso","Conocimiento","Capacidad","Apropiación"];
+const practices=[["ADKAR", "Explica para qué se hace el cambio y qué significa para cada persona."], ["Escucha persuasiva", "Escucha las preocupaciones antes de ofrecer soluciones."], ["Co-creación", "Invita al equipo a construir soluciones útiles."], ["Lean Change", "Prueba una mejora pequeña y ajústala con resultados."], ["Aprendizaje experiencial", "Practica la nueva forma de trabajar en situaciones reales."], ["TRIZ", "Encuentra y elimina barreras que impiden avanzar."], ["Redes de influencia", "Invita a compañeros respetados a apoyar el cambio."], ["Coaching", "Acompaña a quienes tienen dificultades concretas."], ["Reconocimiento", "Destaca los avances y las conductas positivas."], ["Intenciones de implementación", "Acuerda qué hará cada persona, cuándo y cómo."], ["Identificación de casos exitosos", "Identifica lo que ya funciona y compártelo."], ["Análisis anticipado del fracaso", "Imagina qué podría fallar y toma medidas preventivas."], ["Coaching para líderes", "Activa sesiones de coaching para que los líderes cambien hábitos de dirección."], ["Gestión Humana", "Pide apoyo a Gestión Humana para resolver retos de personas y cultura."], ["Capacitación", "Organiza una formación práctica cuando faltan conocimientos o habilidades."]];
+
+const easyNames={"ADKAR": "Explicar el propósito del cambio", "Escucha persuasiva": "Escuchar antes de convencer", "Co-creación": "Involucrar al equipo en las soluciones", "Lean Change": "Probar cambios pequeños", "Aprendizaje experiencial": "Aprender haciendo", "TRIZ": "Eliminar obstáculos", "Redes de influencia": "Movilizar personas influyentes", "Coaching": "Acompañar a quienes tienen dificultades", "Reconocimiento": "Reconocer los avances", "Intenciones de implementación": "Convertir ideas en acciones concretas", "Identificación de casos exitosos": "Aprender de lo que funciona", "Análisis anticipado del fracaso": "Anticipar problemas y resistencias", "Gestión Humana": "Activar coaching", "Capacitación": "Activar a Gestión Humana", "Coaching para líderes": "Activar una capacitación"};
+function easyName(name){return easyNames[name]||name;}
+const practiceCosts={
+ "ADKAR":20,
+ "Lean Change":30,
+ "Moving Motivators":20,
+ "Delegation Poker":20,
+ "Campañas de comunicación-difusión":25,
+ "TRIZ":20,
+ "Nudges":15,
+ "Redes de influencia":30,
+ "Storytelling":15,
+ "Co-creación":35,
+ "Aprendizaje experiencial":35,
+ "Coaching":40,
+ "Reconocimiento":20,
+ "Comunidades de práctica":30,
+ "Lecciones aprendidas":20,
+ "Comunicación segmentada":25,
+ "Respaldo directivo":20,
+ "Grupos focales":25,
+ "Pensamiento científico":20,"Entrevista motivacional":25,"Escucha persuasiva":20,
+ "Escala de disposición al cambio":15,"Análisis anticipado del fracaso":20,
+ "Intenciones de implementación":20,"Identificación de casos exitosos":20,
+ "Inoculación preventiva de objeciones":20,
+ "Coaching para líderes":30,"Gestión Humana":25,"Capacitación":25
+};
+const TOTAL_BUDGET=120;
+
+const rounds=[
+{title:"Ronda 1 · El cambio fue anunciado",situation:"La transformación técnicamente va según cronograma. Sin embargo, aparecen señales contradictorias.",signals:["📊 91% asistió al lanzamiento.","💬 “Nos enteramos de decisiones por otros equipos.”","📊 Conocimiento declarado: 76%.","💬 “Entiendo qué cambia, pero no por qué.”","📉 Uso del nuevo proceso: 43%."]},
+{title:"Ronda 2 · La organización responde",situation:"Las primeras intervenciones generan movimiento, pero también efectos no previstos.",signals:["💬 “Nos están preguntando mucho, pero no sabemos qué hacen con lo que decimos.”","📈 Algunos líderes informales empiezan a movilizar equipos.","📉 Los errores operativos aumentan.","💬 “Tengo ganas de hacerlo, pero no sé si puedo.”"]},
+{title:"Ronda 3 · La organización se atrinchera",situation:"El cambio ya es conocido y existen capacidades iniciales, pero aparecen posiciones rígidas. Algunos líderes defienden la forma anterior de trabajar y las conversaciones empiezan a polarizarse.",signals:["📊 La conciencia y el conocimiento del cambio son altos.","📉 La confianza cae en grupos críticos.","💬 “Ya entendí el cambio; no estoy convencido de que sea mejor.”","💬 “Cada conversación termina intentando convencerme.”"]},
+{title:"Ronda 4 · Presión competitiva",situation:"Dirección exige acelerar: otras organizaciones del sector muestran mejores resultados.",signals:["⚠️ El proyecto debe adelantar hitos.","💬 “Otra prioridad nueva esta semana.”","📊 La formación aumentó, la aplicación no al mismo ritmo.","💬 “¿Qué hicieron los otros para avanzar tanto?”"]},
+{title:"Ronda 5 · Sostener o acelerar",situation:"Los resultados empiezan a aparecer. Dirección quiere aprovechar el impulso, pero el sistema muestra señales de fatiga.",signals:["📈 El KPI de negocio mejora.","📉 La energía de algunos equipos cae.","💬 “Podemos hacerlo, pero no sé cuánto tiempo a este ritmo.”","💬 “Ahora sí veo para qué sirve el cambio.”"]}
+];
+let team="";
+let classCode="";
+let state=null;
+function freshState(){return{round:0,score:0,business:55,metrics:{Conciencia:52,Confianza:58,Energía:72,Compromiso:44,Conocimiento:61,Capacidad:42,Apropiación:35},history:[]};}
+function stateKey(){return "changeState_"+classCode+"_"+team}
+function enterGame(){
+ const t=$("joinTeam").value.trim();
+ const c=$("joinCode").value.trim().toUpperCase();
+ if(t.length<2 || c.length<3){$("joinError").textContent="Ingresa el nombre del equipo y el código de la clase.";return}
+ team=t; classCode=c;
+ localStorage.setItem("changeTeam",team);localStorage.setItem("changeClassCode",classCode);
+ state=JSON.parse(localStorage.getItem(stateKey())||"null")||freshState();
+ if(state.metrics.Conciencia===undefined) state.metrics.Conciencia=52;
+if(state.spent===undefined) state.spent=0;
+if(state.metrics.Claridad!==undefined) delete state.metrics.Claridad;
+if(state.evolution) state.evolution.forEach(p=>{ if(p.metrics && p.metrics.Claridad!==undefined) delete p.metrics.Claridad; });
+if(!state.evolution){
+  state.evolution=[{
+    label:"Inicio",
+    metrics:{...state.metrics},
+    business:state.business
+  }];
+}
+$("teamTag").textContent=" · "+team+" · "+classCode;
+ $("joinOverlay").style.display="none";
+ render();updateBudget();
+}
+let selected=[]; let time=420, tick;
+const $=id=>document.getElementById(id);
+vars.forEach(v=>{$("target").innerHTML+=`<option>${v}</option>`;$("bets").innerHTML+=`<div class="betrow"><span>${v} <details class="helpTip"><summary aria-label="Qué significa ${v}">?</summary><div>${definitions[v]}</div></details></span><input type="range" min="-15" max="15" value="0" data-bet="${v}"><b id="b_${v}">0</b></div>`});
+["Alta dirección","Líderes","Influenciadores","Equipos","Individuos"].forEach(a=>$("audience").innerHTML+=`<option>${a}</option>`);
+practices.forEach((p,i)=>$("practices").innerHTML+=`<div class="practice" data-i="${i}"><b>${easyName(p[0])}</b><small>${p[1]}</small><span class="cost">${practiceCosts[p[0]]} créditos</span></div>`);
+function selectedCost(){return selected.reduce((sum,i)=>sum+(practiceCosts[practices[i][0]]||0),0)}
+function remainingBudget(){return Math.max(0,TOTAL_BUDGET-(state.spent||0)-selectedCost())}
+function updateBudget(){
+ const used=selectedCost(), spent=state.spent||0, remaining=Math.max(0,TOTAL_BUDGET-spent-used);
+ $("budgetUsed").textContent=used;
+ $("budgetSpent").textContent=spent;
+ $("budgetRemaining").textContent=remaining;
+ $("budgetFill").style.width=Math.min(100,((spent+used)/TOTAL_BUDGET)*100)+"%";
+ document.querySelectorAll(".practice").forEach(x=>{
+   const i=+x.dataset.i, cost=practiceCosts[practices[i][0]]||0;
+   x.classList.toggle("unaffordable",!selected.includes(i) && cost>remaining);
+ });
+}
+document.querySelectorAll(".practice").forEach(x=>x.onclick=()=>{
+ let i=+x.dataset.i;
+ if(selected.includes(i)){
+   selected=selected.filter(z=>z!==i);x.classList.remove("selected");
+ }else{
+   const cost=practiceCosts[practices[i][0]]||0;
+   if(cost>remainingBudget()){
+     alert(`Esta intervención cuesta ${cost} créditos. Solo te quedan ${remainingBudget()} créditos para toda la transformación.`);
+     return;
+   }
+   if(selected.length>=3){alert("Puedes elegir hasta 3 intervenciones por ronda. Prioriza las más útiles.");return;}
+   selected.push(i);x.classList.add("selected");
+ }
+ updateBudget();
+});
+document.querySelectorAll("[data-bet]").forEach(x=>x.oninput=()=>{$("b_"+x.dataset.bet).textContent=(+x.value>0?"+":"")+x.value});
+
+
+function drawEvolutionChart(){
+ const canvas=$("evolutionChart"); if(!canvas)return;
+ const dpr=window.devicePixelRatio||1;
+ const rect=canvas.getBoundingClientRect();
+ const W=Math.max(520,Math.floor(rect.width||820)), H=340;
+ canvas.width=W*dpr;canvas.height=H*dpr;
+ const ctx=canvas.getContext("2d");ctx.scale(dpr,dpr);
+ ctx.clearRect(0,0,W,H);
+ const pad={l:44,r:18,t:20,b:48}, cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+ // grid
+ ctx.font="11px Arial";ctx.fillStyle="#666";ctx.strokeStyle="#e2e2e2";ctx.lineWidth=1;
+ [0,25,50,75,100].forEach(v=>{
+   const y=pad.t+ch-(v/100)*ch;
+   ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
+   ctx.fillText(String(v),10,y+4);
+ });
+ const pts=state.evolution||[];
+ const series=[...vars,"KPI negocio"];
+ // Browser-generated palette: no external dependency.
+ const palette=["#111111","#5b5b5b","#8a8a8a","#b0b0b0","#3f6b7a","#7b5b8d","#7a6a3f","#3f7a59","#8a4d4d"];
+ series.forEach((s,si)=>{
+   ctx.strokeStyle=palette[si%palette.length];ctx.fillStyle=palette[si%palette.length];ctx.lineWidth=2.2;
+   ctx.beginPath();
+   pts.forEach((p,i)=>{
+     const x=pts.length===1?pad.l+cw/2:pad.l+(i/(Math.max(1,pts.length-1)))*cw;
+     const val=s==="KPI negocio"?p.business:p.metrics[s];
+     const y=pad.t+ch-(val/100)*ch;
+     if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+   });ctx.stroke();
+   pts.forEach((p,i)=>{
+     const x=pts.length===1?pad.l+cw/2:pad.l+(i/(Math.max(1,pts.length-1)))*cw;
+     const val=s==="KPI negocio"?p.business:p.metrics[s];
+     const y=pad.t+ch-(val/100)*ch;
+     ctx.beginPath();ctx.arc(x,y,3.2,0,Math.PI*2);ctx.fill();
+   });
+ });
+ ctx.fillStyle="#555";ctx.textAlign="center";
+ pts.forEach((p,i)=>{
+   const x=pts.length===1?pad.l+cw/2:pad.l+(i/(Math.max(1,pts.length-1)))*cw;
+   ctx.fillText(p.label,x,H-25);
+ });
+ ctx.textAlign="left";
+ let legend=canvas.parentElement.querySelector(".chartlegend");
+ if(!legend){legend=document.createElement("div");legend.className="chartlegend";canvas.parentElement.appendChild(legend)}
+ legend.innerHTML=series.map((s,i)=>`<span><i class="chartdot" style="background:${palette[i%palette.length]}"></i>${s}</span>`).join("");
+}
+
+function render(){
+ let r=rounds[state.round]; $("roundTag").textContent=`Ronda ${state.round+1}/5`; $("roundTitle").textContent=r.title;$("situation").textContent=r.situation;$("signals").innerHTML=r.signals.map(s=>`<div class="signal">${s}</div>`).join("");
+ $("scoreTag").textContent=Math.round(state.score)+"/100";
+ $("diagnosis").innerHTML=vars.map(v=>`<div class="diagrow"><span>${v}</span><input type="range" min="0" max="40" value="0" data-diag="${v}"><b id="d_${v}">0</b></div>`).join("");
+ document.querySelectorAll("[data-diag]").forEach(x=>x.oninput=()=>{let sum=[...document.querySelectorAll("[data-diag]")].reduce((a,b)=>a+(+b.value),0);if(sum>100){x.value-=sum-100} $("d_"+x.dataset.diag).textContent=x.value;$("diagSum").textContent=[...document.querySelectorAll("[data-diag]")].reduce((a,b)=>a+(+b.value),0)});
+ $("metrics").innerHTML=vars.map(v=>`<div class="metricrow"><span>${v}</span><div class="bar"><div class="fill" style="width:${state.metrics[v]}%"></div></div><b>${Math.round(state.metrics[v])}</b></div>`).join("")+`<div class="metricrow"><span>KPI negocio</span><div class="bar"><div class="fill" style="width:${state.business}%"></div></div><b>${Math.round(state.business)}</b></div>`;
+ $("history").innerHTML=state.history.length?state.history.map(h=>`<div class="historyitem"><b>R${h.round}: ${h.target}</b> · <b>${h.credits??"—"} créditos invertidos</b><br>${h.practices.map(easyName).join(" + ")}<br><small>${h.hypothesis}</small></div>`).join(""):"Aún no has ejecutado decisiones.";
+ renderRanking(); drawEvolutionChart(); startTimer();
+}
+function startTimer(){clearInterval(tick);time=420;tick=setInterval(()=>{time--;let m=Math.floor(time/60),s=time%60;$("timer").textContent=`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;if(time<=0)clearInterval(tick)},1000)}
+function effects(){
+  let e=Object.fromEntries(vars.map(v=>[v,0]));
+  const names=selected.map(i=>practices[i][0]);
+  const target=$("target").value;
+
+  const map={
+    "ADKAR":{Conciencia:4,Conocimiento:4,Compromiso:2},
+    "Lean Change":{Confianza:4,Compromiso:4,Capacidad:2},
+    "Moving Motivators":{Compromiso:7,Confianza:3},
+    "Delegation Poker":{Confianza:4,Compromiso:5},
+    "Campañas de comunicación-difusión":{Conciencia:9,Conocimiento:2,Energía:-1},
+    "TRIZ":{Confianza:2,Conciencia:2},
+    "Nudges":{Capacidad:3,Compromiso:2},
+    "Redes de influencia":{Compromiso:6,Confianza:2},
+    "Storytelling":{Conciencia:5,Compromiso:4},
+    "Co-creación":{Confianza:5,Compromiso:6,Energía:-3},
+    "Aprendizaje experiencial":{Conocimiento:5,Capacidad:8,Energía:-2},
+    "Coaching":{Capacidad:5,Confianza:3},
+    "Reconocimiento":{Energía:5,Compromiso:5},
+    "Comunidades de práctica":{Conocimiento:5,Capacidad:5,Confianza:2},
+    "Lecciones aprendidas":{Conocimiento:5,Capacidad:4},
+    "Comunicación segmentada":{Conciencia:5,Conocimiento:3},
+    "Respaldo directivo":{Conciencia:5,Confianza:6,Compromiso:5},
+    "Grupos focales":{Confianza:5,Conciencia:3,Compromiso:4,Energía:-1},
+    "Pensamiento científico":{Confianza:4,Conocimiento:3,Compromiso:3},
+    "Entrevista motivacional":{Confianza:7,Compromiso:7,Energía:1},
+    "Escucha persuasiva":{Confianza:6,Compromiso:5},
+    "Escala de disposición al cambio":{Confianza:3,Compromiso:4,Conocimiento:2},
+    "Análisis anticipado del fracaso":{Conocimiento:4,Capacidad:4,Confianza:2},
+    "Intenciones de implementación":{Capacidad:7,Compromiso:4,Apropiación:4},
+    "Identificación de casos exitosos":{Confianza:4,Capacidad:5,Compromiso:4},
+    "Inoculación preventiva de objeciones":{Confianza:4,Conocimiento:4,Compromiso:3},
+ "Coaching para líderes":{Confianza:5,Compromiso:4,Capacidad:4},"Gestión Humana":{Confianza:4,Compromiso:4,Capacidad:3},"Capacitación":{Conocimiento:8,Capacidad:5,Energía:-2}
+  };
+
+  // Pertinencia por momento. No existe una única respuesta correcta:
+  // varias prácticas pueden ser válidas, pero no todas son igualmente oportunas.
+  const fit=[
+{"ADKAR":1.35,"Lean Change":0.75,"Moving Motivators":0.65,"Delegation Poker":0.55,"Campañas de comunicación-difusión":1.25,"TRIZ":0.75,"Nudges":0.45,"Redes de influencia":0.85,"Storytelling":1.25,"Co-creación":0.8,"Aprendizaje experiencial":0.55,"Coaching":0.45,"Reconocimiento":0.55,"Comunidades de práctica":0.5,"Lecciones aprendidas":0.35,"Comunicación segmentada":1.15,"Respaldo directivo":1.1,"Grupos focales":1.0,"Pensamiento científico":0.65,"Entrevista motivacional":0.35,"Escucha persuasiva":0.45,"Escala de disposición al cambio":0.45,"Análisis anticipado del fracaso":0.55,"Intenciones de implementación":0.35,"Identificación de casos exitosos":0.45,"Inoculación preventiva de objeciones":0.65,"Coaching para líderes":0.9,"Gestión Humana":1.15,"Capacitación":1.25,"Coaching para líderes":0.35,"Gestión Humana":0.7,"Capacitación":0.45},
+{"ADKAR":0.75,"Lean Change":1.2,"Moving Motivators":0.8,"Delegation Poker":0.9,"Campañas de comunicación-difusión":0.35,"TRIZ":0.8,"Nudges":0.65,"Redes de influencia":1.15,"Storytelling":0.55,"Co-creación":1.15,"Aprendizaje experiencial":1.35,"Coaching":1.2,"Reconocimiento":0.65,"Comunidades de práctica":1.15,"Lecciones aprendidas":0.7,"Comunicación segmentada":0.7,"Respaldo directivo":0.8,"Grupos focales":1.15,"Pensamiento científico":0.85,"Entrevista motivacional":0.9,"Escucha persuasiva":1.0,"Escala de disposición al cambio":0.85,"Análisis anticipado del fracaso":0.75,"Intenciones de implementación":0.9,"Identificación de casos exitosos":0.85,"Inoculación preventiva de objeciones":0.65},
+{"ADKAR":0.45,"Lean Change":0.85,"Moving Motivators":0.75,"Delegation Poker":0.7,"Campañas de comunicación-difusión":0.15,"TRIZ":0.65,"Nudges":0.45,"Redes de influencia":0.8,"Storytelling":0.45,"Co-creación":0.75,"Aprendizaje experiencial":0.55,"Coaching":0.75,"Reconocimiento":0.55,"Comunidades de práctica":0.7,"Lecciones aprendidas":0.55,"Comunicación segmentada":0.45,"Respaldo directivo":0.55,"Grupos focales":0.9,"Pensamiento científico":1.25,"Entrevista motivacional":1.35,"Escucha persuasiva":1.35,"Escala de disposición al cambio":1.2,"Análisis anticipado del fracaso":0.9,"Intenciones de implementación":0.65,"Identificación de casos exitosos":1.0,"Inoculación preventiva de objeciones":1.15,"Coaching para líderes":1.1,"Gestión Humana":1.2,"Capacitación":0.25},
+{"ADKAR":0.55,"Lean Change":1.3,"Moving Motivators":0.8,"Delegation Poker":1.05,"Campañas de comunicación-difusión":0.25,"TRIZ":0.7,"Nudges":1.05,"Redes de influencia":1.2,"Storytelling":0.45,"Co-creación":0.8,"Aprendizaje experiencial":1.05,"Coaching":0.85,"Reconocimiento":0.8,"Comunidades de práctica":0.95,"Lecciones aprendidas":0.75,"Comunicación segmentada":0.55,"Respaldo directivo":0.75,"Grupos focales":0.7,"Pensamiento científico":0.8,"Entrevista motivacional":0.65,"Escucha persuasiva":0.6,"Escala de disposición al cambio":0.55,"Análisis anticipado del fracaso":1.0,"Intenciones de implementación":1.25,"Identificación de casos exitosos":1.1,"Inoculación preventiva de objeciones":0.7,"Coaching para líderes":0.85,"Gestión Humana":0.85,"Capacitación":0.555,"Coaching para líderes":0.8,"Gestión Humana":1.05,"Capacitación":1.2},
+{"ADKAR":0.45,"Lean Change":1.05,"Moving Motivators":0.85,"Delegation Poker":0.9,"Campañas de comunicación-difusión":0.15,"TRIZ":0.6,"Nudges":0.9,"Redes de influencia":0.95,"Storytelling":0.35,"Co-creación":0.55,"Aprendizaje experiencial":0.9,"Coaching":0.8,"Reconocimiento":1.25,"Comunidades de práctica":1.2,"Lecciones aprendidas":1.35,"Comunicación segmentada":0.45,"Respaldo directivo":0.65,"Grupos focales":0.65,"Pensamiento científico":0.8,"Entrevista motivacional":0.75,"Escucha persuasiva":0.7,"Escala de disposición al cambio":0.6,"Análisis anticipado del fracaso":1.15,"Intenciones de implementación":1.0,"Identificación de casos exitosos":1.2,"Inoculación preventiva de objeciones":0.7}
+][state.round];
+
+  const consequence={high:[],medium:[],low:[],irrelevant:[],counterproductive:[],opportunity:false,synergies:[],warnings:[]};
+
+  names.forEach(n=>{
+    const f=fit[n]??.6;
+    const base=map[n]||{};
+
+    if(f>=.95){
+      consequence.high.push(n);
+      // Alta pertinencia: el efecto debe sentirse claramente en el sistema.
+      Object.entries(base).forEach(([k,v])=>e[k]+=v*f*1.45);
+    }else if(f>=.65){
+      consequence.medium.push(n);
+      Object.entries(base).forEach(([k,v])=>e[k]+=v*f*.72);
+    }else if(f>=.40){
+      consequence.low.push(n);
+      Object.entries(base).forEach(([k,v])=>e[k]+=v*f*.28);
+      // costo de dispersión: aporta poco y consume capacidad de cambio
+      e.Energía-=2;e.Confianza-=1;e.Compromiso-=1;e.Capacidad-=1;e.Apropiación-=1.5;
+    }else if(f>=.25){
+      consequence.irrelevant.push(n);
+      e.Energía-=4;e.Confianza-=3;e.Compromiso-=3;e.Capacidad-=2.5;e.Apropiación-=3.5;
+    }else{
+      consequence.counterproductive.push(n);
+      Object.entries(base).forEach(([k,v])=>{if(v<0)e[k]+=v;});
+      e.Energía-=7;e.Confianza-=6;e.Compromiso-=5;e.Capacidad-=5;e.Apropiación-=6;
+    }
+  });
+
+  // Calidad del diagnóstico: enfocar el objetivo que el equipo identificó como crítico suma;
+  // diagnosticar una cosa e intervenir otra genera incoherencia.
+  const attention=Object.fromEntries([...document.querySelectorAll("[data-diag]")].map(x=>[x.dataset.diag,+x.value]));
+  const highest=Object.entries(attention).sort((a,b)=>b[1]-a[1])[0];
+  if(highest&&highest[0]===target)e[target]+=3;
+  if(highest&&highest[1]>=40&&highest[0]!==target){
+    e.Confianza-=2;e.Energía-=2;
+    consequence.warnings.push("El foco de la intervención no coincide con la principal hipótesis diagnóstica del equipo.");
+  }
+
+  // Sinergias: combinaciones que se refuerzan entre sí.
+  if(names.includes("Grupos focales")&&names.includes("Lean Change")){e.Confianza+=3;e.Compromiso+=2;consequence.synergies.push("Escucha + experimentación: el feedback se convierte en ajustes visibles.");}
+  if(names.includes("Respaldo directivo")&&names.includes("Campañas de comunicación-difusión")){e.Conciencia+=4;consequence.synergies.push("Patrocinio + comunicación: aumenta la legitimidad del mensaje.");}
+  if(names.includes("Redes de influencia")&&names.includes("Reconocimiento")){e.Compromiso+=3;e.Confianza+=2;consequence.synergies.push("Influencia + reconocimiento: se refuerzan conductas visibles en la red.");}
+  if(names.includes("Aprendizaje experiencial")&&names.includes("Comunidades de práctica")){e.Capacidad+=4;e.Conocimiento+=2;consequence.synergies.push("Práctica + aprendizaje entre pares: acelera transferencia y capacidad.");}
+  if(names.includes("Co-creación")&&names.includes("Delegation Poker")){e.Compromiso+=3;e.Confianza+=2;consequence.synergies.push("Co-creación + autonomía: aumenta participación con capacidad de decisión.");}
+
+  // Condiciones contextuales: una práctica pertinente también puede ser mal ejecutada
+  // si el sistema no tiene las condiciones necesarias.
+  if(names.includes("Co-creación")&&state.metrics.Energía<50){e.Energía-=6;e.Compromiso-=2;consequence.warnings.push("Co-crear con energía baja aumentó la carga del sistema.");}
+  if(names.includes("Delegation Poker")&&state.metrics.Capacidad<45){e.Confianza-=3;consequence.warnings.push("Delegar sin suficiente capacidad generó incertidumbre.");}
+  if(names.includes("Aprendizaje experiencial")&&state.metrics.Compromiso<40){e.Energía-=3;consequence.warnings.push("La práctica exigió esfuerzo en un sistema con bajo compromiso.");}
+  if(names.includes("Campañas de comunicación-difusión")&&state.metrics.Conciencia>75){e.Energía-=5;e.Confianza-=2;consequence.warnings.push("Más comunicación masiva cuando la conciencia ya era alta produjo saturación.");}
+  if(names.includes("Reconocimiento")&&state.metrics.Confianza<40){e.Confianza-=3;consequence.warnings.push("El reconocimiento fue percibido con baja credibilidad por la falta de confianza.");}
+
+  // Reglas conductuales de las tres nuevas intervenciones.
+  if(names.includes("Capacitación")&&state.metrics.Conocimiento>=70){e.Energía-=5;e.Confianza-=2;consequence.warnings.push("La capacitación no resolvió el problema: el equipo ya conocía el cambio.");}
+  if(names.includes("Capacitación")&&state.metrics.Compromiso<40){e.Energía-=4;e.Compromiso-=2;consequence.warnings.push("Capacitar sin disposición al cambio aumentó el cansancio.");}
+  if(names.includes("Gestión Humana")&&names.includes("Coaching para líderes")){e.Confianza+=3;e.Capacidad+=2;consequence.synergies.push("Gestión Humana + coaching: apoyo especializado y líderes mejor preparados.");}
+  if(names.includes("Capacitación")&&names.includes("Aprendizaje experiencial")){e.Capacidad+=4;e.Conocimiento+=2;consequence.synergies.push("Capacitación + práctica: el aprendizaje se convierte en habilidad.");}
+  if(names.includes("Coaching para líderes")&&state.metrics.Energía<40){e.Energía-=3;consequence.warnings.push("El coaching no compensa por sí solo una sobrecarga de trabajo.");}
+  if(names.includes("Gestión Humana")&&state.round===2&&names.includes("Escucha persuasiva")){e.Confianza+=3;e.Compromiso+=2;consequence.synergies.push("Gestión Humana + escucha: se atienden preocupaciones con apoyo concreto.");}
+  // Costo de oportunidad: si ninguna intervención tiene pertinencia media-alta,
+  // el problema central continúa avanzando aunque el equipo haya gastado recursos.
+  const useful=consequence.high.length+consequence.medium.length;
+  if(useful===0){
+    consequence.opportunity=true;
+    const deterioration=[
+      {Confianza:-2,Energía:-2,Compromiso:-3,Capacidad:-2,Apropiación:-3},
+      {Confianza:-2,Energía:-3,Compromiso:-2,Capacidad:-3,Apropiación:-3},
+      {Confianza:-2,Energía:-4,Compromiso:-3,Capacidad:-3,Apropiación:-4},
+      {Confianza:-2,Energía:-4,Compromiso:-3,Capacidad:-2,Apropiación:-4},
+      {Confianza:-2,Energía:-5,Compromiso:-3,Capacidad:-3,Apropiación:-5}
+    ][state.round];
+    Object.entries(deterioration).forEach(([k,v])=>e[k]+=v);
+    consequence.warnings.push("Costo de oportunidad: se invirtieron recursos sin intervenir suficientemente la condición crítica de la ronda.");
+  }
+
+  // Sobreintervención y concentración excesiva de presupuesto.
+  const spend=selectedCost();
+  if(names.length>=4){e.Energía-=4;e.Confianza-=2;consequence.warnings.push("La sobreintervención aumentó la carga y los costos de coordinación.");}
+  if(spend>=70){e.Energía-=5;e.Compromiso-=2;consequence.warnings.push("Concentrar muchos recursos en una sola ronda redujo la sostenibilidad.");}
+  if(spend>=90){e.Energía-=4;e.Confianza-=3;}
+
+  // Presión natural de cada ronda: no actuar bien también tiene consecuencias.
+  const pressure=[{Energía:-2},{Energía:-4,Capacidad:-2},{Energía:-6,Confianza:-2},{Energía:-5,Compromiso:-2},{Energía:-5,Compromiso:-3}][state.round];
+  Object.entries(pressure).forEach(([k,v])=>e[k]+=v);
+
+  // Variabilidad moderada para evitar resultados completamente mecánicos.
+  // Sin azar: decisiones idénticas en el mismo contexto producen el mismo resultado.
+
+  e.__consequence=consequence;
+  return e;
+}
+
+async function execute(){
+ let sum=[...document.querySelectorAll("[data-diag]")].reduce((a,b)=>a+(+b.value),0);
+ if(sum!==100)return alert("Distribuye exactamente 100 puntos de atención.");
+ if(selected.length<1)return alert("Selecciona al menos una intervención.");
+ if(selectedCost()>TOTAL_BUDGET-(state.spent||0))return alert("No tienes suficientes créditos disponibles en la bolsa total de transformación.");
+ let hyp=$("hypothesis").value.trim();if(hyp.length<20)return alert("Formula una hipótesis breve de al menos 20 caracteres.");
+ const roundSpend=selectedCost();
+ clearInterval(tick); let e=effects(), consequence=e.__consequence||{}; delete e.__consequence; let before={...state.metrics};
+ vars.forEach(v=>state.metrics[v]=Math.max(0,Math.min(100,state.metrics[v]+e[v])));
+  // Apropiación sistémica: depende especialmente de compromiso, capacidad y confianza.
+  // Una mala decisión no puede convertir automáticamente el deterioro en una mejora.
+  const appropriationAfterDecision=state.metrics.Apropiación;
+  let emerg=(state.metrics.Conciencia*.18+state.metrics.Compromiso*.27+state.metrics.Conocimiento*.12+state.metrics.Capacidad*.27+state.metrics.Confianza*.16);
+  let emergentAppropriation=appropriationAfterDecision*.78+emerg*.22;
+  const badDecision=(consequence.irrelevant?.length||0)>0 || (consequence.counterproductive?.length||0)>0 || consequence.opportunity;
+  state.metrics.Apropiación=Math.max(0,Math.min(100,badDecision?Math.min(appropriationAfterDecision,emergentAppropriation):emergentAppropriation));
+let health=vars.slice(0,6).reduce((a,v)=>a+state.metrics[v],0)/6;
+ state.business=Math.max(0,Math.min(100,state.business+(state.metrics.Apropiación-45)*.10+(state.metrics.Capacidad-45)*.06));
+ let imbalance=Math.max(...vars.slice(0,6).map(v=>state.metrics[v]))-Math.min(...vars.slice(0,6).map(v=>state.metrics[v]));
+ let bets=Object.fromEntries([...document.querySelectorAll("[data-bet]")].map(x=>[x.dataset.bet,+x.value]));
+ let accuracy=vars.reduce((a,v)=>a+Math.abs(bets[v]-(state.metrics[v]-before[v])),0)/vars.length;
+ let lectura=Math.max(0,100-accuracy*6);
+ let sostenibilidad=Math.max(0,100-Math.max(0,imbalance-25)*1.6);
+ // Puntaje final 0–100: 30% negocio, 30% apropiación, 20% salud del cambio,
+ // 10% precisión de la hipótesis/apuesta y 10% equilibrio sostenible.
+ state.score=Math.round(
+  (
+    state.metrics.Conciencia+
+    state.metrics.Confianza+
+    state.metrics.Energía+
+    state.metrics.Compromiso+
+    state.metrics.Conocimiento+
+    state.metrics.Capacidad+
+    state.metrics.Apropiación+
+    state.business
+  )/8
+);
+ const decisionRecord={round:state.round+1,target:$("target").value,audience:$("audience").value,practices:selected.map(i=>practices[i][0]),credits:roundSpend,hypothesis:hyp,consequence:consequence,before:{...before},after:{...state.metrics}};
+ state.history.push(decisionRecord);
+ state.spent=(state.spent||0)+roundSpend;
+ state.evolution.push({label:"R"+(state.round+1),metrics:{...state.metrics},business:state.business});
+ save();
+ const deltas=vars.map(v=>Math.round(state.metrics[v]-before[v]));
+ const net=deltas.reduce((a,b)=>a+b,0);
+ const verdict=net>10?"La intervención generó avance sistémico.":net>=0?"El resultado fue mixto: hubo avances, pero también costos.":"La decisión deterioró el sistema: revisa diagnóstico, momento y combinación de prácticas.";
+ $("feedback").className="feedback";
+ $("feedback").innerHTML=`<b>Resultado observado</b><br><strong>${verdict}</strong>`;
+ $("resultRoundNumber").textContent=state.round+1;
+ $("resultVerdict").textContent=verdict;
+ $("resultScore").textContent=state.score+"/100";
+ $("resultTarget").textContent=$("target").value;
+ $("resultAudience").textContent=$("audience").value;
+ $("resultHypothesis").textContent=hyp;
+ $("resultPractices").innerHTML=selected.map(i=>`<span>${easyName(practices[i][0])}</span>`).join("");
+ $("resultSpentRound").textContent=roundSpend+" créditos";
+ $("resultBudgetLeft").textContent=(TOTAL_BUDGET-state.spent)+" créditos";
+ $("resultBusiness").textContent=Math.round(state.business)+"/100";
+ const readingParts=[verdict];
+ if(consequence.high?.length) readingParts.push("Hubo prácticas altamente pertinentes para las señales de esta ronda.");
+ if(consequence.medium?.length) readingParts.push("Otras intervenciones aportaron de forma parcial o complementaria.");
+ if(consequence.low?.length) readingParts.push("Algunas decisiones tuvieron baja pertinencia: consumieron capacidad con un impacto limitado.");
+ if(consequence.irrelevant?.length) readingParts.push("Una o más prácticas no respondían suficientemente al problema central y prácticamente no generaron beneficio.");
+ if(consequence.counterproductive?.length) readingParts.push("Una o más prácticas fueron inoportunas y produjeron efectos contraproducentes.");
+ if(consequence.opportunity) readingParts.push("El problema crítico siguió deteriorándose por costo de oportunidad.");
+ $("resultReading").textContent=readingParts.join(" ");
+ $("resultDeltas").innerHTML=vars.map(v=>{const d=Math.round(state.metrics[v]-before[v]);return `<div class="resultDelta"><span>${v}</span><div class="resultDeltaBar"><i style="width:${Math.round(state.metrics[v])}%"></i></div><b class="${d<0?"down":"up"}">${Math.round(state.metrics[v])} (${d>0?"+":""}${d})</b></div>`}).join("");
+ const warnings=[...(consequence.warnings||[])];
+ if(net<0) warnings.unshift("La combinación elegida deterioró el balance general del sistema.");
+ if(consequence.synergies?.length) consequence.synergies.forEach(s=>warnings.push("Sinergia: "+s));
+ $("resultWarnings").innerHTML=warnings.map(w=>`<div class="resultWarning">${w}</div>`).join("");
+ $("resultContinue").textContent=state.round>=4?"VER RESULTADO FINAL →":"CONTINUAR A LA SIGUIENTE RONDA →";
+ $("roundResultOverlay").classList.add("show");
+ $("execute").disabled=true;$("next").hidden=true;renderMetricsOnly();updateBudget();drawEvolutionChart();await syncDecision(decisionRecord);await syncScore();renderRanking();
+}
+function renderMetricsOnly(){$("metrics").innerHTML=vars.map(v=>`<div class="metricrow"><span>${v}</span><div class="bar"><div class="fill" style="width:${state.metrics[v]}%"></div></div><b>${Math.round(state.metrics[v])}</b></div>`).join("")+`<div class="metricrow"><span>KPI negocio</span><div class="bar"><div class="fill" style="width:${state.business}%"></div></div><b>${Math.round(state.business)}</b></div>`;$("scoreTag").textContent=state.score+"/100"}
+function save(){localStorage.setItem(stateKey(),JSON.stringify(state))}
+let sb=null;
+if(C.supabaseUrl && C.supabaseAnonKey && window.supabase){
+  sb = window.supabase.createClient(C.supabaseUrl, C.supabaseAnonKey);
+}
+async function syncDecision(d){
+ if(!sb||!d)return;
+ const reading=[
+  d.consequence?.high?.length?"Prácticas altamente pertinentes.":"",
+  d.consequence?.medium?.length?"Intervenciones parcialmente pertinentes.":"",
+  d.consequence?.low?.length?"Hubo decisiones de baja pertinencia.":"",
+  d.consequence?.irrelevant?.length?"Hubo prácticas que no respondieron al problema central.":"",
+  d.consequence?.counterproductive?.length?"Se generaron efectos contraproducentes.":"",
+  d.consequence?.opportunity?"Hubo costo de oportunidad.":""
+ ].filter(Boolean).join(" ");
+ const {error}=await sb.from("change_leadership_decisions").upsert({
+  class_code:classCode,team,round:d.round,objective:d.target,audience:d.audience,
+  practices:d.practices,hypothesis:d.hypothesis,consequence:reading,
+  warnings:d.consequence?.warnings||[],score:state.score,business:state.business,
+  appropriation:state.metrics.Apropiación,metrics:{before:d.before,after:d.after},
+  created_at:new Date().toISOString()
+ },{onConflict:"class_code,team,round"});
+ if(error)console.error("Supabase decision sync error:",error);
+}
+async function syncScore(){
+ if(!sb)return;
+ const {error}=await sb.from("change_leadership_scores").upsert({class_code:classCode,team,score:state.score,round:state.round+1,business:state.business,appropriation:state.metrics.Apropiación,updated_at:new Date().toISOString()},{onConflict:"class_code,team"});
+ if(error){console.error("Supabase sync error:",error);alert("No se pudo actualizar el ranking. Revisa la conexión con Supabase.");}
+}
+let rankingBusy=false;
+async function renderRanking(){
+ if(rankingBusy)return;
+ rankingBusy=true;
+ try{
+   let rows=[{team,score:state.score,round:state.round+1}];
+   if(sb){
+     let {data,error}=await sb.from("change_leadership_scores").select("*").eq("class_code",classCode).order("score",{ascending:false});
+     if(error)console.error("Supabase ranking error:",error);
+     if(data?.length)rows=data;
+   }
+   rows.sort((a,b)=>b.score-a.score);
+   $("ranking").innerHTML=rows.map((r,i)=>{
+     const puesto = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : String(i+1);
+     return `<div class="rankrow ${r.team===team?"me":""}"><span class="rankPos">${puesto}</span><span>${r.team}</span><b>${Math.round(r.score||0)}/100</b><span>R${r.round||1}</span></div>`;
+   }).join("");
+ }finally{rankingBusy=false;}
+}
+const refreshRankingBtn=$("refreshRanking");
+if(refreshRankingBtn)refreshRankingBtn.onclick=()=>renderRanking();
+
+// Mismo patrón probado del juego de Cultura:
+// actualización automática cada 5 segundos + actualización manual.
+let rankingRefreshTimer=null;
+function startRankingRefresh(){
+  if(rankingRefreshTimer)clearInterval(rankingRefreshTimer);
+  rankingRefreshTimer=setInterval(()=>{
+    if(classCode&&team)renderRanking();
+  },5000);
+}
+startRankingRefresh();
+
+// Ranking en tiempo real: se actualiza al entrar cambios en Supabase.
+
+
+
+$("execute").onclick=execute;
+function continueAfterResult(){
+  $("roundResultOverlay").classList.remove("show");
+  if(state.round>=4){
+    $("feedback").innerHTML=`<b>Simulación finalizada</b><br>Índice de desempeño sostenible: <strong>${state.score}/100</strong>.`;
+    $("execute").disabled=true; window.scrollTo({top:0,behavior:"smooth"}); return;
+  }
+  state.round++;selected=[];
+  document.querySelectorAll(".practice").forEach(x=>x.classList.remove("selected"));
+  $("hypothesis").value="";$("feedback").innerHTML="";updateBudget();
+  $("execute").disabled=false;$("next").hidden=true;save();render();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+$("resultContinue").onclick=continueAfterResult;
+$("next").onclick=continueAfterResult;
+
+$("joinBtn").addEventListener("click", enterGame);
+$("joinTeam").value=localStorage.getItem("changeTeam")||"";
+$("joinCode").value=localStorage.getItem("changeClassCode")||"";
+["joinTeam","joinCode"].forEach(id=>{
+  $(id).addEventListener("keydown",e=>{
+    if(e.key==="Enter") enterGame();
+  });
+});
+window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
+</script>
+
+<script>
+(() => {
+  const $f=id=>document.getElementById(id);
+  let timer=null, rowsCache=[];
+  const medal=i=>i===0?"🥇":i===1?"🥈":i===2?"🥉":String(i+1);
+  const fmt=d=>{
+    if(!d)return "—";
+    const x=new Date(d);
+    return isNaN(x)?String(d):x.toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"});
+  };
+  function openFac(){
+    $f("facOverlay").classList.add("show");
+    $f("facLogin").style.display="block";
+    $f("facDashboard").style.display="none";
+    $f("facPassword").value="";
+    $f("facLoginError").textContent="";
+  }
+  function closeFac(){
+    $f("facOverlay").classList.remove("show");
+    if(timer)clearInterval(timer);
+  }
+  async function loadFac(){
+    const code=$f("facClassCode").value.trim().toUpperCase();
+    if(!code){$f("facError").textContent="Ingresa el código de la clase.";return}
+    $f("facError").textContent="";
+    try{
+      const C=window.CHANGE_LAB_CONFIG||{};
+      if(!window.supabase||!C.supabaseUrl||!C.supabaseAnonKey) throw new Error("Supabase no está disponible.");
+      const client=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+      const [{data,error},{data:decisions,error:decError}]=await Promise.all([
+        client.from("change_leadership_scores").select("*").eq("class_code",code).order("score",{ascending:false}),
+        client.from("change_leadership_decisions").select("*").eq("class_code",code).order("round",{ascending:true})
+      ]);
+      if(error)throw error;
+      if(decError)console.error(decError);
+      rowsCache=data||[];
+      window.__facDecisions=decisions||[];
+      renderFac();
+      const box=$f("facDecisions");
+      if(box){
+        const grouped={};(decisions||[]).forEach(d=>(grouped[d.team]??=[]).push(d));
+        box.innerHTML=Object.keys(grouped).length?Object.entries(grouped).map(([tm,ds])=>`<div style="border-top:1px solid #e5e7eb;padding:14px 0"><b>${tm}</b>${ds.sort((a,b)=>a.round-b.round).map(d=>`<div style="margin-top:10px;padding:12px;background:#f8fafc;border-radius:10px"><b>R${d.round}</b> · ${(d.practices||[]).map(easyName).join(" + ")}<br><span class="facMuted">Objetivo: ${d.objective||"—"} · Audiencia: ${d.audience||"—"}</span>${d.hypothesis?`<br>${d.hypothesis}`:""}${d.consequence?`<br><span class="facMuted"><b>Consecuencia:</b> ${d.consequence}</span>`:""}</div>`).join("")}</div>`).join(""):`<div class="facMuted">Aún no hay decisiones registradas para esta sala.</div>`;
+      }
+    }catch(e){
+      $f("facError").textContent="No se pudo cargar la sala: "+(e.message||e);
+    }
+  }
+  function renderFac(){
+    const q=$f("facSearch").value.trim().toLowerCase();
+    const rows=rowsCache.filter(r=>!q||String(r.team||"").toLowerCase().includes(q));
+    $f("facTeams").textContent=rowsCache.length;
+    $f("facAvg").textContent=rowsCache.length?Math.round(rowsCache.reduce((a,r)=>a+(+r.score||0),0)/rowsCache.length):0;
+    $f("facRound").textContent=rowsCache.length?Math.max(...rowsCache.map(r=>+r.round||0)):0;
+    $f("facUpdated").textContent=new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"});
+    $f("facRows").innerHTML=rows.length?rows.map((r,i)=>`<tr>
+      <td class="facMedal">${medal(i)}</td>
+      <td><b>${r.team||"—"}</b></td>
+      <td><b>${Math.round(r.score||0)}/100</b></td>
+      <td>R${r.round||1}</td>
+      <td>${Math.round(r.business||0)}/100</td>
+      <td>${Math.round(r.appropriation||0)}/100</td>
+      <td class="facMuted">${fmt(r.updated_at)}</td>
+    </tr>`).join(""):`<tr><td colspan="7" class="facMuted">No hay equipos registrados para esta sala.</td></tr>`;
+  }
+  $f("facOpen").onclick=openFac;
+  $f("facCancel").onclick=closeFac;
+  $f("facExit").onclick=closeFac;
+  $f("facLoginBtn").onclick=async()=>{
+    try {
+      const email=$f("facEmail").value.trim(), password=$f("facPassword").value;
+      if(!email||!password) throw Error("Ingresa correo y contraseña.");
+      if(!sb) throw Error("Supabase no está configurado.");
+      const {data,error}=await sb.auth.signInWithPassword({email,password});
+      if(error)throw error;
+      const {data:identity,error:verifyError}=await sb.auth.getUser();
+      if(verifyError)throw verifyError;
+      if(identity.user?.app_metadata?.facilitator!==true)throw Error("Cuenta sin permisos de facilitador.");
+      $f("facPassword").value="";
+    }catch(e){$f("facLoginError").textContent=e.message||"Acceso no autorizado";return;}
+    $f("facLogin").style.display="none";$f("facDashboard").style.display="block";
+    $f("facClassCode").value=(localStorage.getItem("changeClassCode")||window.CHANGE_LAB_CONFIG.classCode||"").toUpperCase();
+    loadFac();
+    if(timer)clearInterval(timer);timer=setInterval(loadFac,5000);
+  };
+  $f("facLoad").onclick=loadFac;
+  $f("facRefresh").onclick=loadFac;
+  $f("facSearch").oninput=renderFac;
+  $f("facPassword").addEventListener("keydown",e=>{if(e.key==="Enter")$f("facLoginBtn").click()});
+})();
+</script>
+
+<div style="padding:25px;text-align:center;font:12px system-ui;color:#8c9ab0">© 2026 Santiago León López. Todos los derechos reservados.</div></body></html>
