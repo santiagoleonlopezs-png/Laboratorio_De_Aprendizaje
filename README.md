@@ -14,15 +14,14 @@ Experiencias: **Talento & Riesgo**, **Knowledge Challenge**, **Las reglas del ju
 - Estudiantes ingresan mediante nombre y código de sala según cada experiencia.
 - El acceso de facilitadores se autentica mediante correo y contraseña (Firebase Auth o Supabase Auth). Ya no hay contraseñas de facilitador escritas en el código público.
 
-## Talento & Riesgo Lab V2.2 — cronómetro por ronda
+## Talento & Riesgo Lab V2.2 — siete minutos por ronda
 
-- El facilitador selecciona el tiempo al crear una sala: **1, 2, 3, 5 u 8 minutos** (por defecto, **3 minutos**). Entre rondas puede cambiar la duración de la siguiente desde el panel, sin afectar la ronda en curso.
-- Una cuenta regresiva visible para todos usa `roundStartedAt` (timestamp del servidor de Firestore) y `roundDurationSec` guardados en el documento de sala. El tiempo **no se reinicia** si un equipo actualiza la página o se reconecta.
-- El último tramo de 30 segundos cambia de color. A los 00:00 se deshabilita el envío de estrategia y norma; los equipos que no respondieron reciben la penalización **ya existente** por inacción.
-- Mientras el facilitador **mantenga abierto su panel**, al vencer el reloj se cierran y liquidan automáticamente las respuestas, y se publica el debriefing y ranking. Si el facilitador está desconectado, nadie puede enviar tarde (gracias a las reglas de Firestore), pero el cierre y la publicación se realizarán al recuperar el panel o pulsar «Cerrar y revelar». **No hay tarea de backend programada**.
-- Las reglas de Firebase deben actualizarse desde `firestore.rules`: `talentoTimeOpen(roomCode)` compara `request.time` del servidor con la marca de apertura y el límite. Las salas previas a V2.2 se mantienen operativas hasta su siguiente ronda.
-- El temporizador del navegador es visual y puede presentar segundos de diferencia si el reloj del dispositivo está desajustado; Firestore determina si la respuesta llegó dentro del tiempo.
-- También disponible en modo práctica.
+- **Cada ronda nueva dura exactamente 7 minutos (420 segundos), sin selector de duración.** Ese tiempo único incluye la decisión estratégica y la selección de la referencia normativa.
+- El contador `07:00` se sincroniza usando `roundStartedAt` (marca de tiempo Firestore) y `roundDurationSec: 420`. Reconectarse o recargar no reinicia la cuenta. Las rondas antiguas ya iniciadas conservan el límite con el que comenzaron y las siguientes usan 7 minutos.
+- En los últimos 30 segundos el contador cambia de color; a `00:00` se bloquean las respuestas. El cálculo existente penaliza a equipos que no enviaron ambas decisiones.
+- Si el facilitador mantiene abierto su panel, el vencimiento provoca el cierre y la revelación automática cuando hay equipos inscritos; si el panel está cerrado, la publicación queda pendiente hasta recuperarlo o cerrar manualmente.
+- El archivo `firestore.rules` limita nuevas respuestas según `request.time` y el tiempo almacenado en la sala, incluso si se manipula el reloj del navegador. **Publicar en GitHub no actualiza automáticamente las reglas de Firebase.**
+- Se preservan los ocho casos, la selección jurídica, el ranking por sala, las consecuencias diferidas, el modo práctica, la eliminación de equipos y el reinicio de partida.
 
 ## Talento & Riesgo Lab V2.1 — desafíos normativos (octubre 2026)
 
