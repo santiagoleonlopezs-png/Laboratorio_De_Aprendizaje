@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Knowledge Challenge | GC</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#667085;--line:#e4e7ec;--accent:#3157d5;--ok:#16803c;--bad:#c93636}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:1050px;margin:auto;padding:24px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin:14px 0}
+h1,h2,h3,p{margin-top:0}.muted{color:var(--muted)}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.between{justify-content:space-between}
+button,input{font:inherit}button{border:0;border-radius:12px;padding:12px 17px;font-weight:750;cursor:pointer;background:var(--accent);color:#fff;min-height:44px}
+button.secondary{background:#eef1f7;color:var(--ink)}button.danger{background:var(--bad)}button:disabled{opacity:.5;cursor:not-allowed}
+input{width:100%;padding:13px;border:1px solid var(--line);border-radius:11px;font-size:16px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hidden{display:none!important}.answer{background:#f7f8fb;color:var(--ink);border:1px solid var(--line);text-align:left;min-height:72px}.answer:hover{border-color:var(--accent)}
+.pill{padding:7px 11px;border:1px solid var(--line);border-radius:999px;font-size:13px}.big{font-size:36px;font-weight:850}.question{font-size:24px;font-weight:800;line-height:1.3}
+.bar{height:14px;background:#edf0f5;border-radius:99px;overflow:hidden}.bar>div{height:100%;background:var(--accent);transition:width .25s}
+.optbar{display:grid;grid-template-columns:34px 1fr 76px;gap:10px;align-items:center;margin:11px 0}.optbar .track{height:26px;background:#edf0f5;border-radius:8px;overflow:hidden}.optbar .fill{height:100%;background:#6577b8}
+.rankrow{display:grid;grid-template-columns:45px 1fr auto;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line)}.correct{border:2px solid var(--ok)!important}.wrong{border:2px solid var(--bad)!important}
+@media(max-width:650px){.grid2{grid-template-columns:1fr}.question{font-size:20px}.wrap{padding:14px}}
+
+.qadmin{margin-top:14px}.qrow{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;background:#fafbfc}
+.qrowhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.qactions{display:flex;gap:6px;flex-wrap:wrap}
+.qactions button{padding:7px 10px;min-height:34px;font-size:13px}.mini{font-size:13px;color:var(--muted)}
+select,textarea{font:inherit}select{padding:11px;border:1px solid var(--line);border-radius:10px;background:#fff}
+textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;gap:10px}.resultTable{width:100%;border-collapse:collapse;font-size:14px}.resultTable th,.resultTable td{padding:8px;border-bottom:1px solid var(--line);text-align:left}
+@media(max-width:650px){.adminGrid{grid-template-columns:1fr}.qrowhead{display:block}.qactions{margin-top:10px}}
+</style>
+</head>
+<body><div style="position:relative;z-index:100;background:#070b13;border-bottom:1px solid #27334b;padding:14px 22px;font:13px system-ui;display:flex;justify-content:space-between;gap:16px"><a href="index.html#experiencias" style="color:#c2d5ff;text-decoration:none">← Volver al laboratorio</a><span style="color:#91a2bc">Santiago León López</span></div>
+<div class="wrap">
+<section id="home" class="card">
+<h1>Knowledge Challenge</h1><p class="muted">Gestión del Conocimiento · 20 preguntas · 60 segundos · 1–10 puntos por velocidad</p>
+<div class="grid2"><button id="goPlayer">Participar</button><button id="goHost" class="secondary">Facilitador</button></div>
+</section>
+
+<section id="playerJoin" class="card hidden">
+<h2>Ingresar al juego</h2><label>Nombre</label><input id="playerName" maxlength="30" placeholder="Tu nombre">
+<label style="display:block;margin-top:12px">Código de sala</label><input id="roomCode" maxlength="80" placeholder="Nombre de la clase, por ejemplo: Legislación Laboral">
+<div class="row" style="margin-top:14px"><button id="joinBtn">Entrar</button><button class="secondary back">Volver</button></div>
+<p id="joinMsg" class="muted" style="margin-top:12px"></p>
+</section>
+
+<section id="hostLogin" class="card hidden">
+<h2>Facilitador</h2><p>Ingresa con tu cuenta autorizada de Firebase. El acceso requiere el rol de facilitador.</p><label>Correo electrónico</label><input id="hostEmail" type="email" autocomplete="username" placeholder="docente@institucion.edu"><label>Contraseña</label><input id="hostPass" type="password" autocomplete="current-password" placeholder="Contraseña de tu cuenta">
+<div class="row" style="margin-top:14px"><button id="hostBtn">Entrar al panel</button><button class="secondary back">Volver</button></div>
+<p id="hostMsg" class="muted" style="margin-top:12px"></p>
+</section>
+
+<section id="roomManager" class="card hidden">
+<h2>Mis salas</h2><p class="muted">El nombre de la clase será el código de acceso de los participantes.</p>
+<label>Nombre de la clase / código de sala</label><input id="className" maxlength="80" placeholder="Ej.: Legislación Laboral">
+<div class="row" style="margin-top:12px"><button id="createRoom">Crear sala / nueva partida</button><button id="reopenRoom" class="secondary">Reabrir sala</button><button id="roomBack" class="secondary">Volver</button></div>
+<p id="roomManagerMsg" class="muted"></p><h3>Salas creadas</h3><div id="roomHistory"></div>
+</section>
+<section id="waiting" class="card hidden">
+<h2 id="welcome">¡Listo!</h2><p id="waitText">Espera a que el facilitador abra la pregunta.</p>
+<div class="big" id="waitScore">0 pts</div><div id="connStatus" class="muted">🟢 Conectado</div>
+<div id="playerRankingBox" class="card hidden" style="margin-top:18px;text-align:left">
+<h3>🏆 Ranking</h3><div id="playerRanking"></div>
+</div>
+</section>
+
+<section id="playerGame" class="hidden">
+<div class="row between"><span id="pNum" class="pill"></span><span id="pTimer" class="big">60</span></div>
+<div class="bar"><div id="pTimeBar" style="width:100%"></div></div>
+<div class="card"><div id="pQuestion" class="question"></div><div id="pAnswers" class="grid2" style="margin-top:18px"></div><p id="pMsg" style="margin-top:15px"></p></div>
+</section>
+
+<section id="hostPanel" class="hidden">
+<div class="card">
+<div class="row between"><div><h2 style="margin-bottom:4px">Panel del facilitador</h2><span class="muted">Sala <b id="hostRoom">GC2026</b> · Estado: <b id="phaseLabel">En espera</b></span></div><div><span class="pill">Conectados: <b id="connected">0</b></span> <span class="pill">Respondieron: <b id="answered">0</b></span></div></div>
+<div class="row" style="margin-top:16px"><button id="openQ">Abrir pregunta</button><button id="closeQ" class="secondary">Cerrar respuestas</button><button id="revealQ" class="secondary">Mostrar resultados</button><button id="nextQ">Siguiente pregunta</button></div>
+<div id="hostError" role="alert" style="display:none;margin-top:12px;padding:12px;border-radius:10px;background:#fff1f1;color:#9a1b1b"></div><div class="row" style="margin-top:10px"><button id="resetGame" class="danger">Reiniciar partida</button><button id="clearPlayers" class="secondary">Eliminar participantes</button><button id="toggleEditor" class="secondary" type="button">Banco de preguntas ↓</button></div>
+<details id="questionPicker" class="card" style="margin-top:18px">
+<summary style="cursor:pointer;font-weight:800">🎯 Elegir preguntas y orden de presentación</summary>
+<p class="muted">Marca las preguntas que deseas utilizar. También puedes abrir una pregunta específica durante la partida sin borrar puntajes.</p>
+<div class="row"><button type="button" id="pickAll" class="secondary">Seleccionar todas</button><button type="button" id="pickNone" class="secondary">Deseleccionar todas</button><button type="button" id="applySelection">Aplicar selección</button></div>
+<div id="pickerStatus" class="muted" style="margin:10px 0"></div><div id="pickerList"></div>
+</details>
+<details id="questionEditor" class="card" style="margin-top:18px">
+  <summary style="cursor:pointer;font-weight:800">Editar / reemplazar preguntas</summary>
+  <p class="muted" style="margin-top:12px">Puedes cargar las preguntas actuales, editarlas y guardarlas. También puedes pegar varias desde Excel.</p>
+  <p class="muted"><b>Formato:</b> Pregunta [TAB] A [TAB] B [TAB] C [TAB] D [TAB] Correcta. En “Correcta” escribe A, B, C o D.</p>
+  
+  <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+  <h3>Administrar bancos</h3>
+  <div class="row">
+    <select id="bankSelect"><option value="agilismo">Agilismo</option></select>
+    <button id="newBank" class="secondary" type="button">+ Nuevo banco</button>
+    <button id="renameBank" class="secondary" type="button">Renombrar</button>
+    <button id="deleteBank" class="danger" type="button">Eliminar banco</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button id="addQuestion" type="button">+ Nueva pregunta</button>
+    <button id="exportBank" class="secondary" type="button">Exportar CSV</button>
+  </div>
+  <div id="questionList" class="qadmin"></div>
+
+  <div id="singleEditor" class="card hidden" style="margin-top:14px">
+    <h3 id="singleEditorTitle">Nueva pregunta</h3>
+    <label>Pregunta</label><textarea id="editQuestion" style="width:100%;min-height:90px;padding:10px;border:1px solid var(--line);border-radius:10px"></textarea>
+    <div class="grid2" style="margin-top:10px">
+      <div><label>Opción A</label><input id="editA"></div><div><label>Opción B</label><input id="editB"></div>
+      <div><label>Opción C</label><input id="editC"></div><div><label>Opción D</label><input id="editD"></div>
+    </div>
+    <label style="display:block;margin-top:10px">Respuesta correcta</label>
+    <select id="editCorrect"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select>
+    <div class="row" style="margin-top:12px"><button id="saveSingle" type="button">Guardar pregunta</button><button id="cancelSingle" class="secondary" type="button">Cancelar</button></div>
+  </div>
+
+  <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+  <h3>Importación masiva</h3>
+<div class="row" style="margin-bottom:10px">
+  <button id="chooseQuestionFile" class="secondary" type="button">📂 Importar archivo CSV / TSV / TXT</button>
+  <input id="questionFile" type="file" accept=".csv,.tsv,.txt" class="hidden">
+</div>
+<textarea id="bulkQuestions" style="width:100%;min-height:280px;padding:12px;border:1px solid var(--line);border-radius:12px;font:inherit" placeholder="Pregunta 1[TAB]Opción A[TAB]Opción B[TAB]Opción C[TAB]Opción D[TAB]B"></textarea>
+  <div class="row" style="margin-top:10px">
+    <button id="loadCurrent" class="secondary" type="button">Cargar preguntas actuales</button>
+    <button id="saveQuestions" type="button">Guardar cambios</button>
+  </div>
+  <p id="editorMsg" class="muted" style="margin-top:10px"></p>
+</details>
+</div>
+<div class="card"><div class="row between"><span id="hNum" class="pill">Pregunta 1 / 20</span><span id="hTimer" class="big">60</span></div><h3 id="hQuestion" class="question" style="margin-top:18px"></h3><div id="hOptions"></div></div>
+<div class="grid2">
+<div class="card"><h3>Respuestas en vivo</h3><div id="distribution"></div>
+<div id="responseDetails" style="margin-top:18px"></div>
+</div>
+<div class="card"><h3>🏆 Ranking</h3><div id="ranking"></div></div>
+</div>
+</section>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getAuth, signInWithEmailAndPassword, getIdTokenResult} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBnHTbmdSPWjYKTiLjv7HPKkqzpD4SOmJY",
+  authDomain: "simuladores-juegos.firebaseapp.com",
+  projectId: "simuladores-juegos",
+  storageBucket: "simuladores-juegos.appspot.com"
+};
+const app=initializeApp(firebaseConfig), db=getFirestore(app), facilitatorAuth=getAuth(app);
+const ROOT="gc_quiz_live", DEFAULT_ROOM="GC2026";
+const BANKS="gc_quiz_banks";
+let currentBankId="agilismo", banks=[], editingIndex=null;
+let Q=[
+["Seguridad psicológica","Un equipo realiza sesiones de lecciones aprendidas después de cada proyecto. Sin embargo, los integrantes comparten principalmente los logros y evitan hablar de errores. ¿Qué condición parece estar limitando más la gestión del conocimiento?",["La capacidad para almacenar conocimiento explícito.","La seguridad psicológica para compartir conocimiento relevante.","La metodología utilizada para documentar aprendizajes.","La frecuencia con la que se realizan las sesiones."],1],
+["Bitácoras de aprendizaje","Un estudiante registra después de cada clase qué aprendió, qué cambió frente a lo que pensaba y cómo podría utilizarlo en su trabajo. ¿Qué función cumple principalmente esta práctica?",["Convertir la experiencia en aprendizaje consciente.","Organizar cronológicamente los contenidos estudiados.","Construir un repositorio personal de información.","Evidenciar el cumplimiento de las actividades académicas."],0],
+["Mapa de conocimiento personal","Una profesional identifica que domina análisis de datos, posee conocimientos básicos de IA y suele recurrir a dos compañeros cuando enfrenta problemas de automatización. ¿Qué aporta un mapa de conocimiento personal?",["Establecer los conocimientos exigidos por su cargo.","Determinar cuáles conocimientos debe certificar.","Representar lo que sabe y las fuentes a las que puede recurrir.","Comparar sus conocimientos con los de otros profesionales."],2],
+["Mercado del conocimiento","En una organización, un analista necesita resolver un problema que nunca ha enfrentado. Sabe que alguien de otra área ya resolvió algo similar, pero desconoce quién. Desde la perspectiva del mercado del conocimiento, el principal problema es:",["La ausencia de conocimiento explícito.","La falta de incentivos económicos para compartir.","La baja capacidad de almacenamiento organizacional.","La dificultad para conectar demanda y oferta de conocimiento."],3],
+["Etología y gestión del conocimiento","Una colonia de hormigas encuentra una nueva fuente de alimento y progresivamente otras hormigas comienzan a utilizar una ruta eficiente para llegar a ella. Desde gestión del conocimiento, este comportamiento evidencia principalmente:",["Distribución y circulación de conocimiento colectivo.","Especialización funcional de los individuos.","Conversión de conocimiento tácito en explícito.","Centralización de información crítica."],0],
+["Criticidad del conocimiento","Una colonia humana en Marte debe decidir qué conocimientos proteger primero ante una reducción crítica de su capacidad de almacenamiento. ¿Cuál criterio sería más adecuado?",["La cantidad de personas que utilizan cada conocimiento.","Su impacto, dificultad de recuperación y riesgo de pérdida.","La antigüedad y frecuencia de actualización del conocimiento.","El volumen de información disponible sobre cada tema."],1],
+["Pirámide del conocimiento","Un tablero muestra que las reclamaciones aumentaron 18 % durante tres meses. El equipo analiza los casos y descubre que el incremento se concentra en clientes que utilizan un nuevo canal. ¿Dónde ocurre principalmente el paso de información a conocimiento?",["Al registrar cada reclamación recibida.","Al calcular el incremento porcentual.","Al identificar la relación con el nuevo canal.","Al presentar los resultados en un tablero."],2],
+["Criticidad y categorización","Una empresa identifica cuatro conocimientos. ¿Cuál debería recibir mayor prioridad desde la perspectiva del riesgo de conocimiento?",["Uno frecuente, dominado por numerosos colaboradores.","Uno estratégico, documentado y compartido entre especialistas.","Uno especializado, disponible también mediante proveedores externos.","Uno crítico para operar, poco documentado y dominado por una persona."],3],
+["Estrategia del conocimiento","Una empresa identifica que su estrategia futura dependerá fuertemente de analítica avanzada, pero actualmente posee muy pocas capacidades internas en ese campo. ¿Cuál debería ser su primera decisión de gestión del conocimiento?",["Definir la brecha entre el conocimiento requerido y el disponible.","Construir un repositorio especializado en analítica.","Crear comunidades de práctica entre todas las áreas.","Contratar una plataforma para almacenar conocimiento."],0],
+["Flujos y redes de conocimiento","En un mapa de conocimiento se descubre que Laura es consultada constantemente por personas de cinco áreas, aunque no ocupa una posición de liderazgo formal. ¿Cuál interpretación está mejor sustentada?",["Laura posee el conocimiento de mayor criticidad de la empresa.","Laura presenta una elevada centralidad en la red de conocimiento.","La organización debería formalizar a Laura como líder del proceso.","Existe necesariamente una dependencia organizacional de Laura."],1],
+["GC en gestión del cambio","Una empresa implementará un nuevo modelo comercial. Los colaboradores comprenden por qué es necesario y manifiestan disposición para adoptarlo, pero todavía no saben ejecutar los nuevos procesos. ¿Dónde debería concentrarse la gestión del conocimiento?",["En fortalecer la narrativa estratégica del cambio.","En aumentar los espacios de participación.","En desarrollar y transferir el conocimiento requerido.","En sistematizar las lecciones aprendidas del proceso."],2],
+["Ciencias del comportamiento","Una organización creó una plataforma para compartir buenas prácticas. Los colaboradores reconocen su utilidad y saben utilizarla, pero casi nunca publican porque el proceso exige demasiados pasos. ¿Cuál intervención sería más coherente desde ciencias del comportamiento?",["Crear una campaña sobre los beneficios de compartir.","Capacitar nuevamente sobre el uso de la plataforma.","Incorporar reconocimientos para quienes publiquen más.","Reducir la fricción del proceso de publicación."],3],
+["Lecciones aprendidas","Un proyecto termina con resultados inferiores a los esperados. ¿Cuál pregunta produciría una lección aprendida más útil para proyectos futuros?",["¿Qué ocurrió, por qué ocurrió y qué haríamos diferente?","¿Quién tomó las decisiones que generaron el resultado?","¿Cuáles actividades del cronograma no se cumplieron?","¿Qué integrantes tuvieron mejor desempeño?"],0],
+["Transferencia de conocimiento tácito","Un experto se retirará en seis meses. Existen manuales detallados de sus procesos, pero buena parte de su experiencia consiste en reconocer excepciones y decidir frente a situaciones poco frecuentes. ¿Qué estrategia sería más adecuada?",["Actualizar los procedimientos existentes.","Implementar acompañamiento experto-aprendiz en situaciones reales.","Realizar entrevistas para ampliar los documentos disponibles.","Construir una biblioteca con casos históricos del proceso."],1],
+["Gestión del conocimiento con IA / RAG","Una organización quiere crear un agente que responda preguntas sobre procedimientos internos y fundamente sus respuestas en documentos institucionales actualizados. ¿Qué alternativa responde mejor a esa necesidad?",["Entrenar un modelo únicamente con información histórica.","Crear una biblioteca digital con búsqueda semántica.","Implementar RAG conectado a las fuentes internas pertinentes.","Diseñar prompts especializados para cada procedimiento."],2],
+["Open Space","Una organización reúne a 60 personas de diferentes áreas para explorar problemas emergentes sobre los cuales todavía no existe una agenda clara. ¿Por qué Open Space podría ser apropiado?",["Permite organizar previamente los temas según su prioridad estratégica.","Facilita que expertos asignados lideren cada conversación.","Permite desarrollar simultáneamente un plan formal de capacitación.","Hace posible que los participantes movilicen conversaciones relevantes."],3],
+["Consultoría / ADDIE","Un consultor recibe la solicitud: “Necesitamos una capacitación para que nuestros equipos compartan más conocimiento”. Antes de diseñarla, ¿qué debería hacer siguiendo la lógica de ADDIE?",["Analizar la necesidad y determinar qué explica la brecha actual.","Diseñar las actividades que generen mayor participación.","Desarrollar contenidos sobre transferencia de conocimiento.","Definir indicadores para evaluar la capacitación."],0],
+["Indicadores de gestión del conocimiento","Una plataforma registra 3.000 documentos, 800 usuarios activos y 12.000 consultas. ¿Qué información adicional permitiría evaluar mejor si está generando valor?",["El crecimiento mensual de documentos almacenados.","La relación entre el conocimiento utilizado y mejoras en el desempeño.","El promedio de consultas realizadas por cada usuario.","El porcentaje de colaboradores registrados en la plataforma."],1],
+["GC transfuncional","Dos áreas dependen entre sí para atender al cliente. Ambas tienen buena documentación interna, pero los errores aparecen principalmente cuando un caso pasa de una a otra. ¿Dónde debería concentrarse inicialmente la intervención?",["En aumentar la documentación de cada área.","En identificar nuevos conocimientos críticos.","En fortalecer la transferencia de conocimiento en las interfaces.","En crear repositorios independientes para cada proceso."],2],
+["Ecosistemas inteligentes","Una organización integra expertos, comunidades de práctica, repositorios, agentes de IA, mecanismos de captura y analítica sobre el uso del conocimiento. ¿Qué característica permitiría hablar con mayor propiedad de un ecosistema inteligente de conocimiento?",["Que todos los componentes utilicen una plataforma común.","Que la mayor parte del conocimiento esté digitalizado.","Que la IA participe en los procesos de búsqueda y creación.","Que personas, procesos y tecnología se conecten para aprender y actuar."],3]
+];
+const $=id=>document.getElementById(id), screens=["home","playerJoin","hostLogin","waiting","playerGame","hostPanel","roomManager"];
+function show(id){screens.forEach(x=>$(x).classList.toggle("hidden",x!==id))}
+document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show("home"));
+$("goPlayer").onclick=()=>show("playerJoin"); $("goHost").onclick=()=>show("hostLogin");
+let classAlias="", room=DEFAULT_ROOM, playerId="", playerName="", hostUnsubs=[], playerUnsub=null, tick=null, state=null, players=[];
+const SESSION_KEY="gc_quiz_session_v7";
+const normalizeRoom=s=>String(s||"").trim().normalize("NFC").replace(/\s+/g," ").toLocaleUpperCase("es");
+const aliasRef=name=>doc(db,ROOT,normalizeRoom(name));
+const normalizeName=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
+const saveSession=()=>localStorage.setItem(SESSION_KEY,JSON.stringify({room,playerId,playerName}));
+const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{return null}};
+async function touchPresence(online=true){if(!room||!playerId)return;try{await updateDoc(pRef(playerId),{online,lastSeen:serverTimestamp()})}catch{}}
+async function restoreSession(s){
+ if(!s?.room||!s?.playerId)return false;
+ const old=await getDoc(doc(db,ROOT,s.room));
+ if(!old.exists()||old.data().recordType!=="run")return false;
+ const a=await getDoc(aliasRef(old.data().className||""));
+ if(!a.exists()||a.data().activeRun!==s.room)return false;
+ room=s.room;playerId=s.playerId;playerName=s.playerName||"";
+ const ps=await getDoc(pRef(playerId));if(!ps.exists())return false;playerName=ps.data().name||playerName;saveSession();
+ $("welcome").textContent="¡Bienvenido de nuevo, "+playerName+"!";show("waiting");await touchPresence(true);listenPlayer();return true;
+}
+async function recoverOrJoin(name,code){
+ const codeName=normalizeRoom(code);playerName=String(name||"").trim();
+ if(!codeName)return $("joinMsg").textContent="Escribe el nombre de la clase.";
+ const alias=await getDoc(aliasRef(codeName));
+ if(!alias.exists()||!alias.data().activeRun)return $("joinMsg").textContent="No hay una sala activa con ese nombre. Verifica el código con tu facilitador.";
+ room=alias.data().activeRun;
+ if(!playerName)return $("joinMsg").textContent="Escribe tu nombre.";
+ const target=normalizeName(playerName),snap=await getDocs(playersRef());
+ const existing=snap.docs.find(d=>normalizeName(d.data().name)===target);
+ if(existing){playerId=existing.id;playerName=existing.data().name||playerName;saveSession();$("welcome").textContent="Sesión recuperada: "+playerName+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);listenPlayer();return;}
+ const ref=doc(playersRef());playerId=ref.id;await setDoc(ref,{name:playerName,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});
+ saveSession();$("welcome").textContent="¡Listo, "+playerName+"!";show("waiting");listenPlayer();
+}
+
+const roomRef=()=>doc(db,ROOT,room); const playersRef=()=>collection(db,ROOT,room,"players"); const pRef=id=>doc(db,ROOT,room,"players",id); const scoreboardRef=()=>doc(db,ROOT,room,"public","scoreboard");
+function safeId(s){return (s.toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi,"-").replace(/^-|-$/g,"").slice(0,40)||"jugador")+"-"+Math.random().toString(36).slice(2,7)}
+async function ensureRoom(){const r=await getDoc(roomRef());if(!r.exists())await setDoc(roomRef(),{questionIndex:0,status:"lobby",openedAt:0,duration:60,bankId:currentBankId,updatedAt:serverTimestamp()})}
+$("joinBtn").onclick=async()=>{try{await recoverOrJoin($("playerName").value,$("roomCode").value)}catch(e){console.error(e);$("joinMsg").textContent="No fue posible entrar o recuperar la sesión.";}};
+$("hostBtn").onclick=async()=>{
+ try {
+   const email=$("hostEmail").value.trim();
+   if(!email || !$("hostPass").value) throw new Error("Ingresa correo y contraseña.");
+   const session=await signInWithEmailAndPassword(facilitatorAuth,email,$("hostPass").value);
+   const token=await getIdTokenResult(session.user,true);
+   if(token.claims.facilitator!==true) throw new Error("Esta cuenta no tiene el rol de facilitador.");
+   $("hostPass").value="";
+   show("roomManager");await renderRooms();
+ }catch(error){$("hostMsg").textContent=error.message||"Acceso no autorizado";}
+};
+$("roomBack").onclick=()=>show("home");
+async function renderRooms(){
+ try{
+  const all=await getDocs(collection(db,ROOT));
+  const aliases=all.docs.filter(d=>d.data().recordType==="class_alias").sort((a,b)=>a.id.localeCompare(b.id,"es"));
+  $("roomHistory").innerHTML=aliases.length?aliases.map(d=>{
+   const a=d.data();return `<div class="qrow"><b>${escapeHtml(a.displayName||d.id)}</b><div class="mini">${(a.runs||[]).length} partida(s) · ${a.activeRun?"Sala disponible":"Sin partida"}</div><button class="secondary" onclick="window.openClassRoom('${encodeURIComponent(d.id)}')">Abrir</button></div>`
+  }).join(""):'<p class="muted">Todavía no has creado salas.</p>';
+ }catch(e){$("roomManagerMsg").textContent="No se pudieron cargar las salas: "+e.message;}
+}
+window.openClassRoom=async encoded=>{$("className").value=decodeURIComponent(encoded);await reopenClass()};
+async function enterHostRun(runId){
+ hostUnsubs.forEach(u=>u());hostUnsubs=[];room=runId;state=null;players=[];selectedQuestions=null;
+ const rs=await getDoc(roomRef());if(!rs.exists())throw Error("No existe la partida seleccionada.");
+ const rd=rs.data();currentBankId=rd.bankId||"agilismo";
+ if(Array.isArray(rd.questions))Q=questionsFromFirestore(rd.questions);
+ $("hostRoom").textContent=classAlias||room;show("hostPanel");listenHost();await loadBanks();
+ // loadBanks only loads the editor; restore the run's own question snapshot.
+ if(Array.isArray(rd.questions)){Q=questionsFromFirestore(rd.questions);renderQuestionAdmin();renderHost();}
+}
+async function reopenClass(){
+ try{const name=normalizeRoom($("className").value);if(!name)throw Error("Escribe el nombre de la clase.");
+ const a=await getDoc(aliasRef(name));if(!a.exists()||!a.data().activeRun)throw Error("No existe una partida para esa clase.");
+ classAlias=a.data().displayName||name;await enterHostRun(a.data().activeRun);
+ }catch(e){$("roomManagerMsg").textContent=e.message;}
+}
+$("reopenRoom").onclick=reopenClass;
+$("createRoom").onclick=async()=>{
+ try{
+  const name=normalizeRoom($("className").value);if(!name)throw Error("Escribe el nombre de la clase.");
+  const alias=aliasRef(name),old=await getDoc(alias);const data=old.exists()?old.data():{};
+  if(data.activeRun&&!confirm("Ya existe una partida de esta clase. ¿Crear una NUEVA con puntuaciones en cero? La anterior quedará en el historial."))return;
+  const id=doc(collection(db,ROOT)).id,runId="partida-"+id;
+  const bank=await getDoc(doc(db,BANKS,currentBankId));
+  const questions=bank.exists()&&Array.isArray(bank.data().questions)?bank.data().questions:questionsToFirestore(Q);
+  const b=writeBatch(db);
+  b.set(doc(db,ROOT,runId),{recordType:"run",className:name,questionIndex:0,status:"lobby",openedAt:0,duration:60,bankId:currentBankId,questions,updatedAt:serverTimestamp(),createdAt:serverTimestamp()});
+  b.set(alias,{recordType:"class_alias",displayName:$("className").value.trim(),activeRun:runId,runs:[...(data.runs||[]),runId].slice(-100),updatedAt:serverTimestamp()},{merge:true});
+  await b.commit();classAlias=$("className").value.trim();await enterHostRun(runId);
+ }catch(e){$("roomManagerMsg").textContent="No se pudo crear la sala: "+e.message;}
+};
+function points(elapsed){return Math.max(1,10-Math.floor(Math.min(59.999,elapsed)/6))}
+window.addEventListener("online",async()=>{if($("connStatus"))$("connStatus").textContent="🟢 Conectado";await touchPresence(true);});
+window.addEventListener("offline",()=>{if($("connStatus"))$("connStatus").textContent="🔴 Sin conexión";});
+window.addEventListener("pagehide",()=>{touchPresence(false);});
+function listenPlayer(){
+  if(playerUnsub)playerUnsub();
+  let unsubRoom=null,unsubScore=null;
+  unsubRoom=onSnapshot(roomRef(),snap=>{
+    if(!snap.exists())return;
+    state=snap.data();
+    if(Array.isArray(state.questions)&&state.questions.length)Q=questionsFromFirestore(state.questions);
+    if($("connStatus"))$("connStatus").textContent=navigator.onLine?"🟢 Conectado":"🔴 Sin conexión";
+    if(state.status==="open"){
+      if(unsubScore){unsubScore();unsubScore=null;}
+      $("playerRankingBox").classList.add("hidden");
+      renderPlayer();
+    }else{
+      show("waiting");
+      $("waitText").textContent=state.status==="revealed"?"Resultados de la ronda. Espera a que el facilitador continúe.":"Espera a que el facilitador abra la pregunta.";
+      getDoc(pRef(playerId)).then(x=>{if(x.exists())$("waitScore").textContent=(x.data().score||0)+" pts"});
+      if(state.status==="revealed"){
+        $("playerRankingBox").classList.remove("hidden");
+        if(unsubScore)unsubScore();
+        unsubScore=onSnapshot(scoreboardRef(),async s=>{
+          const d=s.exists()?s.data():{},top=Array.isArray(d.top)?d.top:[];
+          let mine=null;
+          try{const me=await getDoc(pRef(playerId));if(me.exists())mine=me.data();}catch{}
+          $("playerRanking").innerHTML=
+            top.map((p,i)=>`<div class="rankrow"><b>${i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1)}</b><span>${escapeHtml(p.name)}</span><b>${p.score||0} pts</b></div>`).join("")+
+            (mine?`<div class="rankrow" style="margin-top:10px"><b>Tu posición</b><span>${escapeHtml(mine.name||playerName)}</span><b>${mine.rank||"—"} de ${d.total||"—"} · ${mine.score||0} pts</b></div>`:"");
+        });
+      }else{
+        $("playerRankingBox").classList.add("hidden");
+        if(unsubScore){unsubScore();unsubScore=null;}
+      }
+    }
+  });
+  playerUnsub=()=>{if(unsubRoom)unsubRoom();if(unsubScore)unsubScore();};
+}
+function renderPlayer(){let i=state.questionIndex,q=Q[i];show("playerGame");$("pNum").textContent=`Pregunta ${i+1} / ${Q.length}`;$("pQuestion").textContent=q[1];$("pAnswers").innerHTML="";q[2].forEach((a,k)=>{let b=document.createElement("button");b.className="answer";b.textContent=String.fromCharCode(65+k)+". "+a;b.onclick=()=>submitAnswer(k,b);$("pAnswers").appendChild(b)});runPlayerTimer()}
+function runPlayerTimer(){clearInterval(tick);const update=()=>{let remain=Math.max(0,60-(Date.now()-(state.openedAt||Date.now()))/1000);$("pTimer").textContent=Math.ceil(remain);$("pTimeBar").style.width=(remain/60*100)+"%";if(remain<=0){clearInterval(tick);$("pAnswers").querySelectorAll("button").forEach(b=>b.disabled=true);$("pMsg").textContent="Tiempo agotado."}};update();tick=setInterval(update,250)}
+async function submitAnswer(k,b){
+  $("pAnswers").querySelectorAll("button").forEach(x=>x.disabled=true);
+  const elapsed=Math.max(0,Math.min(60,(Date.now()-state.openedAt)/1000));
+  const q=Q[state.questionIndex];
+  const ps=await getDoc(pRef(playerId)),d=ps.data(),ans=d.answers||{};
+  if(ans[state.questionIndex]!=null)return;
+  ans[state.questionIndex]={option:k,elapsed:+elapsed.toFixed(3),correct:k===q[3],points:0};
+  await updateDoc(pRef(playerId),{answers:ans});
+  $("pMsg").textContent="Respuesta registrada. Espera a que el facilitador continúe.";
+}
+function listenHost(){hostUnsubs.forEach(u=>u());hostUnsubs=[onSnapshot(roomRef(),s=>{if(s.exists()){state=s.data();if(Array.isArray(state.selectedQuestions))selectedQuestions=state.selectedQuestions;if(Array.isArray(state.questions)&&state.questions.length)Q=questionsFromFirestore(state.questions);renderHost()}}),onSnapshot(playersRef(),s=>{players=s.docs.map(d=>({id:d.id,...d.data()}));renderHost()})]}
+function renderHost(){if(!state)return;if(!Q.length){$("connected").textContent=players.length;$("answered").textContent="0";$("hNum").textContent="Sin preguntas";$("hQuestion").textContent="Este banco está vacío. Agrega una pregunta o usa la carga masiva.";$("hOptions").innerHTML="";$("distribution").innerHTML="";$("ranking").innerHTML="";$("openQ").disabled=true;$("closeQ").disabled=true;$("revealQ").disabled=true;$("nextQ").disabled=true;return;}let i=Math.min(state.questionIndex,Q.length-1),q=Q[i];$("connected").textContent=players.length;$("answered").textContent=players.filter(p=>p.answers&&p.answers[i]!=null).length;$("hNum").textContent=`Pregunta ${i+1} / ${Q.length}`;$("hQuestion").textContent=q[1];$("hOptions").innerHTML=q[2].map((x,k)=>`<div class="${state.status==="revealed"&&k===q[3]?"correct":""}" style="padding:8px;border-radius:8px">${String.fromCharCode(65+k)}. ${x}</div>`).join("");const labels={lobby:"En espera",open:"Pregunta abierta",closed:"Respuestas cerradas",revealed:"Respuesta revelada"};$("phaseLabel").textContent=labels[state.status]||state.status;$("openQ").disabled=state.status==="open";$("closeQ").disabled=state.status!=="open";$("revealQ").disabled=state.status==="open"||state.status==="lobby";$("nextQ").disabled=state.status!=="revealed"||selectedIndices().length<2;renderDist(i);renderRank();renderPicker();runHostTimer()}
+function renderDist(i){
+  if(state.status!=="revealed"){
+    $("distribution").innerHTML='<p class="muted">Los resultados se revelarán al finalizar la pregunta.</p>'; $("responseDetails").innerHTML="";
+    return;
+  }
+  let counts=[0,0,0,0];
+  players.forEach(p=>{let a=p.answers&&p.answers[i];if(a)counts[a.option]++});
+  let total=counts.reduce((a,b)=>a+b,0);
+  $("distribution").innerHTML=counts.map((n,k)=>`<div class="optbar"><b>${String.fromCharCode(65+k)}</b><div class="track"><div class="fill" style="width:${total?n/total*100:0}%"></div></div><span>${n} · ${total?Math.round(n/total*100):0}%</span></div>`).join("");
+  const rows=[...players].map(p=>({p,a:p.answers&&p.answers[i]})).filter(x=>x.a).sort((x,y)=>Number(x.a.elapsed)-Number(y.a.elapsed));
+  $("responseDetails").innerHTML='<h3>Detalle por participante</h3>'+(rows.length?`<div style="overflow:auto"><table class="resultTable"><thead><tr><th>Participante</th><th>Respuesta</th><th>Resultado</th><th>Tiempo</th><th>Puntos</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${escapeHtml(x.p.name)}</td><td>${String.fromCharCode(65+Number(x.a.option))}</td><td>${x.a.correct?"✓ Correcta":"✕ Incorrecta"}</td><td>${Number(x.a.elapsed).toFixed(1)} s</td><td>${x.a.points||0}</td></tr>`).join("")}</tbody></table></div>`:'<p class="muted">No hubo respuestas.</p>');
+}
+function rankComparator(x,y){
+  const byScore=(y.score||0)-(x.score||0);
+  if(byScore!==0)return byScore;
+  const tx=Number.isFinite(Number(x.correctTime))?Number(x.correctTime):999999;
+  const ty=Number.isFinite(Number(y.correctTime))?Number(y.correctTime):999999;
+  if(tx!==ty)return tx-ty;
+  return String(x.name||"").localeCompare(String(y.name||""),"es");
+}
+function renderRank(){
+  if(state.status!=="revealed"){
+    $("ranking").innerHTML='<p class="muted">El ranking se mostrará cuando reveles los resultados.</p>';
+    return;
+  }
+  let a=[...players].sort(rankComparator);
+  const isFinal=(state.questionIndex||0)===Q.length-1;
+  const visible=isFinal?a:a.slice(0,10);
+  $("ranking").innerHTML=visible.length
+    ? visible.map((p,i)=>`<div class="rankrow"><b>${i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1)}</b><span>${escapeHtml(p.name)}</span><b>${p.score||0} pts</b></div>`).join("")
+      + (!isFinal && a.length>10 ? `<p class="muted" style="margin-top:12px">Mostrando Top 10 de ${a.length} participantes.</p>` : "")
+    : '<p class="muted">Aún no hay participantes.</p>';
+}
+function runHostTimer(){clearInterval(tick);if(state.status!=="open"){$("hTimer").textContent=state.status==="lobby"?"60":"—";return}const f=()=>{let r=Math.max(0,60-(Date.now()-state.openedAt)/1000);$("hTimer").textContent=Math.ceil(r);if(r<=0)clearInterval(tick)};f();tick=setInterval(f,250)}
+$("openQ").onclick=()=>updateDoc(roomRef(),{status:"open",openedAt:Date.now(),updatedAt:serverTimestamp()});
+$("closeQ").onclick=()=>updateDoc(roomRef(),{status:"closed",updatedAt:serverTimestamp()});
+function hostFailure(e){console.error(e);const box=$("hostError");box.style.display="block";box.textContent="No se pudo completar la operación: "+(e?.message||e)+". Revisa permisos de Firestore y conexión.";}
+function hostClearError(){$("hostError").style.display="none";}
+async function commitInChunks(ops){for(let i=0;i<ops.length;i+=400){const b=writeBatch(db);ops.slice(i,i+400).forEach(fn=>fn(b));await b.commit();}}
+$("revealQ").onclick=async()=>{
+  hostClearError();$("revealQ").disabled=true;
+  try{
+    if(!state||state.status!=="closed")throw Error("Primero debes cerrar las respuestas.");
+    const i=state.questionIndex;
+    const snap=await getDocs(playersRef());
+    const scored=snap.docs.map(d=>{
+      const p=d.data(),ans={...(p.answers||{})};
+      if(ans[i]!=null){
+        const elapsed=Math.max(0,Math.min(60,Number(ans[i].elapsed??60)));
+        const correct=Number(ans[i].option)===Number(Q[i][3]);
+        const pts=correct?Math.max(1,10-Math.floor(Math.min(59.999,elapsed)/6)):0;
+        ans[i]={...ans[i],elapsed:+elapsed.toFixed(3),correct,points:pts};
+      }
+      let score=0,correctTime=0;
+      Object.values(ans).forEach(a=>{score+=Number(a.points||0);if(a.correct)correctTime+=Number(a.elapsed||0);});
+      return {id:d.id,ref:d.ref,name:p.name||"",answers:ans,score,correctTime:+correctTime.toFixed(3)};
+    }).sort(rankComparator);
+    await commitInChunks(scored.map((p,idx)=>b=>b.update(p.ref,{answers:p.answers,score:p.score,correctTime:p.correctTime,rank:idx+1})));
+    // Publicar resultados incluso si las reglas aún no permiten la subcolección /public.
+    const top=scored.slice(0,10).map(p=>({name:p.name,score:p.score}));
+    try{await setDoc(scoreboardRef(),{top,total:scored.length,questionIndex:i,updatedAt:serverTimestamp()},{merge:true});}
+    catch(e){console.warn("Tablero público no disponible; se conservan resultados en jugadores y sala.",e);}
+    await updateDoc(roomRef(),{status:"revealed",updatedAt:serverTimestamp(),lastResults:{questionIndex:i,top,total:scored.length}});
+  }catch(e){hostFailure(e);}
+  finally{if(state)renderHost();}
+};
+let selectedQuestions=null;
+function selectedIndices(){return selectedQuestions&&selectedQuestions.length?selectedQuestions:Q.map((_,i)=>i);}
+function renderPicker(){
+ const box=$("pickerList");if(!box||!Q.length)return;
+ const indices=selectedIndices();
+ $("pickerStatus").textContent=`${indices.length} de ${Q.length} preguntas seleccionadas · actual: ${(state?.questionIndex??0)+1}`;
+ box.innerHTML=Q.map((q,i)=>`<div class="qrow" style="display:flex;align-items:center;gap:12px;justify-content:space-between"><label style="flex:1"><input type="checkbox" class="pickCheck" value="${i}" ${indices.includes(i)?"checked":""}> <b>${i+1}.</b> ${escapeHtml(q[1])}</label><button type="button" class="secondary" onclick="window.jumpQuestion(${i})">Presentar</button></div>`).join("");
+}
+$("pickAll").onclick=()=>{document.querySelectorAll(".pickCheck").forEach(x=>x.checked=true)};
+$("pickNone").onclick=()=>{document.querySelectorAll(".pickCheck").forEach(x=>x.checked=false)};
+$("applySelection").onclick=async()=>{
+ const arr=[...document.querySelectorAll(".pickCheck:checked")].map(x=>Number(x.value));
+ if(!arr.length)return alert("Selecciona al menos una pregunta.");
+ selectedQuestions=arr;
+ try{await updateDoc(roomRef(),{selectedQuestions:arr,updatedAt:serverTimestamp()});renderPicker();}
+ catch(e){hostFailure(e);}
+};
+window.jumpQuestion=async i=>{
+ if(!confirm(`¿Presentar la pregunta ${i+1}? La pregunta actual se cerrará y los puntajes se conservarán.`))return;
+ try{hostClearError();await updateDoc(roomRef(),{questionIndex:i,status:"lobby",openedAt:0,updatedAt:serverTimestamp()});}
+ catch(e){hostFailure(e);}
+};
+$("nextQ").onclick=async()=>{
+ const available=selectedIndices();const current=state?.questionIndex??0;
+ const next=available.find(i=>i>current)??available.find(i=>i!==current);
+ if(next==null)return;
+ try{hostClearError();await updateDoc(roomRef(),{questionIndex:next,status:"lobby",openedAt:0,updatedAt:serverTimestamp()});}
+ catch(e){hostFailure(e);}
+};
+$("resetGame").onclick=async()=>{if(!confirm("¿Reiniciar toda la partida y puntajes?"))return;let batch=writeBatch(db);(await getDocs(playersRef())).forEach(d=>batch.update(d.ref,{score:0,correctTime:0,answers:{}}));batch.set(roomRef(),{questionIndex:0,status:"lobby",openedAt:0,duration:60,updatedAt:serverTimestamp()});await batch.commit()};
+$("clearPlayers").onclick=async()=>{if(!confirm("¿Eliminar todos los participantes?"))return;let batch=writeBatch(db);(await getDocs(playersRef())).forEach(d=>batch.delete(d.ref));await batch.commit()};
+
+const bankRef=id=>doc(db,BANKS,id);
+const questionsToFirestore=qs=>qs.map(q=>({
+  title:String(q[0]||"Pregunta"),
+  text:String(q[1]||""),
+  options:Array.isArray(q[2])?q[2].map(String):[],
+  correct:Number(q[3]||0)
+}));
+const questionsFromFirestore=qs=>(Array.isArray(qs)?qs:[]).map(q=>{
+  if(Array.isArray(q)) return q; // compatibility if data ever comes from another source
+  return [q.title||"Pregunta",q.text||"",Array.isArray(q.options)?q.options:[],Number(q.correct||0)];
+});
+async function seedDefaultBank(){
+  const s=await getDoc(bankRef("agilismo"));
+  if(!s.exists()) await setDoc(bankRef("agilismo"),{name:"Agilismo",questions:questionsToFirestore(Q),createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+}
+async function loadBanks(){
+  await seedDefaultBank();
+  const s=await getDocs(collection(db,BANKS));
+  banks=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(a.name).localeCompare(String(b.name),"es"));
+  $("bankSelect").innerHTML=banks.map(b=>`<option value="${escapeHtml(b.id)}">${escapeHtml(b.name||b.id)}</option>`).join("");
+  if(!banks.some(b=>b.id===currentBankId)) currentBankId=banks[0]?.id||"agilismo";
+  $("bankSelect").value=currentBankId;
+  await selectBank(currentBankId,false);
+}
+async function selectBank(id,syncRoom=true){
+  const s=await getDoc(bankRef(id)); if(!s.exists())return;
+  currentBankId=id; const d=s.data();
+  if(Array.isArray(d.questions)) Q=questionsFromFirestore(d.questions);
+  renderQuestionAdmin();
+  $("bulkQuestions").value=Q.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");
+  if(syncRoom) await setDoc(roomRef(),{questions:questionsToFirestore(Q),bankId:id,questionIndex:0,status:"lobby",openedAt:0,updatedAt:serverTimestamp()},{merge:true});
+  renderHost();
+}
+function renderQuestionAdmin(){
+  const box=$("questionList"); if(!box)return;
+  box.innerHTML=Q.map((q,i)=>`<div class="qrow"><div class="qrowhead"><div><b>${i+1}. ${escapeHtml(q[1])}</b><div class="mini">Correcta: ${String.fromCharCode(65+q[3])} · ${escapeHtml(q[2][q[3]])}</div></div><div class="qactions"><button class="secondary" onclick="window.editQ(${i})">✏️ Editar</button><button class="secondary" onclick="window.dupQ(${i})">📋 Duplicar</button><button class="secondary" onclick="window.moveQ(${i},-1)">↑</button><button class="secondary" onclick="window.moveQ(${i},1)">↓</button><button class="danger" onclick="window.delQ(${i})">🗑️</button></div></div></div>`).join("");
+}
+async function persistBank(){
+  const b=banks.find(x=>x.id===currentBankId);
+  await setDoc(bankRef(currentBankId),{
+    name:b?.name||currentBankId,
+    questions:questionsToFirestore(Q),
+    updatedAt:serverTimestamp()
+  },{merge:true});
+  await setDoc(roomRef(),{
+    questions:questionsToFirestore(Q),
+    bankId:currentBankId,
+    questionIndex:0,
+    status:"lobby",
+    openedAt:0,
+    duration:60,
+    updatedAt:serverTimestamp()
+  },{merge:true});
+  renderQuestionAdmin();
+  renderHost();
+}
+window.editQ=i=>{editingIndex=i;const q=Q[i];$("singleEditorTitle").textContent=`Editar pregunta ${i+1}`;$("editQuestion").value=q[1];["A","B","C","D"].forEach((x,k)=>$("edit"+x).value=q[2][k]);$("editCorrect").value=q[3];$("singleEditor").classList.remove("hidden");$("singleEditor").scrollIntoView({behavior:"smooth",block:"center"});}
+window.dupQ=async i=>{Q.splice(i+1,0,JSON.parse(JSON.stringify(Q[i])));await persistBank();}
+window.delQ=async i=>{if(Q.length<=1)return alert("El banco debe conservar al menos una pregunta.");if(confirm("¿Eliminar esta pregunta?")){Q.splice(i,1);await persistBank();}}
+window.moveQ=async(i,d)=>{const j=i+d;if(j<0||j>=Q.length)return;[Q[i],Q[j]]=[Q[j],Q[i]];await persistBank();}
+$("addQuestion").onclick=()=>{editingIndex=null;$("singleEditorTitle").textContent="Nueva pregunta";$("editQuestion").value="";["A","B","C","D"].forEach(x=>$("edit"+x).value="");$("editCorrect").value="0";$("singleEditor").classList.remove("hidden");};
+$("cancelSingle").onclick=()=>$("singleEditor").classList.add("hidden");
+$("saveSingle").onclick=async()=>{
+  try{
+    const text=$("editQuestion").value.trim(),opts=["A","B","C","D"].map(x=>$("edit"+x).value.trim()),correct=Number($("editCorrect").value);
+    if(!text||opts.some(x=>!x))return alert("Completa la pregunta y las cuatro opciones.");
+    const q=["Pregunta",text,opts,correct];
+    if(editingIndex===null)Q.push(q);else Q[editingIndex]=q;
+    $("singleEditor").classList.add("hidden");
+    await persistBank();
+    $("editorMsg").textContent="✓ Pregunta guardada.";
+  }catch(e){console.error(e);$("editorMsg").textContent="Error al guardar: "+(e?.message||e);}
+};
+$("bankSelect").onchange=e=>selectBank(e.target.value,true);
+$("newBank").onclick=async()=>{
+  try{
+    const name=prompt("Nombre del nuevo banco:"); if(!name?.trim())return;
+    const id=name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+"-"+Date.now().toString().slice(-5);
+    await setDoc(bankRef(id),{name:name.trim(),questions:[],createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+    banks.push({id,name:name.trim(),questions:[]}); currentBankId=id; Q=[];
+    $("bankSelect").innerHTML=banks.map(b=>`<option value="${escapeHtml(b.id)}">${escapeHtml(b.name||b.id)}</option>`).join("");
+    $("bankSelect").value=id; $("bulkQuestions").value=""; renderQuestionAdmin();
+    await setDoc(roomRef(),{questions:[],bankId:id,questionIndex:0,status:"lobby",openedAt:0,updatedAt:serverTimestamp()},{merge:true});
+    renderHost();
+    $("editorMsg").textContent="Banco creado. Agrega preguntas o pégalas en Importación masiva.";
+  }catch(e){console.error(e);$("editorMsg").textContent="Error al crear banco: "+(e?.message||e);}
+};
+$("renameBank").onclick=async()=>{const b=banks.find(x=>x.id===currentBankId);const name=prompt("Nuevo nombre:",b?.name||currentBankId);if(!name?.trim())return;await setDoc(bankRef(currentBankId),{name:name.trim(),updatedAt:serverTimestamp()},{merge:true});if(b)b.name=name.trim();$("bankSelect").selectedOptions[0].textContent=name.trim();};
+$("deleteBank").onclick=async()=>{if(banks.length<=1)return alert("Debe existir al menos un banco.");if(!confirm("¿Eliminar este banco de preguntas?"))return;await deleteDoc(bankRef(currentBankId));await loadBanks();};
+$("exportBank").onclick=()=>{const esc=v=>'"'+String(v).replaceAll('"','""')+'"';const csv=["Pregunta,Opción A,Opción B,Opción C,Opción D,Correcta",...Q.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].map(esc).join(","))].join("\n");const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(banks.find(x=>x.id===currentBankId)?.name||"preguntas")+".csv";a.click();URL.revokeObjectURL(a.href);};
+$("toggleEditor").onclick=()=>{
+  const ed=$("questionEditor");
+  ed.open=!ed.open;
+  if(ed.open && !$("bulkQuestions").value.trim()){
+    $("bulkQuestions").value=Q.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");
+  }
+};
+$("loadCurrent").onclick=()=>{
+  $("bulkQuestions").value=Q.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");
+  $("editorMsg").textContent=`${Q.length} preguntas cargadas para editar.`;
+};
+$("chooseQuestionFile").onclick=()=>$("questionFile").click();
+$("questionFile").onchange=async e=>{
+  const f=e.target.files?.[0]; if(!f)return;
+  try{
+    const text=await f.text();
+    let normalized=text.replace(/\r/g,"").trim();
+    const lines=normalized.split("\n").filter(Boolean);
+    if(!lines.length) throw new Error("El archivo está vacío.");
+    // CSV simple parser supporting quoted commas.
+    if(f.name.toLowerCase().endsWith(".csv")){
+      const parseCSV=line=>{
+        const out=[]; let cur="",q=false;
+        for(let i=0;i<line.length;i++){
+          const ch=line[i];
+          if(ch==='"'){
+            if(q&&line[i+1]==='"'){cur+='"';i++;}
+            else q=!q;
+          }else if(ch===","&&!q){out.push(cur);cur="";}
+          else cur+=ch;
+        }
+        out.push(cur); return out;
+      };
+      const rows=lines.map(parseCSV);
+      const first=rows[0].map(x=>x.trim().toLowerCase());
+      const hasHeader=first[0].includes("pregunta") && first.length>=6;
+      const data=hasHeader?rows.slice(1):rows;
+      normalized=data.map(r=>r.slice(0,6).join("\t")).join("\n");
+    }
+    $("bulkQuestions").value=normalized;
+    $("editorMsg").textContent=`Archivo ${f.name} cargado. Pulsa “Guardar cambios” para importarlo a Firebase.`;
+  }catch(err){$("editorMsg").textContent="ERROR al leer archivo: "+(err?.message||err);}
+};
+
+$("saveQuestions").onclick=async()=>{
+  const msg=$("editorMsg");
+  try{
+    msg.textContent="Validando y guardando...";
+    const raw=$("bulkQuestions").value.replace(/\r/g,"").trim();
+    if(!raw) throw new Error("El cuadro está vacío.");
+
+    const lines=raw.split("\n").map(x=>x.trim()).filter(Boolean);
+    const parsed=lines.map((line,idx)=>{
+      let c;
+      if(line.includes("\t")) c=line.split("\t");
+      else if(line.includes(";")) c=line.split(";");
+      else if(line.includes("|")) c=line.split("|");
+      else throw new Error(`Fila ${idx+1}: no encuentro separadores. Pega desde Excel o usa ; entre columnas.`);
+      c=c.map(x=>x.trim()).filter((x,i,a)=>!(i===0&&x==="") && !(i===a.length-1&&x===""));
+      if(c.length!==6) throw new Error(`Fila ${idx+1}: encontré ${c.length} columnas; deben ser 6: Pregunta, A, B, C, D, Correcta.`);
+      const key=c[5].toUpperCase().replace(/[.)]/g,"").trim();
+      const correct={A:0,B:1,C:2,D:3}[key];
+      if(correct===undefined) throw new Error(`Fila ${idx+1}: la correcta debe ser A, B, C o D.`);
+      if(c.slice(0,5).some(x=>!x)) throw new Error(`Fila ${idx+1}: hay campos vacíos.`);
+      return [`Pregunta ${idx+1}`,c[0],[c[1],c[2],c[3],c[4]],correct];
+    });
+
+    if(parsed.length>100) throw new Error("Máximo 100 preguntas.");
+    Q=parsed;
+
+    const active=banks.find(x=>x.id===currentBankId);
+    await setDoc(bankRef(currentBankId),{
+      name:active?.name||currentBankId,
+      questions:questionsToFirestore(Q),
+      updatedAt:serverTimestamp()
+    },{merge:true});
+
+    await setDoc(roomRef(),{
+      questions:questionsToFirestore(Q),
+      bankId:currentBankId,
+      questionIndex:0,
+      status:"lobby",
+      openedAt:0,
+      duration:60,
+      updatedAt:serverTimestamp()
+    },{merge:true});
+
+    renderQuestionAdmin();
+    renderHost();
+    msg.textContent=`✓ ${Q.length} preguntas importadas y guardadas.`;
+  }catch(e){
+    console.error(e);
+    msg.textContent="ERROR: "+(e?.message||String(e));
+  }
+};
+
+function escapeHtml(s){let d=document.createElement("div");d.textContent=s||"";return d.innerHTML}
+setTimeout(async()=>{const s=loadSession();if(s){try{await restoreSession(s)}catch(e){console.warn(e)}}},0);
+</script>
+<div style="padding:25px;text-align:center;font:12px system-ui;color:#8c9ab0">© 2026 Santiago León López. Todos los derechos reservados.</div></body></html>
