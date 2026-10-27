@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El Flaco · El reto de una organización que aprende</title>
+<style>
+:root{--bg:#f7f1e8;--ink:#1f1f1f;--card:#fffdf8;--accent:#e84b2c;--dark:#18211d;--gold:#f1b84b;--green:#2f7d5c;--muted:#6f716d;--line:#ded7cc}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--ink)}
+button,input{font:inherit}.wrap{max-width:1050px;margin:auto;padding:22px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{font-weight:950;font-size:clamp(28px,5vw,56px);letter-spacing:-2px}.brand span{color:var(--accent)}
+.sub{color:var(--muted);font-weight:700}.card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:24px;box-shadow:0 12px 35px #0000000d;margin-top:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.btn{border:0;border-radius:16px;padding:14px 18px;font-weight:900;cursor:pointer;background:var(--dark);color:white}
+.btn.alt{background:white;color:var(--ink);border:1px solid var(--line)}.btn.red{background:var(--accent)}.btn.green{background:var(--green)}
+.btn:disabled{opacity:.45;cursor:not-allowed}.hidden{display:none!important}.pill{display:inline-flex;padding:7px 11px;border-radius:999px;background:#efe8dd;font-weight:850;font-size:13px}
+h1,h2,h3{margin:.2em 0}.story{font-size:clamp(18px,2.2vw,25px);line-height:1.45}.quote{border-left:5px solid var(--accent);padding:12px 16px;background:#fff5ee;border-radius:0 14px 14px 0;font-weight:800}
+.options{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px}
+.opt{padding:17px;border:1px solid var(--line);border-radius:18px;background:white;cursor:pointer;text-align:left;min-height:112px;position:relative}
+.opt:before{content:"ACTIVAR";position:absolute;right:12px;top:12px;font-size:10px;font-weight:950;letter-spacing:1px;color:var(--muted)}
+.opt.selected{border:2px solid var(--green);background:#edf7f1}
+.opt.selected:before{content:"ACTIVADO";color:var(--green)}
+.opt strong{display:block;font-size:17px;padding-right:55px}.opt small{display:block;color:var(--muted);margin-top:10px;line-height:1.35}
+.bar{height:10px;background:#e6ded2;border-radius:20px;overflow:hidden}.bar>div{height:100%;background:var(--accent)}
+.stat{font-size:34px;font-weight:950}.timer{font-size:42px;font-weight:950;color:var(--accent)}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.spread{justify-content:space-between}
+.rankrow{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);font-weight:800}
+.feedback{border-radius:18px;padding:18px;background:#edf7f1;border:1px solid #cde3d5;line-height:1.5}.warning{background:#fff4db;border-color:#f0d18a}
+.eco{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:15px}.eco div{background:white;border:1px solid var(--line);padding:14px;border-radius:16px;font-weight:850}
+input{width:100%;padding:14px;border:1px solid var(--line);border-radius:14px;background:white}.tiny{font-size:12px;color:var(--muted)}
+.hostgrid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}@media(max-width:760px){.hostgrid{grid-template-columns:1fr}.wrap{padding:14px}.card{padding:18px}}
+.overlay{position:fixed;inset:0;background:#101814f2;color:white;display:flex;align-items:center;justify-content:center;z-index:20;padding:24px;text-align:center}.overlay .inner{max-width:760px}
+.big{font-size:clamp(38px,8vw,90px);font-weight:1000;line-height:.95}.medal{font-size:22px}
+</style>
+</head>
+<body><div style="position:relative;z-index:100;background:#070b13;border-bottom:1px solid #27334b;padding:14px 22px;font:13px system-ui;display:flex;justify-content:space-between;gap:16px"><a href="index.html#experiencias" style="color:#c2d5ff;text-decoration:none">← Volver al laboratorio</a><span style="color:#91a2bc">Santiago León López</span></div>
+<div class="wrap">
+  <div class="top"><div><div class="brand">EL <span>FLACO</span></div><div class="sub">El reto de una organización que aprende</div></div><span class="pill" id="modePill">INICIO</span></div>
+
+  <section id="home" class="card">
+    <h2>¿Cómo vas a entrar?</h2>
+    <p>Durante dos años virtuales administrarán una sede de El Flaco. Sus decisiones determinarán cómo aprende la organización.</p>
+    <div class="grid">
+      <button class="btn red" onclick="showJoin()">Gestionar una sede</button>
+      <button class="btn alt" onclick="showHostLogin()">Facilitador</button>
+      
+    </div>
+  </section>
+
+  <section id="join" class="card hidden">
+    <h2>Bienvenidos a El Flaco</h2>
+    <p>El sistema asignará automáticamente una sede. Escribe los nombres de los integrantes.</p>
+    <label>Código de clase</label><input id="classCode" value="FLACO26" maxlength="12">
+    <br><br><label>Integrantes</label><input id="members" placeholder="Ej. Laura, Mateo, Sara">
+    <br><br><button class="btn red" onclick="joinGame()">Asignar nuestra sede</button>
+  </section>
+
+  <section id="waiting" class="card hidden">
+    <div class="pill">SEDE ASIGNADA</div><h1 id="assignedBranch"></h1>
+    <p id="waitText">Esta sede queda bajo su responsabilidad. Esperen a que el facilitador inicie la experiencia.</p>
+  </section>
+
+  <section id="hostLogin" class="card hidden">
+    <h2>Acceso del facilitador</h2>
+    <label>Correo del facilitador</label><input id="hostEmail" type="email" autocomplete="username" placeholder="facilitador@institucion.edu"><label>Contraseña de cuenta</label><input id="hostPin" type="password" autocomplete="current-password" placeholder="Contraseña">
+    <br><br><button class="btn" onclick="hostLogin()">Entrar</button>
+  </section>
+
+  <section id="host" class="hidden">
+    <div class="hostgrid">
+      <div class="card">
+        <div class="row spread"><div><span class="pill">FACILITADOR</span><h2>Control de experiencia</h2></div><div class="stat" id="hostRound">0/7</div></div>
+        <label>Código de clase</label><input id="hostCode" value="FLACO26" maxlength="12">
+        <div class="row" style="margin-top:14px">
+          <button class="btn green" onclick="openRoom()">Abrir sala</button>
+          <button class="btn red" onclick="advanceRound()">Siguiente capítulo</button>
+          <button class="btn alt" onclick="revealRound()">Revelar / cerrar</button>
+          <button class="btn alt" onclick="finishGame()">Final</button>
+          <button class="btn alt" onclick="resetRoom()">Reiniciar sala</button>
+        </div>
+        <p class="tiny">Durante cada capítulo los equipos eligen máximo 2 prácticas. Revelar cierra la decisión y muestra consecuencia, explicación y puntaje.</p>
+      </div>
+      <div class="card"><h3>Equipos conectados</h3><div id="hostTeams">Sin equipos todavía.</div></div>
+    </div>
+    <div class="card"><h2>📣 Reporte de la red El Flaco</h2><p class="tiny">El ranking queda en la vista del facilitador y puede proyectarse solo cuando quieras generar un corte competitivo.</p><div id="hostRanking"></div></div>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="card">
+      <div class="row spread"><span class="pill" id="chapterLabel"></span><div class="timer" id="timer">40</div></div>
+      <div class="bar"><div id="progress"></div></div>
+      <h1 id="chapterTitle"></h1><div id="story" class="story"></div>
+      <div class="row spread" style="margin-top:20px"><div><span class="tiny">SITUACIÓN OPERATIVA</span><h3 id="question"></h3></div><span class="pill">ACTIVA MÁX. 2</span></div>
+<div id="options" class="options"></div>
+      <div class="row spread" style="margin-top:18px"><span id="selectionCount" class="pill">0/2 recursos activados</span><button id="submitBtn" class="btn red" onclick="submitDecision()">IMPLEMENTAR DECISIÓN →</button></div>
+      <div id="feedback" class="feedback hidden"></div>
+    </div>
+    <div class="card">
+<div class="row spread"><div><span class="tiny">SEDE EN GESTIÓN</span><h3 id="gameBranch"></h3></div><div><span class="tiny">EVOLUCIÓN</span><div class="pill">ECOSISTEMA EN CONSTRUCCIÓN</div></div></div>
+<div class="eco" id="liveEco"><div>Personas</div><div>Experiencias</div><div>Conocimiento</div><div>Conexiones</div><div>Tecnología</div><div>Condiciones culturales</div></div>
+<div id="score" class="hidden">0</div>
+</div>
+  </section>
+
+  <section id="final" class="hidden">
+    <div class="card">
+      <span class="pill">DOS AÑOS DESPUÉS</span><h1>Ana deja El Flaco.</h1>
+      <p class="story">Durante toda la experiencia parecía que estaban ayudando a Ana. En realidad estaban diseñando algo más grande.</p>
+      <h2>🌱 El ecosistema que construyeron</h2>
+      <div class="eco" id="eco"></div>
+      <div class="feedback warning" style="margin-top:18px"><strong>Pregunta final:</strong><br>¿El aprendizaje se va con Ana… o queda en la organización?</div>
+    </div>
+    <div class="card"><h2>🏆 Sedes que aprenden</h2><div id="finalRanking"></div></div>
+  </section>
+</div>
+
+<script type="module">
+/* =========================================================
+   PRODUCCIÓN · FIREBASE
+   Proyecto conectado: simuladores-juegos.
+   Firestore debe incluir las reglas de el_flaco_rooms y teams.
+========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBnHTbmdSPWjYKTiLjv7HPKkqzpD4SOmJY",
+  authDomain: "simuladores-juegos.firebaseapp.com",
+  projectId: "simuladores-juegos",
+  storageBucket: "simuladores-juegos.firebasestorage.app",
+  messagingSenderId: "1055010296299",
+  appId: "1:1055010296299:web:11fd4063efcd0ab1a809ae",
+  measurementId: "G-106148TJF0"
+};
+const GAME_ID = "el_flaco_learning_ecosystem";
+const BRANCHES = ["Laureles","El Poblado","Envigado","Belén","Sabaneta","Centro","La América","Robledo","Buenos Aires","Manila","Castropol","Ciudad del Río"];
+
+const chapters = [
+{label:"DÍA 1",title:"¿Y esto cómo se hace?",story:`Ana acaba de ingresar como líder de turno. En <b>30 minutos</b> deberá realizar el cierre de caja. Nunca ha utilizado el sistema y su líder está resolviendo una emergencia.`,q:"Ana necesita actuar ahora. ¿Qué recursos activarían desde su sede?",opts:[
+["📱 Performance Support","Guía rápida disponible durante el trabajo que orienta paso a paso mientras realiza el cierre.",100,"Conocimiento"],
+["🎥 Microlearning","Contenido audiovisual breve que demuestra cómo realizar correctamente el cierre.",90,"Tecnología"],
+["🤝 Mentoring","Una persona experimentada acompaña su desarrollo durante las próximas semanas.",45,"Personas"],
+["🎓 E-learning","Curso completo sobre los procesos administrativos de El Flaco.",30,"Tecnología"],
+["👥 Comunidad de Práctica","Espacio periódico donde líderes de distintas sedes intercambian experiencias.",40,"Conexiones"]],
+learn:`<b>Performance Support</b> ayuda en el momento de necesidad y <b>Microlearning</b> ofrece contenido breve y focalizado. Una práctica no es mejor por ser más completa, sino por ser pertinente al contexto.`},
+
+{label:"SEMANA 3",title:"Eso no está en la receta",story:`Mauricio lleva 14 años en El Flaco. Ana sigue exactamente la receta del producto insignia, pero cuando Mauricio lo prepara el resultado es diferente.<div class="quote">“No sé cómo explicarlo… uno aprende cuándo está en el punto.”</div>`,q:"Tienen 20 minutos con Mauricio. ¿Cómo aprovecharían su experiencia?",opts:[
+["👀 Job Shadowing","Ana observa a Mauricio en el trabajo real para identificar señales, decisiones y ajustes que no aparecen en el procedimiento.",100,"Experiencias"],
+["🧪 Práctica guiada + Feedback","Ana ejecuta la preparación mientras Mauricio observa, corrige y explica sus decisiones.",100,"Experiencias"],
+["📝 Knowledge Capture","Intentar explicitar y documentar criterios y recomendaciones que utiliza Mauricio.",60,"Conocimiento"],
+["🎥 Microlearning","Consultar un contenido breve sobre la preparación estándar.",30,"Tecnología"],
+["🎓 E-learning","Realizar nuevamente el curso de preparación de productos.",20,"Tecnología"]],
+learn:`Parte del conocimiento de Mauricio es <b>tácito</b>. El <b>Job Shadowing</b> permite observar al experto en contexto; la <b>práctica guiada + feedback</b> convierte la observación en capacidad. Ojo: aprender de Mauricio todavía no garantiza que su conocimiento quede en la organización.`},
+
+{label:"MES 3",title:"La embarramos",story:`Viernes. Restaurante lleno. Ana toma una decisión que genera un retraso de 25 minutos en varios pedidos.<div class="quote">El gerente dice: “Necesitamos saber quién fue responsable.”</div>`,q:"El error ya ocurrió. ¿Cómo intervendrían?",opts:[
+["🔄 After Action Review (AAR)","Conversación estructurada: qué esperábamos, qué ocurrió, por qué ocurrió y qué podemos aprender.",100,"Experiencias"],
+["💬 Feedback de desarrollo","Conversación con Ana orientada a comprender lo ocurrido y mejorar su actuación futura.",90,"Condiciones culturales"],
+["📧 Comunicación correctiva","Enviar nuevamente el procedimiento a todos los colaboradores.",35,"Conocimiento"],
+["⚠️ Exposición del error","Identificar públicamente quién tomó la decisión para evitar que otros la repitan.",-20,"Condiciones culturales"],
+["🤫 Corrección silenciosa","Resolver el problema con Ana y evitar volver a hablar del incidente.",10,"Condiciones culturales"]],
+learn:`El <b>AAR</b> transforma experiencia en aprendizaje mediante reflexión estructurada. El feedback ayuda a mejorar el desempeño. Ambos requieren <b>seguridad psicológica</b>: poder reconocer problemas y errores sin que hacerlo implique automáticamente exposición o castigo.`},
+
+{label:"MES 6",title:"Esto nos está funcionando",story:`Ana cambia la manera de organizar los pedidos de domicilio. Después de tres semanas, los errores disminuyen notablemente. <b>Solo su sede conoce la práctica.</b>`,q:"La mejora funciona. ¿Cómo harían que deje de pertenecer solo a una sede?",opts:[
+["👥 Comunidad de Práctica (CoP)","Compartir la experiencia con otras sedes para intercambiar aprendizajes y permitir adaptación.",100,"Conexiones"],
+["📚 Lección aprendida / Knowledge Capture","Sistematizar qué se hizo, qué resultados produjo y bajo qué condiciones podría reutilizarse.",90,"Conocimiento"],
+["🎓 Curso obligatorio","Convertir inmediatamente la práctica en un curso para toda la organización.",45,"Tecnología"],
+["📧 Difusión por correo","Enviar un mensaje informando que la sede obtuvo buenos resultados.",25,"Conocimiento"],
+["🏆 Reconocimiento","Premiar públicamente a Ana por la mejora conseguida.",30,"Condiciones culturales"]],
+learn:`Una organización no aprende solo cuando alguien descubre algo. Necesita mecanismos para <b>compartir, interpretar, adaptar y reutilizar</b> ese conocimiento. Aquí pasamos del aprendizaje individual al colectivo.`},
+
+{label:"AÑO 1",title:"El Flaco se expande",story:`🚨 El Flaco abrirá <b>5 nuevas sedes en 60 días</b>. Decenas de personas deberán desarrollar rápidamente las capacidades necesarias para operar. Lo que funcionaba a pequeña escala ahora necesita escalar.`,q:"La red crecerá en 60 días. Diseñen la respuesta de aprendizaje.",opts:[
+["🌐 Red de expertos / Champions Network","Red de personas referentes distribuidas entre sedes que acompañan y transfieren conocimiento.",100,"Personas"],
+["📱 Learning in the Flow of Work","Recursos breves y reutilizables disponibles mientras las personas realizan el trabajo.",90,"Tecnología"],
+["🤝 Mentoring individual","Asignar un mentor permanente a cada nueva persona.",55,"Personas"],
+["🎓 Formación masiva","Realizar el mismo programa intensivo para todos antes de comenzar.",60,"Tecnología"],
+["📖 Manual operativo","Entregar toda la documentación disponible para consulta.",40,"Conocimiento"]],
+learn:`Una solución puede funcionar en pequeña escala y volverse insuficiente cuando cambia el contexto. Un <b>ecosistema de aprendizaje</b> combina personas, experiencias, contenidos, tecnología y conexiones para ofrecer distintas formas de aprender.`},
+
+{label:"AÑO 1 · MES 4",title:"Mauricio se jubila",story:`🚨 Mauricio anuncia que dejará El Flaco después de 14 años.<div class="quote">¿Recuerdan todo lo que Ana aprendió observándolo y practicando con él?</div>Parte de ese conocimiento todavía puede depender de Mauricio y de quienes trabajaron directamente con él.`,q:"Mauricio se va el viernes. Diseñen la transferencia antes de que salga.",opts:[
+["🧠 Knowledge Retention","Identificar el conocimiento crítico de Mauricio y diseñar acciones específicas para conservarlo y transferirlo.",100,"Conocimiento"],
+["📝 Knowledge Capture","Capturar historias, criterios, excepciones y recomendaciones mediante entrevistas y demostraciones.",90,"Conocimiento"],
+["🤝 Mentoring","Mauricio acompaña durante sus últimas semanas a personas que puedan seguir transfiriendo su experiencia.",90,"Personas"],
+["🎥 Entrevista de salida","Grabar una conversación extensa sobre sus 14 años en El Flaco.",45,"Conocimiento"],
+["📖 Actualizar procedimientos","Pedirle que revise los manuales existentes antes de retirarse.",55,"Conocimiento"]],
+learn:`<b>Transferir conocimiento no significa simplemente almacenarlo.</b> Una parte puede documentarse; otra necesita interacción, práctica, observación y experiencia. Esta es la diferencia entre capturar información y conservar capacidad organizacional.`},
+
+{label:"AÑO 2",title:"Ana ya no es la nueva",story:`Ana ahora lidera personas, ayuda a otras sedes y es consultada constantemente. Valentina acaba de ingresar como nueva líder de turno.`,q:"Valentina comienza hoy. ¿Cómo convertirían la experiencia de Ana en desarrollo real?",opts:[
+["🤝 Mentoring","Relación de acompañamiento sostenido donde Ana comparte experiencia, criterios y orientación mientras Valentina desarrolla su rol.",100,"Personas"],
+["🧪 Stretch Assignment + Feedback","Asignar a Valentina retos progresivamente más complejos y acompañarlos con retroalimentación.",95,"Experiencias"],
+["👀 Job Shadowing","Valentina observa a Ana en situaciones reales para reconocer criterios y decisiones.",75,"Experiencias"],
+["📚 Manual del rol","Entregar la documentación completa del cargo para estudio individual.",40,"Conocimiento"],
+["🎓 Curso de liderazgo","Inscribir a Valentina en un programa general de liderazgo.",50,"Tecnología"]],
+learn:`El <b>Mentoring</b> es más amplio que enseñar una tarea puntual: acompaña el desarrollo durante el tiempo. Los <b>Stretch Assignments</b> permiten aprender enfrentando retos reales con apoyo y feedback.`}
+];
+
+let db=null, F=null, authModule=null, fbApp=null, demo=false, me={id:null,branch:"",members:"",score:0,round:0,choices:{},eco:new Set()}, timerInt=null, remaining=40, roomUnsub=null, rankUnsub=null;
+const $=id=>document.getElementById(id);
+const screens=["home","join","waiting","hostLogin","host","game","final"];
+function show(id){screens.forEach(x=>$(x).classList.toggle("hidden",x!==id));$("modePill").textContent=id.toUpperCase()}
+window.showJoin=()=>show("join"); window.showHostLogin=()=>show("hostLogin");
+
+async function initFirebase(){
+ try{
+   const appmod=await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js");
+   F=await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js");
+   fbApp=appmod.getApps().length?appmod.getApp():appmod.initializeApp(firebaseConfig); db=F.getFirestore(fbApp); return true;
+ }catch(e){alert("No fue posible conectar con Firebase. Revisa configuración e internet.");console.error(e);return false}
+}
+const roomRef=code=>F.doc(db,"el_flaco_rooms",code.toUpperCase());
+const teamRef=(code,id)=>F.doc(db,"el_flaco_rooms",code.toUpperCase(),"teams",id);
+
+window.startDemo=()=>{demo=true;me.id="demo";me.branch="Laureles";me.members="Equipo de prueba";me.score=0;me.round=1;show("game");$("gameBranch").textContent="EL FLACO · "+me.branch;renderChapter(1,true)}
+window.hostLogin=async()=>{
+ try {
+   const email=$("hostEmail").value.trim(), password=$("hostPin").value;
+   if(!email||!password)throw Error("Ingresa correo y contraseña.");
+   const ok=await initFirebase(); if(!ok)throw Error("Firebase no está disponible.");
+   authModule=await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js");
+   const auth=authModule.getAuth(fbApp);
+   const credentials=await authModule.signInWithEmailAndPassword(auth,email,password);
+   const claims=await authModule.getIdTokenResult(credentials.user,true);
+   if(claims.claims.facilitator!==true)throw Error("Tu cuenta no tiene permiso de facilitador.");
+   $("hostPin").value="";show("host");subscribeHost();
+ } catch(error){alert(error.message||"Acceso no autorizado");}
+}
+window.openRoom=async()=>{
+ const code=$("hostCode").value.trim().toUpperCase(); if(!code)return;
+ await F.setDoc(roomRef(code),{gameId:GAME_ID,status:"waiting",round:0,revealed:false,updatedAt:F.serverTimestamp()},{merge:true}); subscribeHost();
+}
+window.joinGame=async()=>{
+ const code=$("classCode").value.trim().toUpperCase(), members=$("members").value.trim(); if(!code||!members){alert("Completa código e integrantes.");return}
+ const ok=await initFirebase(); if(!ok){alert("Para jugar en grupo debes configurar Firebase. ");return}
+ const rr=await F.getDoc(roomRef(code)); if(!rr.exists()){alert("La sala todavía no está abierta.");return}
+ const id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36));
+ const qs=await F.getDocs(F.collection(db,"el_flaco_rooms",code,"teams")); const used=new Set(qs.docs.map(d=>d.data().branch));
+ const available=BRANCHES.filter(b=>!used.has(b)); const branch=(available.length?available:BRANCHES)[Math.floor(Math.random()*(available.length||BRANCHES.length))];
+ me={id,branch,members,score:0,round:0,choices:{},eco:new Set()}; localStorage.setItem("elflaco_me",JSON.stringify({...me,eco:[]}));
+ await F.setDoc(teamRef(code,id),{branch,members,score:0,round:0,choices:{},eco:[],joinedAt:F.serverTimestamp()});
+ $("assignedBranch").textContent="EL FLACO · "+branch; show("waiting"); listenRoom(code);
+}
+function listenRoom(code){
+ if(roomUnsub)roomUnsub();
+ roomUnsub=F.onSnapshot(roomRef(code),snap=>{if(!snap.exists())return; const r=snap.data();
+   if(r.status==="final"){showFinal(code);return}
+   if(r.round>0 && r.round!==me.round){me.round=r.round;show("game");$("gameBranch").textContent="EL FLACO · "+me.branch;renderChapter(r.round,!r.revealed)}
+   if(r.round===me.round && r.revealed && me.round>0) revealForPlayer(r.round);
+ });
+ subscribeRanking(code);
+}
+function renderChapter(round,active=true){
+ const c=chapters[round-1]; if(!c)return;
+ $("chapterLabel").textContent=c.label+" · CAPÍTULO "+round; $("chapterTitle").textContent=c.title;$("story").innerHTML=c.story;$("question").textContent=c.q;
+ $("progress").style.width=(round/chapters.length*100)+"%"; $("feedback").classList.add("hidden");$("submitBtn").disabled=!active;
+ const prev=me.choices[round]||[]; $("options").innerHTML=c.opts.map((o,i)=>`<button class="opt ${prev.includes(i)?"selected":""}" data-i="${i}" ${active?"":"disabled"}><strong>${o[0]}</strong><small>${o[1]}</small></button>`).join("");
+ document.querySelectorAll(".opt").forEach(b=>b.onclick=()=>toggleOption(b)); updateCount(); startTimer(active?40:0);
+}
+function toggleOption(b){const i=+b.dataset.i;let arr=me.choices[me.round]||[];if(arr.includes(i))arr=arr.filter(x=>x!==i);else{if(arr.length>=2){alert("Puedes seleccionar máximo 2 prácticas.");return}arr.push(i)}me.choices[me.round]=arr;b.classList.toggle("selected");updateCount()}
+function updateCount(){ $("selectionCount").textContent=((me.choices[me.round]||[]).length)+"/2 recursos activados" }
+function startTimer(sec){clearInterval(timerInt);remaining=sec;$("timer").textContent=sec||"—";if(!sec)return;timerInt=setInterval(()=>{remaining--;$("timer").textContent=remaining;if(remaining<=0){clearInterval(timerInt);submitDecision()}},1000)}
+window.submitDecision=async()=>{
+ const arr=me.choices[me.round]||[]; if(!arr.length){if(remaining>0){alert("Selecciona al menos una práctica.");return}}
+ clearInterval(timerInt); $("submitBtn").disabled=true;document.querySelectorAll(".opt").forEach(x=>x.disabled=true);
+ if(demo){revealForPlayer(me.round);return}
+ const code=$("classCode").value.trim().toUpperCase(); const base=arr.reduce((s,i)=>s+chapters[me.round-1].opts[i][2],0); const speed=Math.max(0,Math.round(50*(remaining/40)));
+ arr.forEach(i=>me.eco.add(chapters[me.round-1].opts[i][3]));
+ await F.setDoc(teamRef(code,me.id),{round:me.round,choices:{...me.choices,[me.round]:arr},pendingBase:base,pendingSpeed:speed,answered:true,eco:[...me.eco]},{merge:true});
+ $("feedback").innerHTML="<b>Decisión registrada.</b><br>Esperen a que el facilitador cierre el capítulo para conocer la consecuencia."; $("feedback").classList.remove("hidden");
+}
+async function revealForPlayer(round){
+ clearInterval(timerInt); const c=chapters[round-1], arr=me.choices[round]||[];
+ let base=arr.reduce((s,i)=>s+c.opts[i][2],0), speed=demo?Math.max(0,Math.round(50*(remaining/40))):0;
+ if(!demo){const code=$("classCode").value.trim().toUpperCase();const snap=await F.getDoc(teamRef(code,me.id));if(snap.exists()){const d=snap.data();base=d.pendingBase||0;speed=d.pendingSpeed||0; if(!d.scoredRounds?.includes(round)){const sr=[...(d.scoredRounds||[]),round];me.score=(d.score||0)+base+speed;await F.setDoc(teamRef(code,me.id),{score:me.score,scoredRounds:sr,answered:false},{merge:true})}else me.score=d.score||0}}
+ else me.score+=base+speed;
+ $("score").textContent=me.score;
+ const activated=arr.map(i=>c.opts[i][0]).join(" + ");
+ const hour=["6:18 p. m.","8:47 p. m.","10:32 p. m.","Tres semanas después","60 días después","Último viernes de Mauricio","Seis meses después"][round-1];
+ $("feedback").innerHTML=`<span class="pill">CONSECUENCIA</span><h3>${hour}</h3><p>La sede implementó <b>${activated||"su decisión"}</b>. La decisión modifica la manera en que las personas aprenden, comparten y aplican conocimiento.</p><hr><span class="tiny">PRÁCTICAS ACTIVADAS</span><p>${c.learn}</p><div class="tiny">Impacto interno de la decisión: ${base} · Bono de oportunidad: ${speed}</div>`;
+ $("feedback").classList.remove("hidden");
+ if($("liveEco")) {
+   $("liveEco").innerHTML=["Personas","Experiencias","Conocimiento","Conexiones","Tecnología","Condiciones culturales"].map(x=>`<div style="${me.eco.has(x)?"border:2px solid var(--green);background:#edf7f1":""}">${me.eco.has(x)?"✓ ":""}${x}</div>`).join("");
+ }
+}
+window.advanceRound=async()=>{
+ const code=$("hostCode").value.trim().toUpperCase(), snap=await F.getDoc(roomRef(code)); if(!snap.exists()){alert("Primero abre la sala.");return}
+ const n=Math.min(7,(snap.data().round||0)+1); await F.setDoc(roomRef(code),{status:"playing",round:n,revealed:false,updatedAt:F.serverTimestamp()},{merge:true});$("hostRound").textContent=n+"/7";
+}
+window.revealRound=async()=>{const code=$("hostCode").value.trim().toUpperCase();await F.setDoc(roomRef(code),{revealed:true,updatedAt:F.serverTimestamp()},{merge:true})}
+window.finishGame=async()=>{const code=$("hostCode").value.trim().toUpperCase();await F.setDoc(roomRef(code),{status:"final",revealed:true,updatedAt:F.serverTimestamp()},{merge:true})}
+window.resetRoom=async()=>{
+ if(!confirm("Esto borrará los equipos de esta sala. ¿Continuar?"))return;
+ const code=$("hostCode").value.trim().toUpperCase(), qs=await F.getDocs(F.collection(db,"el_flaco_rooms",code,"teams"));
+ for(const d of qs.docs) await F.deleteDoc(d.ref);
+ await F.setDoc(roomRef(code),{status:"waiting",round:0,revealed:false,updatedAt:F.serverTimestamp()},{merge:true});
+}
+function subscribeHost(){
+ const code=$("hostCode").value.trim().toUpperCase(); if(rankUnsub)rankUnsub();
+ rankUnsub=F.onSnapshot(F.collection(db,"el_flaco_rooms",code,"teams"),qs=>{
+   const a=qs.docs.map(d=>d.data()).sort((x,y)=>(y.score||0)-(x.score||0));
+   $("hostTeams").innerHTML=a.length?a.map(x=>`<div class="rankrow"><span>${x.branch}<br><small>${x.members}</small></span><span>${x.answered?"✓ respondió":"…"}</span></div>`).join(""):"Sin equipos todavía.";
+   $("hostRanking").innerHTML=rankHTML(a);
+ });
+ F.onSnapshot(roomRef(code),s=>{if(s.exists())$("hostRound").textContent=(s.data().round||0)+"/7"});
+}
+function subscribeRanking(code){F.onSnapshot(F.collection(db,"el_flaco_rooms",code,"teams"),qs=>{window._ranking=qs.docs.map(d=>d.data()).sort((a,b)=>(b.score||0)-(a.score||0))})}
+function rankHTML(a){return a.map((x,i)=>`<div class="rankrow"><span class="medal">${i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1)} EL FLACO · ${x.branch}</span><strong>${x.score||0}</strong></div>`).join("")||"Aún no hay resultados."}
+async function showFinal(code){
+ show("final"); const eco=me.eco.size?[...me.eco]:["Personas","Experiencias","Conocimiento","Conexiones","Tecnología","Condiciones culturales"];
+ $("eco").innerHTML=eco.map(x=>`<div>✓ ${x}</div>`).join("");
+ if(demo){$("finalRanking").innerHTML=rankHTML([{branch:me.branch,score:me.score}]);return}
+ const qs=await F.getDocs(F.collection(db,"el_flaco_rooms",code,"teams")); const a=qs.docs.map(d=>d.data()).sort((x,y)=>(y.score||0)-(x.score||0));$("finalRanking").innerHTML=rankHTML(a);
+}
+window.addEventListener("load",()=>{});
+</script>
+<div style="padding:25px;text-align:center;font:12px system-ui;color:#8c9ab0">© 2026 Santiago León López. Todos los derechos reservados.</div></body>
+</html>
