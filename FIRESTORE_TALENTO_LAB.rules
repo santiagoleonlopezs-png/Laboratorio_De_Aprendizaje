@@ -24,6 +24,18 @@ function talentoPlaying(roomCode) {
     && get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.phase == 'playing';
 }
 
+// El límite de respuesta se evalúa con hora del servidor, nunca con el reloj del equipo.
+function talentoTimeOpen(roomCode) {
+  let state = get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data;
+  // Salas creadas antes de V2.2 conservan compatibilidad hasta su próxima ronda.
+  return !state.keys().hasAll(['roundStartedAt', 'roundDurationSec'])
+    || (state.roundStartedAt is timestamp
+      && state.roundDurationSec is int
+      && state.roundDurationSec >= 60
+      && state.roundDurationSec <= 480
+      && request.time < state.roundStartedAt + duration.value(state.roundDurationSec, 's'));
+}
+
 match /talento_lab_rooms/{roomCode} {
   // Código de sala conocido, autenticación anónima para los participantes.
   allow get: if request.auth != null;
@@ -74,6 +86,7 @@ match /talento_lab_rooms/{roomCode} {
       && teamId == request.auth.uid
       && resource.data.ownerUid == request.auth.uid
       && talentoPlaying(roomCode)
+      && talentoTimeOpen(roomCode)
       && resource.data.submittedRound != get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.round
       && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
         'choice', 'legalChoice', 'submittedRound', 'submittedAt'
