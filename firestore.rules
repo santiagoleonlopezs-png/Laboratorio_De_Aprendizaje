@@ -1,0 +1,281 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =====================================================
+    // JUEGOS ACTUALES — SIN CAMBIOS
+    // =====================================================
+
+    match /game_teams/{teamId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll([
+          'gameId',
+          'classCode',
+          'teamName',
+          'score',
+          'round'
+        ]);
+
+      allow update: if
+        request.resource.data.gameId == resource.data.gameId
+        && request.resource.data.classCode == resource.data.classCode
+        && request.resource.data.teamName == resource.data.teamName;
+
+      allow delete: if false;
+    }
+
+    match /game_decisions/{decisionId} {
+      allow read: if true;
+
+      allow create, update: if
+        request.resource.data.keys().hasAll([
+          'gameId',
+          'classCode',
+          'teamName',
+          'round'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // =====================================================
+    // SATURNO — SIN CAMBIOS
+    // =====================================================
+
+    match /saturno_control/{documentId} {
+      allow read, create, update, delete: if true;
+    }
+
+    match /saturno_sessions/{sessionId} {
+      allow read, create, update, delete: if true;
+
+      match /participants/{participantId} {
+        allow read, create, update, delete: if true;
+      }
+    }
+
+    // =====================================================
+    // KNOWLEDGE CHALLENGE — QUIZ GC — SIN CAMBIOS
+    // =====================================================
+
+    match /gc_quiz_live/{roomId} {
+      allow read, create, update, delete: if true;
+
+      match /players/{playerId} {
+        allow read, create, update, delete: if true;
+      }
+    }
+
+    // =====================================================
+    // EL FLACO — ECOSISTEMA DE APRENDIZAJE — SIN CAMBIOS
+    // =====================================================
+
+    match /el_flaco_rooms/{roomCode} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+
+      match /teams/{teamId} {
+        allow read: if true;
+        allow create, update, delete: if true;
+      }
+    }
+
+    // =====================================================
+    // KNOWLEDGE CHALLENGE — BANCOS — SIN CAMBIOS
+    // =====================================================
+
+    match /gc_quiz_banks/{bankId} {
+      allow read, create, update, delete: if true;
+    }
+
+    // =====================================================
+    // LAS REGLAS DEL JUEGO — NUEVO PORTAL
+    // =====================================================
+
+    function reglasSigned() {
+  return request.auth != null;
+}
+
+function reglasHost(room) {
+  return reglasSigned()
+    && get(/databases/$(database)/documents/reglas_salas/$(room)).data.host == request.auth.uid;
+}
+
+match /reglas_salas/{room} {
+  allow create: if reglasSigned()
+    && request.resource.data.host == request.auth.uid;
+  allow read: if reglasSigned();
+  allow update, delete: if reglasSigned()
+    && resource.data.host == request.auth.uid;
+
+  match /participants/{id} {
+    allow read: if reglasSigned();
+    allow create: if reglasSigned()
+      && id == request.auth.uid
+      && request.resource.data.uid == request.auth.uid;
+    allow update: if reglasSigned()
+      && (id == request.auth.uid || reglasHost(room));
+    allow delete: if reglasHost(room);
+  }
+
+  match /pairs/{id} {
+    allow read: if reglasSigned();
+    allow create, delete: if reglasHost(room);
+    allow update: if reglasSigned() && (
+      reglasHost(room) ||
+      (resource.data.proposer == request.auth.uid
+        && resource.data.offer == null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['offer'])
+        && request.resource.data.offer is int
+        && request.resource.data.offer >= 0
+        && request.resource.data.offer <= 100) ||
+      (resource.data.receiver == request.auth.uid
+        && resource.data.offer is int
+        && resource.data.accepted == null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accepted'])
+        && request.resource.data.accepted is bool)
+    );
+  }
+
+  match /teams/{id} {
+    allow read: if reglasSigned();
+    allow create: if reglasSigned()
+      && id == request.auth.uid
+      && request.resource.data.owner == request.auth.uid;
+    allow update: if reglasSigned() && (
+      reglasHost(room) ||
+      (id == request.auth.uid
+        && request.resource.data.owner == resource.data.owner
+        && request.resource.data.policyScore == resource.data.policyScore
+        && (
+          (get(/databases/$(database)/documents/reglas_salas/$(room)).data.phase == 'r1'
+            && resource.data.lockedR1 == false
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['strategies', 'lockedR1'])
+            && request.resource.data.lockedR1 == true
+            && request.resource.data.strategies is list)
+          ||
+          (get(/databases/$(database)/documents/reglas_salas/$(room)).data.phase == 'r2'
+            && resource.data.lockedR2 == false
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actions', 'policy', 'lockedR2'])
+            && request.resource.data.lockedR2 == true
+            && request.resource.data.actions is list
+            && request.resource.data.policy is list
+            && request.resource.data.policy.size() == 5)
+        ))
+    );
+    allow delete: if reglasHost(room);
+  }
+}
+    // =====================================================
+    // ADAPTA LAB — AUTOTEST DE ADAPTABILIDAD
+    // =====================================================
+
+    match /rooms/{roomId} {
+      allow read, create, update: if true;
+      allow delete: if false;
+
+      match /submissions/{studentId} {
+        allow read, create: if true;
+        allow update, delete: if false;
+      }
+    }
+
+    // =====================================================
+    // TALENTO & RIESGO LAB — SALAS, EQUIPOS Y RANKING
+    // =====================================================
+
+    function talentoFacilitator() {
+      return request.auth != null && request.auth.token.facilitator == true;
+    }
+    
+    function talentoHost(roomCode) {
+      return talentoFacilitator()
+        && exists(/databases/$(database)/documents/talento_lab_rooms/$(roomCode))
+        && get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.hostUid == request.auth.uid;
+    }
+    
+    function talentoLobby(roomCode) {
+      return exists(/databases/$(database)/documents/talento_lab_rooms/$(roomCode))
+        && get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.phase == 'lobby';
+    }
+    
+    function talentoPlaying(roomCode) {
+      return exists(/databases/$(database)/documents/talento_lab_rooms/$(roomCode))
+        && get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.phase == 'playing';
+    }
+    
+    match /talento_lab_rooms/{roomCode} {
+      // Código de sala conocido, autenticación anónima para los participantes.
+      allow get: if request.auth != null;
+      allow list: if talentoFacilitator();
+    
+      allow create: if talentoFacilitator()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.gameId == 'talento-riesgo-v2'
+        && request.resource.data.phase == 'lobby'
+        && request.resource.data.round == -1;
+    
+      allow update: if talentoHost(roomCode)
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.gameId == resource.data.gameId;
+      allow delete: if talentoHost(roomCode);
+    
+      match /teams/{teamId} {
+        // Ranking por sala: únicamente nombres inventados de equipos, nada sensible.
+        allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/talento_lab_rooms/$(roomCode));
+    
+        allow create: if request.auth != null
+          && teamId == request.auth.uid
+          && talentoLobby(roomCode)
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 2
+          && request.resource.data.name.size() <= 40
+          && request.resource.data.score == 0
+          && request.resource.data.budget == 100
+          && request.resource.data.submittedRound == -1
+          && request.resource.data.choice == -1
+          && request.resource.data.history == []
+          && request.resource.data.effects == []
+          && request.resource.data.stats == {
+            'cap': 45,
+            'trust': 55,
+            'fair': 55,
+            'ops': 65,
+            'risk': 15
+          };
+    
+        // El facilitador es el único que liquida puntajes y consecuencias.
+        // El participante solo puede enviar UNA opción por ronda.
+        allow update: if talentoHost(roomCode)
+          || (request.auth != null
+          && teamId == request.auth.uid
+          && resource.data.ownerUid == request.auth.uid
+          && talentoPlaying(roomCode)
+          && resource.data.submittedRound != get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.round
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'choice', 'submittedRound', 'submittedAt'
+          ])
+          && request.resource.data.submittedRound == get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.round
+          && request.resource.data.choice is int
+          && request.resource.data.choice >= 0
+          && request.resource.data.choice <= 2);
+    
+        allow delete: if talentoHost(roomCode);
+      }
+    }
+
+    // =====================================================
+    // TODO LO DEMÁS CONTINÚA CERRADO
+    // =====================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
