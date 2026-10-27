@@ -240,6 +240,7 @@ match /reglas_salas/{room} {
           && request.resource.data.budget == 100
           && request.resource.data.submittedRound == -1
           && request.resource.data.choice == -1
+          && request.resource.data.legalChoice == -1
           && request.resource.data.history == []
           && request.resource.data.effects == []
           && request.resource.data.stats == {
@@ -259,12 +260,15 @@ match /reglas_salas/{room} {
           && talentoPlaying(roomCode)
           && resource.data.submittedRound != get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.round
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'choice', 'submittedRound', 'submittedAt'
+            'choice', 'legalChoice', 'submittedRound', 'submittedAt'
           ])
           && request.resource.data.submittedRound == get(/databases/$(database)/documents/talento_lab_rooms/$(roomCode)).data.round
           && request.resource.data.choice is int
           && request.resource.data.choice >= 0
-          && request.resource.data.choice <= 2);
+          && request.resource.data.choice <= 2
+          && request.resource.data.legalChoice is int
+          && request.resource.data.legalChoice >= 0
+          && request.resource.data.legalChoice <= 2);
     
         allow delete: if talentoHost(roomCode);
       }
