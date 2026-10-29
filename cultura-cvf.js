@@ -61,7 +61,51 @@ function renderStep(){const d=DIMS[step];$('dimensionBadge').textContent='DIMENS
  $('answerRows').querySelectorAll('input[data-moment]').forEach(el=>el.addEventListener('input',()=>{const raw=el.value;if(!/^\d{0,3}$/.test(raw))return;const v=Math.min(100,Number(raw)||0);answers[el.dataset.moment][step][Number(el.dataset.index)]=v;if(Number(raw)>100)el.value='100';updateTotals();storeDraft();}));$('prevStep').textContent=step?'← ANTERIOR':'← INSTRUCCIONES';$('nextStep').textContent=step===TOTAL-1?'FINALIZAR Y VER MI PERFIL ↗':'SIGUIENTE DIMENSIÓN →';updateTotals();progress();}
 function updateTotals(){for(const [key,id] of [['current','todayTotal'],['preferred','futureTotal']]){const v=answers[key][step].reduce((a,b)=>a+(Number(b)||0),0),el=$(id);el.innerHTML=(key==='current'?'ACTUAL':'DESEADA')+` <strong>${v} / 100</strong>`;el.classList.toggle('complete',v===100);}$('nextStep').disabled=!validRow(answers.current[step])||!validRow(answers.preferred[step]);}
 async function nextStep(){if(!validRow(answers.current[step])||!validRow(answers.preferred[step]))return toast('Cada columna debe sumar exactamente 100.',true);if(step<TOTAL-1){step++;storeDraft();renderStep();window.scrollTo({top:0,behavior:'smooth'});return;}if(!validAnswers(answers))return toast('Revisa las respuestas de las seis dimensiones.',true);if(practice){clearDraft();showResult(calculate(answers));return;}await sendResponse();}
-async function sendResponse(){const btn=$('nextStep');btn.disabled=true;try{if(session?.status!=='open')throw Error('La sala está cerrada para nuevas respuestas.');const data={uid:auth.currentUser.uid,team,version:1,current:encodeRows(answers.current),preferred:encodeRows(answers.preferred),submittedAt:firebase.firestore.FieldValue.serverTimestamp()};await myRef().set(data);clearDraft();showResult(calculate(answers));loadPublished();toast('Valoración registrada. Gracias por aportar a tu equipo.');}catch(e){fail(e);}finally{btn.disabled=false;}}
+async function sendResponse(){
+ const btn=$('nextStep');btn.disabled=true;
+ let stage='validación local';
+ try{
+  if(!validAnswers(answers))throw Error('Revisa que las seis dimensiones sumen 100 puntos por columna.');
+  if(!auth?.currentUser?.uid)throw Error('Tu sesión no está activa. Conserva esta pestaña y vuelve a ingresar con el código de la sala.');
+  if(!code||!team)throw Error('No se identificó la sala o el equipo.');
+  // Consultar el servidor: evita operar con salas cerradas y permite recuperar
+  // respuestas existentes sin intentar sobreescribirlas (update está prohibido).
+  stage='lectura de la sala';
+  const roomSnap=await ref().get({source:'server'});
+  if(!roomSnap.exists)throw Error('La sala ya no existe en Firebase.');
+  session=roomSnap.data();
+  if(session.status!=='open')throw Error('El facilitador cerró la recolección de esta sala.');
+  if(!Array.isArray(session.teams)||!session.teams.includes(team))throw Error('Tu equipo ya no está registrado en la configuración de esta sala.');
+  stage='verificación de respuesta previa';
+  const previous=await myRef().get({source:'server'});
+  if(previous.exists){
+   // La seguridad permite crear una vez. No confundir una respuesta previa con un error.
+   const saved=decodeResponse(previous.data());
+   answers=saved;clearDraft();showResult(calculate(saved));loadPublished();
+   toast('Esta valoración ya estaba registrada. Recuperamos tu resultado guardado.');
+   return;
+  }
+  stage='registro de la valoración';
+  const data={uid:auth.currentUser.uid,team,version:1,
+   current:encodeRows(answers.current),preferred:encodeRows(answers.preferred),
+   submittedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  await myRef().set(data);
+  clearDraft();showResult(calculate(answers));loadPublished();
+  toast('Valoración registrada. Gracias por aportar a tu equipo.');
+ }catch(e){
+  console.error('Radar de Cultura · error durante:',stage,e);
+  const denied=e?.code==='permission-denied'||/permission-denied|Missing or insufficient permissions/i.test(String(e?.message||e));
+  if(denied){
+   if(stage==='registro de la valoración'){
+    toast('Firebase permite consultar la sala, pero rechaza guardar la respuesta. Revisa que las reglas NUEVAS de ocai_rooms estén publicadas. Tus respuestas siguen en esta pestaña.',true);
+   }else if(stage==='verificación de respuesta previa'){
+    toast('Firestore no permite verificar tu respuesta previa. Revisa las reglas de lectura de ocai_rooms/responses.',true);
+   }else if(stage==='lectura de la sala'){
+    toast('Firestore no permite leer esta sala. Verifica que sea el proyecto correcto y que las reglas de ocai_rooms estén publicadas.',true);
+   }else fail(e);
+  }else fail(e);
+ }finally{btn.disabled=false;}
+}
 function showResult(m){myProfile=m;show('individual');$('resultIntro').textContent=practice?'Modo práctica: los resultados no se comparten ni se guardan en Firebase.':`Esta es tu percepción de ${team}, no una calificación individual ni el perfil total del equipo.`;$('individualResult').innerHTML=profiles(m)+advice(m)+`<div class="result-panel"><h2>Lectura por dimensión</h2>${dimensionTable(m)}</div><div id="collectiveResult" class="result-panel" style="margin-top:18px"><h2>Perfil colectivo publicado</h2><p>${practice?'No disponible en el modo práctica.':'Aparecerá cuando el facilitador publique al menos tres valoraciones del equipo.'}</p>${practice?'':'<button class="btn outline" id="refreshPublished">ACTUALIZAR PERFIL COLECTIVO →</button>'}</div>`;if(!practice)$('refreshPublished').onclick=loadPublished;}
 function renderPublished(doc){const el=$('collectiveResult');if(!el||practice)return;const g=doc?.groups?.find(x=>x.name===team);if(!g||g.n<3){el.innerHTML='<h2>Perfil colectivo publicado</h2><p>Se necesitan tres respuestas y una publicación del facilitador para ver este perfil.</p><button id="refreshPublished" class="btn outline">VOLVER A CONSULTAR →</button>';$('refreshPublished').onclick=loadPublished;return;}const m={current:g.current,preferred:g.preferred,dimensions:[]};el.innerHTML=`<span class="eyebrow">PERFIL GRUPAL · ${esc(team)} · ${g.n} RESPUESTAS</span><h2>La percepción colectiva de tu equipo</h2>${profiles(m)}${advice(m)}<p class="tiny">Son promedios grupales. Pueden coexistir perspectivas diferentes.</p><button id="refreshPublished" class="btn outline">ACTUALIZAR PERFIL →</button>`;$('refreshPublished').onclick=loadPublished;}
 async function loadPublished(){try{if(practice)return;const s=await ref().collection('summary').doc('public').get();renderPublished(s.exists?s.data():null);}catch(e){console.warn('Perfil colectivo no disponible',e);renderPublished(null);}}
