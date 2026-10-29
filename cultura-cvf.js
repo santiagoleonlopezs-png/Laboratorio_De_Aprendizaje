@@ -97,7 +97,19 @@ async function sendResponse(){
   const denied=e?.code==='permission-denied'||/permission-denied|Missing or insufficient permissions/i.test(String(e?.message||e));
   if(denied){
    if(stage==='registro de la valoración'){
-    toast('Firebase permite consultar la sala, pero rechaza guardar la respuesta. Revisa que las reglas NUEVAS de ocai_rooms estén publicadas. Tus respuestas siguen en esta pestaña.',true);
+    // Mostrar un resultado preliminar sin confundirlo con un envío exitoso.
+    // El borrador permanece para poder reintentar cuando Firebase permita crear.
+    storeDraft();
+    const preview=calculate(answers);
+    showResult(preview);
+    $('resultIntro').textContent='Resultado preliminar calculado en este dispositivo. Todavía NO se ha guardado en Firebase ni aparecerá en el tablero del facilitador.';
+    const notice=document.createElement('div');
+    notice.className='result-pending';
+    notice.setAttribute('role','status');
+    notice.innerHTML='<strong>⚠ Valoración pendiente de enviar</strong><p>Puedes revisar tu perfil y guardarlo en PDF, pero aún no forma parte del consolidado de la sala. Conservamos tu borrador en este navegador.</p><button type="button" class="btn primary" id="retryResponse">REINTENTAR GUARDADO EN FIREBASE ↗</button><p class="tiny">Si sigue rechazándose, hay que comprobar las reglas activas con el simulador de Firebase; no es un problema de los 100 puntos.</p>';
+    $('individualResult').prepend(notice);
+    notice.querySelector('#retryResponse').onclick=()=>sendResponse();
+    toast('Tu perfil ya se puede consultar como vista preliminar, pero el envío a Firebase sigue pendiente.',true);
    }else if(stage==='verificación de respuesta previa'){
     toast('Firestore no permite verificar tu respuesta previa. Revisa las reglas de lectura de ocai_rooms/responses.',true);
    }else if(stage==='lectura de la sala'){
