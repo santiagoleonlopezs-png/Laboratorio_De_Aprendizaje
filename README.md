@@ -83,3 +83,36 @@ Se preserva el juego anterior: ocho rondas, presupuesto, cinco indicadores, efec
 Las claves web de configuración Firebase y la `sb_publishable_...` de Supabase son claves *públicas de cliente* (no service-role). No colocar nunca API keys privadas, credenciales de administrador ni secretos en este repositorio.
 
 © 2026 Santiago León López. Todos los derechos reservados.
+
+
+## Activación de permisos: Knowledge, El Flaco y Reglas
+
+Esta actualización requiere publicar el código web **y** las reglas de `firestore.rules`. Guardar el archivo en GitHub no cambia los permisos de Firebase. Coordina ambos cambios fuera de una clase en curso.
+
+1. En Firebase Authentication, habilita **Anónimo** para estudiantes y **Correo/contraseña** para facilitadores. Conserva los dominios autorizados del sitio.
+2. La cuenta del facilitador debe tener el custom claim `facilitator: true`, asignado desde un entorno administrativo confiable con Firebase Admin SDK. Crear una cuenta con correo no asigna ese permiso. Nunca incluyas credenciales administrativas en el sitio o repositorio. Después de asignar el rol, vuelve a iniciar sesión.
+3. Publica esta versión web y despliega el archivo completo `firestore.rules` en el proyecto utilizado por los módulos. Si los módulos usan proyectos distintos, verifica la configuración antes de desplegar. No reemplaces las reglas con un fragmento de esta guía.
+4. Comprueba una sala nueva con un facilitador y dos navegadores de estudiantes: entrar, responder, revelar resultados y reconectar. La sesión de estudiante es anónima y persistente en ese navegador; otro dispositivo o borrar los datos crea una identidad diferente.
+
+Knowledge y El Flaco ahora identifican al participante mediante su UID autenticado. Los registros anteriores con identificadores aleatorios se conservan, pero no se recuperan por nombre. Para la transición, abre partidas nuevas. Las salas antiguas de Reglas cuyo `host` pertenece a una cuenta anónima requieren una migración administrativa de propiedad o una sala nueva con la cuenta del facilitador.
+
+### Alcance de la protección
+
+- Knowledge: el facilitador administra salas y bancos, calcula puntajes y publica el tablero; cada estudiante accede a su propio registro y puede enviar una respuesta por pregunta abierta. El tablero sigue disponible para participantes autenticados.
+- El Flaco: el facilitador controla la sala; cada estudiante modifica únicamente su equipo. Los nombres e integrantes se muestran como texto, sin interpretar HTML.
+- Reglas: crear y administrar una sala requiere el rol de facilitador; su propietario no puede cambiarse desde el cliente.
+- Se mantienen las reglas de Talento y Cultura CVF. Esta actualización **no endurece** las colecciones heredadas `game_*`, `saturno_*` ni `rooms`, ni verifica las políticas RLS de NEXUS/Supabase. Algunas de esas colecciones conservan permisos públicos.
+
+Esta es una mejora de control de acceso, no un sistema antitrampa: El Flaco conserva cálculo de puntaje en el cliente y Knowledge entrega las preguntas al navegador y recibe tiempos del cliente. Para evaluaciones de alto impacto se necesita validar resultados y tiempos en un backend confiable.
+
+### Pruebas locales de permisos
+
+Con Node.js y Java compatibles con Firebase CLI, ejecuta:
+
+```sh
+cd tests
+npm install
+npm test
+```
+
+Las pruebas usan exclusivamente el proyecto de demostración `demo-laboratorio` y el emulador local de Firestore. No prueban un despliegue real de Firebase ni el flujo visual completo.

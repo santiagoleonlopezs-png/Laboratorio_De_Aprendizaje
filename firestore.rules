@@ -58,38 +58,74 @@ service cloud.firestore {
     }
 
     // =====================================================
-    // KNOWLEDGE CHALLENGE — QUIZ GC — SIN CAMBIOS
+    // KNOWLEDGE CHALLENGE — ACCESO AUTENTICADO
     // =====================================================
+
+    function hubSigned() { return request.auth != null; }
+    function hubFacilitator() {
+      return hubSigned() && request.auth.token.facilitator == true;
+    }
 
     match /gc_quiz_live/{roomId} {
-      allow read, create, update, delete: if true;
-
+      allow get: if hubSigned();
+      allow list, create, update, delete: if hubFacilitator();
+      match /public/{id} {
+        allow get: if hubSigned() && id == 'scoreboard';
+        allow list: if false;
+        allow write: if hubFacilitator();
+      }
       match /players/{playerId} {
-        allow read, create, update, delete: if true;
+        allow get: if hubSigned() && (playerId == request.auth.uid || hubFacilitator());
+        allow list, delete: if hubFacilitator();
+        allow create: if hubSigned() && playerId == request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid','name','normalizedName','score','correctTime','rank','answers','online','lastSeen','joinedAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 100
+          && request.resource.data.score == 0 && request.resource.data.correctTime == 0
+          && request.resource.data.rank == null && request.resource.data.answers == {};
+        allow update: if hubFacilitator() || (hubSigned() && playerId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['online','lastSeen','answers'])
+          && (request.resource.data.answers == resource.data.answers || quizValidAnswer()));
+        function quizValidAnswer() {
+          let r=get(/databases/$(database)/documents/gc_quiz_live/$(roomId)).data;
+          let k=string(r.questionIndex);
+          let a=request.resource.data.answers[k];
+          return r.status == 'open' && request.time.toMillis() <= r.openedAt + 60000
+            && !(k in resource.data.answers)
+            && request.resource.data.answers.diff(resource.data.answers).affectedKeys().hasOnly([k])
+            && a.keys().hasAll(['option','elapsed','correct','points'])
+            && a.keys().hasOnly(['option','elapsed','correct','points'])
+            && a.option is int && a.option >= 0 && a.option <= 3
+            && a.elapsed is number && a.elapsed >= 0 && a.elapsed <= 60
+            && a.correct is bool && a.points == 0;
+        }
       }
     }
 
-    // =====================================================
-    // EL FLACO — ECOSISTEMA DE APRENDIZAJE — SIN CAMBIOS
-    // =====================================================
-
+    // EL FLACO: controles compartidos solo para cuentas con rol de facilitador.
     match /el_flaco_rooms/{roomCode} {
-      allow read: if true;
-      allow create, update: if true;
+      allow read: if hubSigned();
+      allow create, update: if hubFacilitator();
       allow delete: if false;
-
       match /teams/{teamId} {
-        allow read: if true;
-        allow create, update, delete: if true;
+        allow read: if hubSigned();
+        allow create: if hubSigned() && teamId == request.auth.uid
+          && request.resource.data.keys().hasOnly(['uid','branch','members','score','round','choices','eco','joinedAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.members is string && request.resource.data.members.size() <= 500
+          && request.resource.data.branch is string
+          && request.resource.data.score == 0 && request.resource.data.round == 0
+          && request.resource.data.choices == {} && request.resource.data.eco == [];
+        allow update: if hubFacilitator() || (hubSigned() && teamId == request.auth.uid
+          && resource.data.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['round','choices','pendingBase','pendingSpeed','answered','eco','score','scoredRounds']));
+        allow delete: if hubFacilitator();
       }
     }
-
-    // =====================================================
-    // KNOWLEDGE CHALLENGE — BANCOS — SIN CAMBIOS
-    // =====================================================
 
     match /gc_quiz_banks/{bankId} {
-      allow read, create, update, delete: if true;
+      allow read, create, update, delete: if hubFacilitator();
     }
 
     // =====================================================
@@ -101,16 +137,17 @@ service cloud.firestore {
 }
 
 function reglasHost(room) {
-  return reglasSigned()
+  return hubFacilitator()
     && get(/databases/$(database)/documents/reglas_salas/$(room)).data.host == request.auth.uid;
 }
 
 match /reglas_salas/{room} {
-  allow create: if reglasSigned()
+  allow create: if hubFacilitator()
     && request.resource.data.host == request.auth.uid;
   allow read: if reglasSigned();
-  allow update, delete: if reglasSigned()
-    && resource.data.host == request.auth.uid;
+  allow update: if reglasHost(room)
+    && request.resource.data.host == resource.data.host;
+  allow delete: if reglasHost(room);
 
   match /participants/{id} {
     allow read: if reglasSigned();
@@ -401,3 +438,4 @@ match /ocai_rooms/{roomCode} {
     }
   }
 }
+

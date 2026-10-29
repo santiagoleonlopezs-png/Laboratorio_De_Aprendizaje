@@ -214,24 +214,31 @@ window.hostLogin=async()=>{
    const auth=authModule.getAuth(fbApp);
    const credentials=await authModule.signInWithEmailAndPassword(auth,email,password);
    const claims=await authModule.getIdTokenResult(credentials.user,true);
-   if(claims.claims.facilitator!==true)throw Error("Tu cuenta no tiene permiso de facilitador.");
+   if(claims.claims.facilitator!==true){await authModule.signOut(auth);throw Error("Tu cuenta no tiene permiso de facilitador.");}
    $("hostPin").value="";show("host");subscribeHost();
- } catch(error){alert(error.message||"Acceso no autorizado");}
+ } catch(error){alert(error.message||"Acceso no autorizado");}finally{$("hostPin").value="";}
 }
 window.openRoom=async()=>{
  const code=$("hostCode").value.trim().toUpperCase(); if(!code)return;
  await F.setDoc(roomRef(code),{gameId:GAME_ID,status:"waiting",round:0,revealed:false,updatedAt:F.serverTimestamp()},{merge:true}); subscribeHost();
 }
 window.joinGame=async()=>{
+ try{
  const code=$("classCode").value.trim().toUpperCase(), members=$("members").value.trim(); if(!code||!members){alert("Completa código e integrantes.");return}
  const ok=await initFirebase(); if(!ok){alert("Para jugar en grupo debes configurar Firebase. ");return}
+ authModule=await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js");
+ const auth=authModule.getAuth(fbApp);await auth.authStateReady();
+ if(!auth.currentUser)await authModule.signInAnonymously(auth);
  const rr=await F.getDoc(roomRef(code)); if(!rr.exists()){alert("La sala todavía no está abierta.");return}
- const id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36));
+ const id=auth.currentUser.uid;
+ const previous=await F.getDoc(teamRef(code,id));
+ if(previous.exists()){const d=previous.data();me={...d,id,round:0,eco:new Set(d.eco||[])};$("assignedBranch").textContent="EL FLACO · "+me.branch;show("waiting");listenRoom(code);return;}
  const qs=await F.getDocs(F.collection(db,"el_flaco_rooms",code,"teams")); const used=new Set(qs.docs.map(d=>d.data().branch));
  const available=BRANCHES.filter(b=>!used.has(b)); const branch=(available.length?available:BRANCHES)[Math.floor(Math.random()*(available.length||BRANCHES.length))];
  me={id,branch,members,score:0,round:0,choices:{},eco:new Set()}; localStorage.setItem("elflaco_me",JSON.stringify({...me,eco:[]}));
- await F.setDoc(teamRef(code,id),{branch,members,score:0,round:0,choices:{},eco:[],joinedAt:F.serverTimestamp()});
+ await F.setDoc(teamRef(code,id),{uid:id,branch,members,score:0,round:0,choices:{},eco:[],joinedAt:F.serverTimestamp()});
  $("assignedBranch").textContent="EL FLACO · "+branch; show("waiting"); listenRoom(code);
+ }catch(e){alert("No fue posible ingresar: "+e.message)}
 }
 function listenRoom(code){
  if(roomUnsub)roomUnsub();
@@ -291,16 +298,17 @@ function subscribeHost(){
  const code=$("hostCode").value.trim().toUpperCase(); if(rankUnsub)rankUnsub();
  rankUnsub=F.onSnapshot(F.collection(db,"el_flaco_rooms",code,"teams"),qs=>{
    const a=qs.docs.map(d=>d.data()).sort((x,y)=>(y.score||0)-(x.score||0));
-   $("hostTeams").innerHTML=a.length?a.map(x=>`<div class="rankrow"><span>${x.branch}<br><small>${x.members}</small></span><span>${x.answered?"✓ respondió":"…"}</span></div>`).join(""):"Sin equipos todavía.";
+   $("hostTeams").innerHTML=a.length?a.map(x=>`<div class="rankrow"><span>${escapeParticipant(x.branch)}<br><small>${escapeParticipant(x.members)}</small></span><span>${x.answered?"✓ respondió":"…"}</span></div>`).join(""):"Sin equipos todavía.";
    $("hostRanking").innerHTML=rankHTML(a);
  });
  F.onSnapshot(roomRef(code),s=>{if(s.exists())$("hostRound").textContent=(s.data().round||0)+"/7"});
 }
 function subscribeRanking(code){F.onSnapshot(F.collection(db,"el_flaco_rooms",code,"teams"),qs=>{window._ranking=qs.docs.map(d=>d.data()).sort((a,b)=>(b.score||0)-(a.score||0))})}
-function rankHTML(a){return a.map((x,i)=>`<div class="rankrow"><span class="medal">${i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1)} EL FLACO · ${x.branch}</span><strong>${x.score||0}</strong></div>`).join("")||"Aún no hay resultados."}
+function escapeParticipant(s){const e=document.createElement("span");e.textContent=String(s??"");return e.innerHTML;}
+function rankHTML(a){return a.map((x,i)=>`<div class="rankrow"><span class="medal">${i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1)} EL FLACO · ${escapeParticipant(x.branch)}</span><strong>${escapeParticipant(x.score||0)}</strong></div>`).join("")||"Aún no hay resultados."}
 async function showFinal(code){
  show("final"); const eco=me.eco.size?[...me.eco]:["Personas","Experiencias","Conocimiento","Conexiones","Tecnología","Condiciones culturales"];
- $("eco").innerHTML=eco.map(x=>`<div>✓ ${x}</div>`).join("");
+ $("eco").innerHTML=eco.map(x=>`<div>✓ ${escapeParticipant(x)}</div>`).join("");
  if(demo){$("finalRanking").innerHTML=rankHTML([{branch:me.branch,score:me.score}]);return}
  const qs=await F.getDocs(F.collection(db,"el_flaco_rooms",code,"teams")); const a=qs.docs.map(d=>d.data()).sort((x,y)=>(y.score||0)-(x.score||0));$("finalRanking").innerHTML=rankHTML(a);
 }
