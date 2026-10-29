@@ -288,6 +288,111 @@ match /talento_lab_rooms/{roomCode} {
     }
 
     // =====================================================
+    // RADAR DE CULTURA DE EQUIPOS — CVF ADAPTADO
+    // =====================================================
+// RADAR DE CULTURA DE EQUIPOS (CVF) — añadir dentro de match /databases/{database}/documents.
+// Adaptación educativa independiente. El rol facilitator se asigna con Firebase Admin SDK.
+
+function cvfIsFacilitator() {
+  return request.auth != null && request.auth.token.facilitator == true;
+}
+function cvfRoom(roomCode) {
+  return get(/databases/$(database)/documents/ocai_rooms/$(roomCode)).data;
+}
+function cvfIsHost(roomCode) {
+  return cvfIsFacilitator()
+    && exists(/databases/$(database)/documents/ocai_rooms/$(roomCode))
+    && cvfRoom(roomCode).hostUid == request.auth.uid;
+}
+function cvfRoomOpen(roomCode) {
+  return exists(/databases/$(database)/documents/ocai_rooms/$(roomCode))
+    && cvfRoom(roomCode).status == 'open';
+}
+function cvfRow(row) {
+  return row is list && row.size() == 4
+    && row[0] is int && row[1] is int && row[2] is int && row[3] is int
+    && row[0] >= 0 && row[0] <= 100
+    && row[1] >= 0 && row[1] <= 100
+    && row[2] >= 0 && row[2] <= 100
+    && row[3] >= 0 && row[3] <= 100
+    && row[0] + row[1] + row[2] + row[3] == 100;
+}
+function cvfSixDimensions(rows) {
+  return rows is list && rows.size() == 6
+    && cvfRow(rows[0]) && cvfRow(rows[1]) && cvfRow(rows[2])
+    && cvfRow(rows[3]) && cvfRow(rows[4]) && cvfRow(rows[5]);
+}
+match /ocai_rooms/{roomCode} {
+  // Participantes conocen el código de su sala; no pueden enumerar salas.
+  allow get: if request.auth != null;
+  allow list: if cvfIsFacilitator();
+  allow create: if cvfIsFacilitator()
+    && request.resource.data.keys().hasOnly([
+      'gameId','hostUid','className','teams','status','createdAt','updatedAt'
+    ])
+    && request.resource.data.hostUid == request.auth.uid
+    && request.resource.data.gameId == 'culture-cvf-team-v1'
+    && request.resource.data.status == 'open'
+    && request.resource.data.className is string
+    && request.resource.data.className.size() >= 4
+    && request.resource.data.className.size() <= 75
+    && request.resource.data.teams is list
+    && request.resource.data.teams.size() >= 1
+    && request.resource.data.teams.size() <= 20;
+  allow update: if cvfIsHost(roomCode)
+    && request.resource.data.hostUid == resource.data.hostUid
+    && request.resource.data.gameId == resource.data.gameId
+    && request.resource.data.teams == resource.data.teams
+    && request.resource.data.className == resource.data.className
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+    && request.resource.data.status in ['open','closed'];
+  allow delete: if false;
+
+  match /responses/{participantId} {
+    // Respuestas individuales: solo su autor y el facilitador pueden leerlas.
+    allow get: if request.auth != null
+      && (participantId == request.auth.uid || cvfIsHost(roomCode));
+    // La consulta agregada solo puede realizarla el facilitador.
+    allow list: if cvfIsHost(roomCode);
+    allow create: if request.auth != null
+      && participantId == request.auth.uid
+      && cvfRoomOpen(roomCode)
+      && request.resource.data.keys().hasOnly([
+        'uid','team','version','current','preferred','submittedAt'
+      ])
+      && request.resource.data.keys().hasAll([
+        'uid','team','version','current','preferred','submittedAt'
+      ])
+      && request.resource.data.uid == request.auth.uid
+      && request.resource.data.team is string
+      && request.resource.data.team in cvfRoom(roomCode).teams
+      && request.resource.data.version == 1
+      && cvfSixDimensions(request.resource.data.current)
+      && cvfSixDimensions(request.resource.data.preferred)
+      && request.resource.data.submittedAt == request.time;
+    // Una sola respuesta por identidad anónima; no permitir modificar respuestas.
+    allow update, delete: if false;
+  }
+  match /summary/{documentId} {
+    // Solo se expone el agregado publicado, nunca respuestas individuales.
+    allow get: if request.auth != null && documentId == 'public'
+      && resource.data.overall.n >= 3;
+    allow list: if false;
+    allow create, update: if documentId == 'public'
+      && cvfIsHost(roomCode)
+      && request.resource.data.keys().hasOnly([
+        'version','groups','overall','publishedAt'
+      ])
+      && request.resource.data.version == 1
+      && request.resource.data.groups is list
+      && request.resource.data.overall is map
+      && request.resource.data.overall.n is int
+      && request.resource.data.overall.n >= 3;
+    allow delete: if false;
+  }
+}
+
+    // =====================================================
     // TODO LO DEMÁS CONTINÚA CERRADO
     // =====================================================
 
