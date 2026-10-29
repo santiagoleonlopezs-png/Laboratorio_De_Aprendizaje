@@ -14,6 +14,20 @@ Experiencias: **Talento & Riesgo**, **Knowledge Challenge**, **Las reglas del ju
 - Estudiantes ingresan mediante nombre y código de sala según cada experiencia.
 - El acceso de facilitadores se autentica mediante correo y contraseña (Firebase Auth o Supabase Auth). Ya no hay contraseñas de facilitador escritas en el código público.
 
+## Radar de Cultura de Equipos — adaptación CVF / OCAI
+
+El nuevo instrumento está en [`cultura-cvf.html`](./cultura-cvf.html), accesible desde el hub.
+
+**Metodología.** Adaptación educativa independiente, con textos originales, del Marco de Valores en Competencia de Cameron y Quinn. Mantiene seis dimensiones: identidad dominante, liderazgo, gestión de las personas, vínculo, énfasis estratégico y criterios de éxito. En cada una la persona reparte **100 puntos** entre cuatro orientaciones —Clan/Colaborar, Adhocracia/Crear, Mercado/Lograr y Jerarquía/Organizar— para **Hoy** y otros **100 puntos** para la cultura **Deseada**. Se promedian los seis puntajes de cada tipo (puntuaciones ipsativas) y luego se calcula el promedio simple de los perfiles individuales de cada equipo. No es el instrumento oficial OCAI™ ni debe anunciarse como una aplicación psicométrica validada o autorizada.
+
+**Participantes.** Entran con código y eligen un equipo de los definidos por el facilitador, sin solicitar nombres, documentos, correo, fecha de nacimiento o datos sensibles. Reciben su mapa actual/deseado, interpretación de las brechas, seis dimensiones y recomendaciones prácticas conectadas con el perfil deseado. Tras publicar el facilitador, pueden consultar también un agregado de su equipo si hay al menos 3 respuestas. Pueden experimentar antes en modo práctica sin enviar datos.
+
+**Facilitador.** Requiere Firebase Auth con custom claim `facilitator: true`. Crea una sala con equipos predefinidos, comparte código, observa respuestas agregadas por equipo y total (mínimo 3), compara perfiles actuales y deseados, observa brechas y propuestas conductuales; puede cerrar/reabrir recepción, exportar promedios a CSV y publicar un resumen grupal consultable por participantes. No visualiza respuestas identificadas en la interfaz. Una sola respuesta por UID anónimo y sala.
+
+**Firebase.** El archivo [`FIRESTORE_CULTURA_CVF.rules`](./FIRESTORE_CULTURA_CVF.rules) contiene las reglas del módulo. Están integradas en [`firestore.rules`](./firestore.rules), junto con las de los demás simuladores. Se deben **publicar manualmente** en Firebase Console tras revisar su compatibilidad con las reglas activas: GitHub no modifica la base de datos. Las respuestas viven en `ocai_rooms/{codigo}/responses/{auth.uid}`; el agregado publicado, en `ocai_rooms/{codigo}/summary/public`. El facilitador puede consultar respuestas para calcular el promedio, y solo publica agregados con tamaño mínimo de grupo de 3. En el frontend no se importan ni publican las bases de personal que pudieran adjuntarse accidentalmente.
+
+Fuentes de referencia metodológica: https://www.ocai-official.com/about-ocai y https://www.ocai-official.com/intro-to-cvf. Para usar el **cuestionario oficial OCAI™** se deben verificar las condiciones de licencia con Cameron Institute.
+
 ## Talento & Riesgo Lab V2.3 — bitácora de decisiones para el facilitador
 
 Sin cambiar las partidas, los puntajes o las reglas de acceso existentes, el facilitador propietario dispone de un **resumen para conversar sobre las decisiones de sus equipos**:
