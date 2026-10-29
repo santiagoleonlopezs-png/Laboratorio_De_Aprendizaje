@@ -82,3 +82,24 @@ h1 em,h2 em{font-weight:400;font-style:normal;color:#8FB4FF}
 footer{padding:25px 4%;border-top:1px solid #293F5E;color:#879DBA;font-size:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 @media(max-width:1000px){.hero{grid-template-columns:1fr}.hero-art{display:none}.result-layout{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}.setup-grid{grid-template-columns:1fr}.entry-card p{min-height:0}}
 @media(max-width:680px){.navbar{padding:14px 18px}.back span,.owner{display:none}.shell{padding:0 18px}.screen{padding:26px 0 50px}.hero{min-height:0}.hero h1{font-size:47px}.lead{font-size:16px}.entry-grid{grid-template-columns:1fr}.entry-card,.setup-card{padding:22px}.practice{flex-direction:column;align-items:stretch}.practice .btn{width:100%}.answer-row{grid-template-columns:1fr 78px 78px;gap:8px;padding:11px}.table-legend{grid-template-columns:1fr 78px 78px;gap:8px;padding:0 6px 8px;font-size:10px}.answer-row .desc{font-size:13px}.answer-row input{font-size:16px;padding:12px 4px}.totals{justify-content:stretch}.total-block{padding:9px;min-width:0;flex:1;font-size:10px;gap:3px}.total-block strong{font-size:15px}.survey-actions .btn{font-size:11px;padding:9px}.survey-top h1{font-size:34px}.step-heading{padding:20px}.step-heading h2{font-size:26px}.result-panel,.dash-card{padding:20px}.action-cards{grid-template-columns:1fr}.profile-line{grid-template-columns:88px 1fr 39px 39px;gap:5px;font-size:11px}.toolbar-actions{width:100%}.toolbar-actions .btn{flex:1}.dash-toolbar label{max-width:none;flex-basis:100%}}
+
+@media print{
+ :root{color-scheme:light}
+ body{background:white!important;color:#152033!important;font-size:11px}
+ .ambient,.navbar,footer,.result-buttons,.result-top .eyebrow,.toast,#collectiveResult button{display:none!important}
+ .shell{max-width:none;padding:0 12mm}
+ .screen{padding:0}
+ .screen:not(#individual){display:none!important}
+ #individual{display:block!important}
+ .result-panel,.result-summary,.action-card{background:white!important;box-shadow:none!important;border:1px solid #C3CEDC!important;break-inside:avoid}
+ p,.tiny,.action-card li,.result-summary p{color:#334155!important}
+ .profile-line,.dim-table{color:#152033}
+ .cvf-graphic{max-width:280px}
+ .result-layout{grid-template-columns:1fr 1fr}
+ .action-cards{grid-template-columns:1fr 1fr}
+ .result-top h1{font-size:28px}
+ .result-panel h2,.result-summary h2{font-size:20px}
+ .result-summary{padding:15px}
+ .result-panel{padding:15px}
+ #individualResult{display:block}
+}
