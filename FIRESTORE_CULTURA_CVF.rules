@@ -17,16 +17,15 @@ function cvfRoomOpen(roomCode) {
     && cvfRoom(roomCode).status == 'open';
 }
 function cvfRow(row) {
-  // Cada dimension es un mapa con cuatro valores enteros. Firestore
-  // no admite arrays de arrays en su edicion Standard.
+  // Cuatro enteros no negativos cuya suma es 100:
+  // cada valor queda automaticamente entre 0 y 100.
+  // Version compacta para evitar evaluaciones innecesarias.
   return row is map
-    && row.keys().hasAll(['a','b','c','d'])
     && row.keys().hasOnly(['a','b','c','d'])
-    && row.a is int && row.b is int && row.c is int && row.d is int
-    && row.a >= 0 && row.a <= 100
-    && row.b >= 0 && row.b <= 100
-    && row.c >= 0 && row.c <= 100
-    && row.d >= 0 && row.d <= 100
+    && row.a is int && row.b is int
+    && row.c is int && row.d is int
+    && row.a >= 0 && row.b >= 0
+    && row.c >= 0 && row.d >= 0
     && row.a + row.b + row.c + row.d == 100;
 }
 function cvfSixDimensions(rows) {
