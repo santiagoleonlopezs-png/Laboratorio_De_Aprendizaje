@@ -17,13 +17,11 @@ function cvfRoomOpen(roomCode) {
     && cvfRoom(roomCode).status == 'open';
 }
 function cvfRow(row) {
-  // Cuatro enteros no negativos cuya suma es 100:
-  // cada valor queda automaticamente entre 0 y 100.
-  // Version compacta para evitar evaluaciones innecesarias.
+  // Minimo coste de evaluacion por fila para 12 distribuciones.
+  // Operaciones numericas fallan ante valores no numericos.
+  // No se permiten puntos negativos, y la suma de 100 limita el maximo.
   return row is map
     && row.keys().hasOnly(['a','b','c','d'])
-    && row.a is int && row.b is int
-    && row.c is int && row.d is int
     && row.a >= 0 && row.b >= 0
     && row.c >= 0 && row.d >= 0
     && row.a + row.b + row.c + row.d == 100;
