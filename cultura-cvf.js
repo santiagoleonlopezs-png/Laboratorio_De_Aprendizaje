@@ -106,7 +106,7 @@ async function sendResponse(){
     const notice=document.createElement('div');
     notice.className='result-pending';
     notice.setAttribute('role','status');
-    notice.innerHTML='<strong>⚠ Valoración pendiente de enviar</strong><p>Puedes revisar tu perfil y guardarlo en PDF, pero aún no forma parte del consolidado de la sala. Conservamos tu borrador en este navegador.</p><button type="button" class="btn primary" id="retryResponse">REINTENTAR GUARDADO EN FIREBASE ↗</button><p class="tiny">Si sigue rechazándose, hay que comprobar las reglas activas con el simulador de Firebase; no es un problema de los 100 puntos.</p>';
+    notice.innerHTML='<strong>⚠ Valoración pendiente de enviar</strong><p>Puedes revisar tu perfil y guardarlo en PDF, pero aún no forma parte del consolidado de la sala. Conservamos tu borrador en este navegador.</p><button type="button" class="btn primary" id="retryResponse">REINTENTAR GUARDADO EN FIREBASE ↗</button><p class="tiny">Si sigue rechazándose, hay que comprobar las reglas activas con el simulador de Firebase; no es un problema de los 100 puntos.</p><details class="pending-diagnostics"><summary>DATOS PARA DIAGNOSTICAR LA REGLA</summary><p><b>Sala:</b> '+esc(code)+'</p><p><b>Equipo:</b> '+esc(team)+'</p><p><b>ID de participante (anónimo):</b> '+esc(auth.currentUser.uid)+'</p><p><b>Ruta:</b> ocai_rooms/'+esc(code)+'/responses/'+esc(auth.currentUser.uid)+'</p><p>Formato: 6 mapas de cuatro enteros para Hoy y 6 para Deseada. No se muestra ninguna respuesta individual.</p></details>';
     $('individualResult').prepend(notice);
     notice.querySelector('#retryResponse').onclick=()=>sendResponse();
     toast('Tu perfil ya se puede consultar como vista preliminar, pero el envío a Firebase sigue pendiente.',true);
