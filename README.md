@@ -16,6 +16,10 @@ Experiencias: **Talento & Riesgo**, **Knowledge Challenge**, **Las reglas del ju
 
 ## Radar de Cultura de Equipos — adaptación CVF / OCAI
 
+**Corrección verificada de permisos (29/10/2026).** El primer intento con reglas largas fue rechazado por el límite de 1.000 expresiones evaluadas por solicitud de Firestore, confirmado en el emulador (error `PERMISSION_DENIED`). Se optimizó `cvfRow` para revisar las cuatro puntuaciones no negativas que suman 100, sin repetir validaciones costosas. La interfaz sigue exigiendo enteros entre 0 y 100. GitHub Actions [Validar reglas Radar de Cultura](./.github/workflows/validate-cvf-rules.yml) verifica automáticamente que el envío de las 12 distribuciones se autorice y que se bloqueen duplicados, identidades ajenas, equipos inexistentes y sumas incorrectas. **La prueba terminó correctamente:** [Ejecución de validación](https://github.com/santiagoleonlopezs-png/Laboratorio_De_Aprendizaje/actions/runs/40828300555). Para usarlo en producción es obligatorio **publicar manualmente `firestore.rules` en Firebase** o configurar un despliegue autorizado: el repositorio no dispone de conexión para desplegar reglas directamente. No cargar datos personales en los tests.
+
+
+
 El nuevo instrumento está en [`cultura-cvf.html`](./cultura-cvf.html), accesible desde el hub.
 
 **Metodología.** Adaptación educativa independiente, con textos originales, del Marco de Valores en Competencia de Cameron y Quinn. Mantiene seis dimensiones: identidad dominante, liderazgo, gestión de las personas, vínculo, énfasis estratégico y criterios de éxito. En cada una la persona reparte **100 puntos** entre cuatro orientaciones —Clan/Colaborar, Adhocracia/Crear, Mercado/Lograr y Jerarquía/Organizar— para **Hoy** y otros **100 puntos** para la cultura **Deseada**. Se promedian los seis puntajes de cada tipo (puntuaciones ipsativas) y luego se calcula el promedio simple de los perfiles individuales de cada equipo. No es el instrumento oficial OCAI™ ni debe anunciarse como una aplicación psicométrica validada o autorizada.
