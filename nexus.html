@@ -550,7 +550,7 @@ async function execute(){
  let sum=[...document.querySelectorAll("[data-diag]")].reduce((a,b)=>a+(+b.value),0);
  if(sum!==100)return alert("Distribuye exactamente 100 puntos de atención.");
  if(selected.length<1)return alert("Selecciona al menos una intervención.");
- if(selectedCost()>TOTAL_BUDGET-(state.spent||0))return alert("No tienes suficientes créditos disponibles en la bolsa total de transformación.");
+ if(selectedCost()>TOTAL_BUDGET+(state.borrowed||0)-(state.spent||0))return alert("Solicita financiación antes de ejecutar la intervención.");
  let hyp=$("hypothesis").value.trim();if(hyp.length<20)return alert("Formula una hipótesis breve de al menos 20 caracteres.");
  const roundSpend=selectedCost();
  clearInterval(tick); let e=effects(), consequence=e.__consequence||{}; delete e.__consequence; let before={...state.metrics};
@@ -569,20 +569,14 @@ let health=vars.slice(0,6).reduce((a,v)=>a+state.metrics[v],0)/6;
  let accuracy=vars.reduce((a,v)=>a+Math.abs(bets[v]-(state.metrics[v]-before[v])),0)/vars.length;
  let lectura=Math.max(0,100-accuracy*6);
  let sostenibilidad=Math.max(0,100-Math.max(0,imbalance-25)*1.6);
- // Puntaje final 0–100: 30% negocio, 30% apropiación, 20% salud del cambio,
- // 10% precisión de la hipótesis/apuesta y 10% equilibrio sostenible.
- state.score=Math.round(
-  (
-    state.metrics.Conciencia+
-    state.metrics.Confianza+
-    state.metrics.Energía+
-    state.metrics.Compromiso+
-    state.metrics.Conocimiento+
-    state.metrics.Capacidad+
-    state.metrics.Apropiación+
-    state.business
-  )/8
-);
+ // Puntaje competitivo: desempeño medio de indicadores y negocio,
+ // menos penalización financiera del endeudamiento acumulado.
+ state.baseScore=Math.round((
+   state.metrics.Conciencia+state.metrics.Confianza+state.metrics.Energía+
+   state.metrics.Compromiso+state.metrics.Conocimiento+state.metrics.Capacidad+
+   state.metrics.Apropiación+state.business
+ )/8);
+ state.score=Math.max(0,state.baseScore-debtPenalty());
  const decisionRecord={round:state.round+1,target:$("target").value,audience:$("audience").value,practices:selected.map(i=>practices[i][0]),credits:roundSpend,hypothesis:hyp,consequence:consequence,before:{...before},after:{...state.metrics}};
  state.history.push(decisionRecord);
  state.spent=(state.spent||0)+roundSpend;
@@ -601,7 +595,8 @@ let health=vars.slice(0,6).reduce((a,v)=>a+state.metrics[v],0)/6;
  $("resultHypothesis").textContent=hyp;
  $("resultPractices").innerHTML=selected.map(i=>`<span>${easyName(practices[i][0])}</span>`).join("");
  $("resultSpentRound").textContent=roundSpend+" créditos";
- $("resultBudgetLeft").textContent=(TOTAL_BUDGET-state.spent)+" créditos";
+ $("resultBudgetLeft").textContent=(TOTAL_BUDGET+(state.borrowed||0)-state.spent)+" créditos";
+ $("resultDebt").textContent=(state.borrowed||0)+" créditos (−"+debtPenalty()+" pts)";
  $("resultBusiness").textContent=Math.round(state.business)+"/100";
  const readingParts=[verdict];
  if(consequence.high?.length) readingParts.push("Hubo prácticas altamente pertinentes para las señales de esta ronda.");
@@ -610,6 +605,7 @@ let health=vars.slice(0,6).reduce((a,v)=>a+state.metrics[v],0)/6;
  if(consequence.irrelevant?.length) readingParts.push("Una o más prácticas no respondían suficientemente al problema central y prácticamente no generaron beneficio.");
  if(consequence.counterproductive?.length) readingParts.push("Una o más prácticas fueron inoportunas y produjeron efectos contraproducentes.");
  if(consequence.opportunity) readingParts.push("El problema crítico siguió deteriorándose por costo de oportunidad.");
+ if(state.borrowed>0)readingParts.push("Los préstamos permitieron continuar, pero la deuda restó "+debtPenalty()+" puntos a la clasificación.");
  $("resultReading").textContent=readingParts.join(" ");
  $("resultDeltas").innerHTML=vars.map(v=>{const d=Math.round(state.metrics[v]-before[v]);return `<div class="resultDelta"><span>${v}</span><div class="resultDeltaBar"><i style="width:${Math.round(state.metrics[v])}%"></i></div><b class="${d<0?"down":"up"}">${Math.round(state.metrics[v])} (${d>0?"+":""}${d})</b></div>`}).join("");
  const warnings=[...(consequence.warnings||[])];
