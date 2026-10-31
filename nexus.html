@@ -688,7 +688,7 @@ window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
 <script>
 (() => {
   const $f=id=>document.getElementById(id);
-  let timer=null, rowsCache=[];
+  let facUnsub=null,facSerial=0,rowsCache=[];
   const medal=i=>i===0?"🥇":i===1?"🥈":i===2?"🥉":String(i+1);
   const fmt=d=>{
     if(!d)return "—";
@@ -704,30 +704,31 @@ window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
   }
   function closeFac(){
     $f("facOverlay").classList.remove("show");
-    if(timer)clearInterval(timer);
+    facSerial++;
+    if(facUnsub){facUnsub();facUnsub=null;}
   }
   async function loadFac(){
     const code=$f("facClassCode").value.trim().toUpperCase();
-    if(!code){$f("facError").textContent="Ingresa el código de la clase.";return}
+    if(!/^[A-Z0-9-]{3,30}$/.test(code)){
+      $f("facError").textContent="Ingresa un código válido (3–30 caracteres).";return;
+    }
+    const serial=++facSerial;
+    if(facUnsub){facUnsub();facUnsub=null;}
     $f("facError").textContent="";
     try{
-      if(!sb)throw Error("No se cargó Supabase. Revisa la conexión o los bloqueadores de scripts.");
-      const [{data,error},{data:decisions,error:decError}]=await Promise.all([
-        sb.from("change_leadership_scores").select("*").eq("class_code",code).order("score",{ascending:false}),
-        sb.from("change_leadership_decisions").select("*").eq("class_code",code).order("round",{ascending:true})
-      ]);
-      if(error)throw error;
-      if(decError)console.error(decError);
-      rowsCache=data||[];
-      window.__facDecisions=decisions||[];
-      renderFac();
-      const box=$f("facDecisions");
-      if(box){
-        const grouped={};(decisions||[]).forEach(d=>(grouped[d.team]??=[]).push(d));
-        box.innerHTML=Object.keys(grouped).length?Object.entries(grouped).map(([tm,ds])=>`<div style="border-top:1px solid #e5e7eb;padding:14px 0"><b>${tm}</b>${ds.sort((a,b)=>a.round-b.round).map(d=>`<div style="margin-top:10px;padding:12px;background:#f8fafc;border-radius:10px"><b>R${d.round}</b> · ${(d.practices||[]).map(easyName).join(" + ")}<br><span class="facMuted">Objetivo: ${d.objective||"—"} · Audiencia: ${d.audience||"—"}</span>${d.hypothesis?`<br>${d.hypothesis}`:""}${d.consequence?`<br><span class="facMuted"><b>Consecuencia:</b> ${d.consequence}</span>`:""}</div>`).join("")}</div>`).join(""):`<div class="facMuted">Aún no hay decisiones registradas para esta sala.</div>`;
-      }
+      const unsubscribe=await window.NEXUS_FIREBASE.subscribeRoom(code,(rows,decisions)=>{
+        if(serial!==facSerial)return;
+        rowsCache=rows;renderFac();
+        const grouped={};
+        for(const d of decisions)(grouped[d.team]??=[]).push(d);
+        $f("facDecisions").innerHTML=Object.keys(grouped).length
+          ?Object.entries(grouped).map(([tm,ds])=>`<div style="border-top:1px solid #e5e7eb;padding:14px 0"><b>${nexusEscape(tm)}</b>${ds.sort((a,b)=>a.round-b.round).map(d=>`<div style="margin-top:10px;padding:12px;background:#f8fafc;border-radius:10px"><b>R${d.round}</b> · ${(d.practices||[]).map(x=>nexusEscape(easyName(x))).join(" + ")}<br><span class="facMuted">Objetivo: ${nexusEscape(d.objective||"—")} · Audiencia: ${nexusEscape(d.audience||"—")}</span>${d.hypothesis?`<br>${nexusEscape(d.hypothesis)}`:""}${d.consequence?`<br><span class="facMuted"><b>Consecuencia:</b> ${nexusEscape(d.consequence)}</span>`:""}</div>`).join("")}</div>`).join("")
+          :'<div class="facMuted">Aún no hay decisiones registradas para esta sala.</div>';
+      },e=>$f("facError").textContent=e);
+      if(serial!==facSerial){unsubscribe();return;}
+      facUnsub=unsubscribe;
     }catch(e){
-      $f("facError").textContent="No se pudo cargar la sala: "+nexusError(e);
+      if(serial===facSerial)$f("facError").textContent="No se pudo cargar la sala: "+nexusError(e);
     }
   }
   function renderFac(){
@@ -739,13 +740,14 @@ window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
     $f("facUpdated").textContent=new Date().toLocaleTimeString("es-CO",{hour:"2-digit",minute:"2-digit"});
     $f("facRows").innerHTML=rows.length?rows.map((r,i)=>`<tr>
       <td class="facMedal">${medal(i)}</td>
-      <td><b>${r.team||"—"}</b></td>
+      <td><b>${nexusEscape(r.team||"—")}</b></td>
       <td><b>${Math.round(r.score||0)}/100</b></td>
+      <td class="debtLabel">${Math.round(r.borrowed||0)} créditos</td>
       <td>R${r.round||1}</td>
       <td>${Math.round(r.business||0)}/100</td>
       <td>${Math.round(r.appropriation||0)}/100</td>
       <td class="facMuted">${fmt(r.updated_at)}</td>
-    </tr>`).join(""):`<tr><td colspan="7" class="facMuted">No hay equipos registrados para esta sala.</td></tr>`;
+    </tr>`).join(""):`<tr><td colspan="8" class="facMuted">No hay equipos registrados para esta sala.</td></tr>`;
   }
   $f("facOpen").onclick=openFac;
   $f("facCancel").onclick=closeFac;
