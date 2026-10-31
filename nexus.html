@@ -619,95 +619,45 @@ let health=vars.slice(0,6).reduce((a,v)=>a+state.metrics[v],0)/6;
 }
 function renderMetricsOnly(){$("metrics").innerHTML=vars.map(v=>`<div class="metricrow"><span>${v}</span><div class="bar"><div class="fill" style="width:${state.metrics[v]}%"></div></div><b>${Math.round(state.metrics[v])}</b></div>`).join("")+`<div class="metricrow"><span>KPI negocio</span><div class="bar"><div class="fill" style="width:${state.business}%"></div></div><b>${Math.round(state.business)}</b></div>`;$("scoreTag").textContent=state.score+"/100"}
 function save(){localStorage.setItem(stateKey(),JSON.stringify(state))}
-function nexusError(e){
-  const msg=String(e?.message||e||"");
-  if(/failed to fetch|fetch failed|networkerror|network request|err_name_not_resolved|timeout/i.test(msg))
-    return "No hay conexión con Supabase. Verifica que el proyecto esté activo y que la red permita acceder a él.";
-  if(/permission denied|42501|403|unauthorized/i.test(msg))
-    return "Supabase rechazó la solicitud. Revisa las políticas RLS y los permisos.";
-  return msg||"No se pudo contactar con Supabase.";
-}
-function nexusEscape(v){
-  return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-let sb=null;
-if(C.supabaseUrl && C.supabaseAnonKey && window.supabase){
-  sb = window.supabase.createClient(C.supabaseUrl, C.supabaseAnonKey);
-}
-async function syncDecision(d){
- if(!sb||!d)return;
- const reading=[
-  d.consequence?.high?.length?"Prácticas altamente pertinentes.":"",
-  d.consequence?.medium?.length?"Intervenciones parcialmente pertinentes.":"",
-  d.consequence?.low?.length?"Hubo decisiones de baja pertinencia.":"",
-  d.consequence?.irrelevant?.length?"Hubo prácticas que no respondieron al problema central.":"",
-  d.consequence?.counterproductive?.length?"Se generaron efectos contraproducentes.":"",
-  d.consequence?.opportunity?"Hubo costo de oportunidad.":""
- ].filter(Boolean).join(" ");
- const {error}=await sb.from("change_leadership_decisions").upsert({
-  class_code:classCode,team,round:d.round,objective:d.target,audience:d.audience,
-  practices:d.practices,hypothesis:d.hypothesis,consequence:reading,
-  warnings:d.consequence?.warnings||[],score:state.score,business:state.business,
-  appropriation:state.metrics.Apropiación,metrics:{before:d.before,after:d.after},
-  created_at:new Date().toISOString()
- },{onConflict:"class_code,team,round"});
- if(error)console.error("Supabase decision sync error:",error);
-}
+function nexusError(e){return window.NEXUS_FIREBASE?.error(e)||String(e?.message||e);}
+function nexusEscape(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+// El equipo conserva su historial y puntaje en un mismo documento de Firestore.
+// Evitamos depender de dos solicitudes separadas para mostrar decisiones y ranking.
+async function syncDecision(){return true;}
 async function syncScore(){
-  if(!sb)return false;
-  try{
-    const {error}=await sb.from("change_leadership_scores").upsert({
-      class_code:classCode,team,score:state.score,round:state.round+1,
-      business:state.business,appropriation:state.metrics.Apropiación,
-      updated_at:new Date().toISOString()
-    },{onConflict:"class_code,team"});
-    if(error)throw error;
-    return true;
-  }catch(error){
-    console.error("NEXUS: error al guardar el puntaje",error);
-    $("rankingStatus").textContent=nexusError(error)+" El avance permanece en este navegador.";
-    return false;
-  }
+ if(!state||!team||!classCode)return false;
+ try{
+   await window.NEXUS_FIREBASE.save(classCode,team,state);
+   $("rankingStatus").textContent="";
+   return true;
+ }catch(e){
+   console.error("NEXUS guardado en Firestore",e);
+   $("rankingStatus").textContent=nexusError(e)+" Tu avance se conserva localmente.";
+   return false;
+ }
 }
-let rankingBusy=false;
-async function renderRanking(){
-  if(rankingBusy||!classCode||!team||!state)return;
-  rankingBusy=true;
-  try{
-    if(!sb)throw Error("No se cargó Supabase. Revisa la conexión o los bloqueadores de scripts.");
-    const {data,error}=await sb.from("change_leadership_scores")
-      .select("team,score,round").eq("class_code",classCode).order("score",{ascending:false});
-    if(error)throw error;
-    const rows=data||[];
-    $("ranking").innerHTML=rows.map((r,i)=>{
-      const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":String(i+1);
-      return `<div class="rankrow ${r.team===team?"me":""}"><span class="rankPos">${medal}</span><span>${nexusEscape(r.team)}</span><b>${Math.round(r.score||0)}/100</b><span>R${r.round||1}</span></div>`;
-    }).join("");
-    $("rankingStatus").textContent=rows.length?"":"Todavía no hay equipos registrados en esta clase.";
-  }catch(error){
-    console.error("NEXUS: ranking sin conexión",error);
-    $("ranking").innerHTML="";
-    $("rankingStatus").textContent=nexusError(error)+" No se puede mostrar el ranking compartido.";
-  }finally{rankingBusy=false;}
+let rankingCode='';
+function renderRanking(force=false){
+ if(!state||!team||!classCode)return;
+ if(!force&&rankingCode===classCode)return;
+ rankingCode=classCode;
+ try{
+   window.NEXUS_FIREBASE.ranking(classCode,rows=>{
+     $("ranking").innerHTML=rows.map((r,i)=>{
+       const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":String(i+1);
+       return `<div class="rankrow ${r.team===team?"me":""}"><span class="rankPos">${medal}</span><span>${nexusEscape(r.team)}</span><b>${Math.round(r.score||0)}/100</b><span>R${r.round||1}</span><span class="debtLabel">${r.borrowed>0?"Deuda "+r.borrowed:""}</span></div>`;
+     }).join("");
+     $("rankingStatus").textContent=rows.length?"":"Aún no hay equipos registrados en esta clase.";
+   },e=>{
+     $("ranking").innerHTML="";
+     $("rankingStatus").textContent=e;rankingCode='';
+   });
+ }catch(e){$("rankingStatus").textContent=nexusError(e);rankingCode='';}
 }
 const refreshRankingBtn=$("refreshRanking");
-if(refreshRankingBtn)refreshRankingBtn.onclick=()=>renderRanking();
+if(refreshRankingBtn)refreshRankingBtn.onclick=()=>renderRanking(true);
 
-// Mismo patrón probado del juego de Cultura:
-// actualización automática cada 5 segundos + actualización manual.
-let rankingRefreshTimer=null;
-function startRankingRefresh(){
-  if(rankingRefreshTimer)clearInterval(rankingRefreshTimer);
-  rankingRefreshTimer=setInterval(()=>{
-    if(classCode&&team)renderRanking();
-  },5000);
-}
-startRankingRefresh();
-
-// Ranking en tiempo real: se actualiza al entrar cambios en Supabase.
-
-
-
+// Firestore actualiza el ranking al cambiar los documentos, sin sondeos periódicos.
 $("execute").onclick=execute;
 function continueAfterResult(){
   $("roundResultOverlay").classList.remove("show");
