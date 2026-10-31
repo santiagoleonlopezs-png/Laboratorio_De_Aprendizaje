@@ -71,6 +71,8 @@
 .rankingTitle h2{margin:0}
 #refreshRanking{width:30px!important;height:30px!important;padding:0!important;margin:0!important;border:0;border-radius:9px;background:#171717;color:#fff;display:inline-grid;place-items:center;cursor:pointer}
 .rankPos{font-size:1.15rem;line-height:1}
+.rankingStatus{margin:10px 0 0;font-size:.85rem;line-height:1.5;color:#a32828}
+.rankingStatus:empty{display:none}
 
 
 /* ===== Pantalla del facilitador ===== */
@@ -125,7 +127,7 @@
 
 <div class="grid">
 <section>
-  <div class="card ranking"><div class="rankingTitle"><h2>Ranking de equipos</h2><button id="refreshRanking" type="button" title="Actualizar ranking">↻</button></div><p class="muted">Puntaje general del estado del cambio y el resultado del negocio.</p><div id="ranking"></div></div>
+  <div class="card ranking"><div class="rankingTitle"><h2>Ranking de equipos</h2><button id="refreshRanking" type="button" title="Actualizar ranking">↻</button></div><p class="muted">Puntaje general del estado del cambio y el resultado del negocio.</p><div id="ranking"></div><p id="rankingStatus" class="rankingStatus" role="status" aria-live="polite"></p></div>
   <div class="card"><h2 id="roundTitle"></h2><p id="situation"></p><div id="signals" class="signals"></div></div>
   <div class="card"><h2>1. Lee el sistema</h2><p>Distribuye 100 puntos de atención según dónde crees que está el problema.</p><div id="diagnosis"></div><div class="sum">Atención asignada: <b id="diagSum">0</b>/100</div></div>
   <div class="card"><h2>Evolución de tu organización</h2><div id="metrics"></div></div>
@@ -291,6 +293,7 @@ if(!state.evolution){
 $("teamTag").textContent=" · "+team+" · "+classCode;
  $("joinOverlay").style.display="none";
  render();updateBudget();
+ void syncScore().then(ok=>{if(ok)renderRanking();});
 }
 let selected=[]; let time=420, tick;
 const $=id=>document.getElementById(id);
@@ -599,6 +602,17 @@ let health=vars.slice(0,6).reduce((a,v)=>a+state.metrics[v],0)/6;
 }
 function renderMetricsOnly(){$("metrics").innerHTML=vars.map(v=>`<div class="metricrow"><span>${v}</span><div class="bar"><div class="fill" style="width:${state.metrics[v]}%"></div></div><b>${Math.round(state.metrics[v])}</b></div>`).join("")+`<div class="metricrow"><span>KPI negocio</span><div class="bar"><div class="fill" style="width:${state.business}%"></div></div><b>${Math.round(state.business)}</b></div>`;$("scoreTag").textContent=state.score+"/100"}
 function save(){localStorage.setItem(stateKey(),JSON.stringify(state))}
+function nexusError(e){
+  const msg=String(e?.message||e||"");
+  if(/failed to fetch|fetch failed|networkerror|network request|err_name_not_resolved|timeout/i.test(msg))
+    return "No hay conexión con Supabase. Verifica que el proyecto esté activo y que la red permita acceder a él.";
+  if(/permission denied|42501|403|unauthorized/i.test(msg))
+    return "Supabase rechazó la solicitud. Revisa las políticas RLS y los permisos.";
+  return msg||"No se pudo contactar con Supabase.";
+}
+function nexusEscape(v){
+  return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
 let sb=null;
 if(C.supabaseUrl && C.supabaseAnonKey && window.supabase){
   sb = window.supabase.createClient(C.supabaseUrl, C.supabaseAnonKey);
@@ -623,27 +637,41 @@ async function syncDecision(d){
  if(error)console.error("Supabase decision sync error:",error);
 }
 async function syncScore(){
- if(!sb)return;
- const {error}=await sb.from("change_leadership_scores").upsert({class_code:classCode,team,score:state.score,round:state.round+1,business:state.business,appropriation:state.metrics.Apropiación,updated_at:new Date().toISOString()},{onConflict:"class_code,team"});
- if(error){console.error("Supabase sync error:",error);alert("No se pudo actualizar el ranking. Revisa la conexión con Supabase.");}
+  if(!sb)return false;
+  try{
+    const {error}=await sb.from("change_leadership_scores").upsert({
+      class_code:classCode,team,score:state.score,round:state.round+1,
+      business:state.business,appropriation:state.metrics.Apropiación,
+      updated_at:new Date().toISOString()
+    },{onConflict:"class_code,team"});
+    if(error)throw error;
+    return true;
+  }catch(error){
+    console.error("NEXUS: error al guardar el puntaje",error);
+    $("rankingStatus").textContent=nexusError(error)+" El avance permanece en este navegador.";
+    return false;
+  }
 }
 let rankingBusy=false;
 async function renderRanking(){
- if(rankingBusy)return;
- rankingBusy=true;
- try{
-   let rows=[{team,score:state.score,round:state.round+1}];
-   if(sb){
-     let {data,error}=await sb.from("change_leadership_scores").select("*").eq("class_code",classCode).order("score",{ascending:false});
-     if(error)console.error("Supabase ranking error:",error);
-     if(data?.length)rows=data;
-   }
-   rows.sort((a,b)=>b.score-a.score);
-   $("ranking").innerHTML=rows.map((r,i)=>{
-     const puesto = i===0 ? "🥇" : i===1 ? "🥈" : i===2 ? "🥉" : String(i+1);
-     return `<div class="rankrow ${r.team===team?"me":""}"><span class="rankPos">${puesto}</span><span>${r.team}</span><b>${Math.round(r.score||0)}/100</b><span>R${r.round||1}</span></div>`;
-   }).join("");
- }finally{rankingBusy=false;}
+  if(rankingBusy||!classCode||!team||!state)return;
+  rankingBusy=true;
+  try{
+    if(!sb)throw Error("No se cargó Supabase. Revisa la conexión o los bloqueadores de scripts.");
+    const {data,error}=await sb.from("change_leadership_scores")
+      .select("team,score,round").eq("class_code",classCode).order("score",{ascending:false});
+    if(error)throw error;
+    const rows=data||[];
+    $("ranking").innerHTML=rows.map((r,i)=>{
+      const medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":String(i+1);
+      return `<div class="rankrow ${r.team===team?"me":""}"><span class="rankPos">${medal}</span><span>${nexusEscape(r.team)}</span><b>${Math.round(r.score||0)}/100</b><span>R${r.round||1}</span></div>`;
+    }).join("");
+    $("rankingStatus").textContent=rows.length?"":"Todavía no hay equipos registrados en esta clase.";
+  }catch(error){
+    console.error("NEXUS: ranking sin conexión",error);
+    $("ranking").innerHTML="";
+    $("rankingStatus").textContent=nexusError(error)+" No se puede mostrar el ranking compartido.";
+  }finally{rankingBusy=false;}
 }
 const refreshRankingBtn=$("refreshRanking");
 if(refreshRankingBtn)refreshRankingBtn.onclick=()=>renderRanking();
@@ -720,8 +748,8 @@ window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
       if(!window.supabase||!C.supabaseUrl||!C.supabaseAnonKey) throw new Error("Supabase no está disponible.");
       const client=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
       const [{data,error},{data:decisions,error:decError}]=await Promise.all([
-        client.from("change_leadership_scores").select("*").eq("class_code",code).order("score",{ascending:false}),
-        client.from("change_leadership_decisions").select("*").eq("class_code",code).order("round",{ascending:true})
+        sb.from("change_leadership_scores").select("*").eq("class_code",code).order("score",{ascending:false}),
+        sb.from("change_leadership_decisions").select("*").eq("class_code",code).order("round",{ascending:true})
       ]);
       if(error)throw error;
       if(decError)console.error(decError);
@@ -734,7 +762,7 @@ window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
         box.innerHTML=Object.keys(grouped).length?Object.entries(grouped).map(([tm,ds])=>`<div style="border-top:1px solid #e5e7eb;padding:14px 0"><b>${tm}</b>${ds.sort((a,b)=>a.round-b.round).map(d=>`<div style="margin-top:10px;padding:12px;background:#f8fafc;border-radius:10px"><b>R${d.round}</b> · ${(d.practices||[]).map(easyName).join(" + ")}<br><span class="facMuted">Objetivo: ${d.objective||"—"} · Audiencia: ${d.audience||"—"}</span>${d.hypothesis?`<br>${d.hypothesis}`:""}${d.consequence?`<br><span class="facMuted"><b>Consecuencia:</b> ${d.consequence}</span>`:""}</div>`).join("")}</div>`).join(""):`<div class="facMuted">Aún no hay decisiones registradas para esta sala.</div>`;
       }
     }catch(e){
-      $f("facError").textContent="No se pudo cargar la sala: "+(e.message||e);
+      $f("facError").textContent="No se pudo cargar la sala: "+nexusError(e);
     }
   }
   function renderFac(){
@@ -766,9 +794,9 @@ window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
       if(error)throw error;
       const {data:identity,error:verifyError}=await sb.auth.getUser();
       if(verifyError)throw verifyError;
-      if(identity.user?.app_metadata?.facilitator!==true)throw Error("Cuenta sin permisos de facilitador.");
+      if(identity.user?.app_metadata?.facilitator!==true)throw Error("Cuenta autenticada, pero sin el permiso de facilitador en Supabase.");
       $f("facPassword").value="";
-    }catch(e){$f("facLoginError").textContent=e.message||"Acceso no autorizado";return;}
+    }catch(e){$f("facLoginError").textContent=nexusError(e);return;}
     $f("facLogin").style.display="none";$f("facDashboard").style.display="block";
     $f("facClassCode").value=(localStorage.getItem("changeClassCode")||window.CHANGE_LAB_CONFIG.classCode||"").toUpperCase();
     loadFac();
