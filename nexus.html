@@ -309,29 +309,41 @@ vars.forEach(v=>{$("target").innerHTML+=`<option>${v}</option>`;$("bets").innerH
 ["Alta dirección","Líderes","Influenciadores","Equipos","Individuos"].forEach(a=>$("audience").innerHTML+=`<option>${a}</option>`);
 practices.forEach((p,i)=>$("practices").innerHTML+=`<div class="practice" data-i="${i}"><b>${easyName(p[0])}</b><small>${p[1]}</small><span class="cost">${practiceCosts[p[0]]} créditos</span></div>`);
 function selectedCost(){return selected.reduce((sum,i)=>sum+(practiceCosts[practices[i][0]]||0),0)}
-function remainingBudget(){return Math.max(0,TOTAL_BUDGET-(state.spent||0)-selectedCost())}
+function debtPenalty(){return Math.min(50,Math.round((state?.borrowed||0)*0.4));}
+function remainingBudget(){return TOTAL_BUDGET+(state.borrowed||0)-(state.spent||0)-selectedCost();}
+function requestLoan(amount=20){
+ if(!state)return false;
+ const credits=Math.max(20,Math.ceil(amount/20)*20);
+ if(!confirm("COMITÉ FINANCIERO: SOLICITUD DE CRÉDITO\\n\\n¿Solicitar "+credits+" créditos adicionales?\\n\\nSe aprueba la financiación, pero queda registrada como deuda y penaliza el ranking en 0,4 puntos por crédito (máximo 50)."))return false;
+ state.borrowed=(state.borrowed||0)+credits;
+ state.loans=(state.loans||[]).concat({round:state.round+1,credits});
+ state.score=Math.max(0,Math.round((state.baseScore||0)-debtPenalty()));
+ $("scoreTag").textContent=state.score+"/100";
+ save();updateBudget();void syncScore();
+ return true;
+}
 function updateBudget(){
- const used=selectedCost(), spent=state.spent||0, remaining=Math.max(0,TOTAL_BUDGET-spent-used);
- $("budgetUsed").textContent=used;
- $("budgetSpent").textContent=spent;
- $("budgetRemaining").textContent=remaining;
- $("budgetFill").style.width=Math.min(100,((spent+used)/TOTAL_BUDGET)*100)+"%";
+ const used=selectedCost(),spent=state.spent||0,borrowed=state.borrowed||0;
+ const remaining=remainingBudget(),own=TOTAL_BUDGET-spent-used;
+ $("budgetUsed").textContent=used;$("budgetSpent").textContent=spent;
+ $("budgetRemaining").textContent=remaining;$("budgetOwn").textContent=own;
+ $("budgetDebt").textContent=borrowed;
+ document.querySelector(".budgetbox").classList.toggle("inDebt",borrowed>0);
+ $("budgetFill").style.width=Math.min(100,((spent+used)/(TOTAL_BUDGET+borrowed))*100)+"%";
  document.querySelectorAll(".practice").forEach(x=>{
-   const i=+x.dataset.i, cost=practiceCosts[practices[i][0]]||0;
-   x.classList.toggle("unaffordable",!selected.includes(i) && cost>remaining);
+   const i=+x.dataset.i,cost=practiceCosts[practices[i][0]]||0;
+   x.classList.toggle("unaffordable",!selected.includes(i)&&cost>remaining);
  });
 }
+$("loanRequest").onclick=()=>requestLoan(20);
 document.querySelectorAll(".practice").forEach(x=>x.onclick=()=>{
  let i=+x.dataset.i;
  if(selected.includes(i)){
    selected=selected.filter(z=>z!==i);x.classList.remove("selected");
  }else{
    const cost=practiceCosts[practices[i][0]]||0;
-   if(cost>remainingBudget()){
-     alert(`Esta intervención cuesta ${cost} créditos. Solo te quedan ${remainingBudget()} créditos para toda la transformación.`);
-     return;
-   }
    if(selected.length>=3){alert("Puedes elegir hasta 3 intervenciones por ronda. Prioriza las más útiles.");return;}
+   if(cost>remainingBudget()&&!requestLoan(cost-remainingBudget()))return;
    selected.push(i);x.classList.add("selected");
  }
  updateBudget();
