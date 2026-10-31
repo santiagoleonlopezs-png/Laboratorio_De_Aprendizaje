@@ -233,7 +233,7 @@ async function renderRooms(){
 }
 window.openClassRoom=async encoded=>{$("className").value=decodeURIComponent(encoded);await reopenClass()};
 async function enterHostRun(runId){
- hostUnsubs.forEach(u=>u());hostUnsubs=[];room=runId;state=null;players=[];selectedQuestions=null;
+ hostUnsubs.forEach(u=>u());hostUnsubs=[];room=runId;state=null;players=[];selectedQuestions=null;$("pickerList").dataset.editing='false';
  const rs=await getDoc(roomRef());if(!rs.exists())throw Error("No existe la partida seleccionada.");
  const rd=rs.data();currentBankId=rd.bankId||"agilismo";
  if(Array.isArray(rd.questions))Q=questionsFromFirestore(rd.questions);
@@ -382,30 +382,33 @@ $("revealQ").onclick=async()=>{
   finally{if(state)renderHost();}
 };
 let selectedQuestions=null;
-function selectedIndices(){return selectedQuestions&&selectedQuestions.length?selectedQuestions:Q.map((_,i)=>i);}
+function selectedIndices(){return Array.isArray(selectedQuestions)?selectedQuestions.filter(i=>Number.isInteger(i)&&i>=0&&i<Q.length):Q.map((_,i)=>i);}
 function renderPicker(){
  const box=$("pickerList");if(!box||!Q.length)return;
+ const pending=[...box.querySelectorAll('.pickCheck')];
+ if(document.activeElement?.closest?.('#pickerList')||box.dataset.editing==='true')return;
  const indices=selectedIndices();
  $("pickerStatus").textContent=`${indices.length} de ${Q.length} preguntas seleccionadas · actual: ${(state?.questionIndex??0)+1}`;
- box.innerHTML=Q.map((q,i)=>`<div class="qrow" style="display:flex;align-items:center;gap:12px;justify-content:space-between"><label style="flex:1"><input type="checkbox" class="pickCheck" value="${i}" ${indices.includes(i)?"checked":""}> <b>${i+1}.</b> ${escapeHtml(q[1])}</label><button type="button" class="secondary" onclick="window.jumpQuestion(${i})">Presentar</button></div>`).join("");
+ box.innerHTML=Q.map((q,i)=>`<div class="qrow" style="display:flex;align-items:center;gap:12px;justify-content:space-between"><label style="flex:1"><input type="checkbox" class="pickCheck" value="${i}" ${indices.includes(i)?"checked":""}> <b>${i+1}.</b> ${escapeHtml(q[1])}</label><button type="button" class="secondary" onclick="window.jumpQuestion(${i})" ${indices.includes(i)?'':'disabled title="Selecciona y guarda esta pregunta primero"'}>Presentar</button></div>`).join("");
 }
-$("pickAll").onclick=()=>{document.querySelectorAll(".pickCheck").forEach(x=>x.checked=true)};
-$("pickNone").onclick=()=>{document.querySelectorAll(".pickCheck").forEach(x=>x.checked=false)};
+$("pickerList").addEventListener('change',e=>{if(e.target.matches('.pickCheck'))$("pickerList").dataset.editing='true';});
+$("pickAll").onclick=()=>{$("pickerList").dataset.editing='true';document.querySelectorAll(".pickCheck").forEach(x=>x.checked=true)};
+$("pickNone").onclick=()=>{$("pickerList").dataset.editing='true';document.querySelectorAll(".pickCheck").forEach(x=>x.checked=false)};
 $("applySelection").onclick=async()=>{
  const arr=[...document.querySelectorAll(".pickCheck:checked")].map(x=>Number(x.value));
  if(!arr.length)return alert("Selecciona al menos una pregunta.");
- selectedQuestions=arr;
- try{await updateDoc(roomRef(),{selectedQuestions:arr,updatedAt:serverTimestamp()});renderPicker();}
+ try{await updateDoc(roomRef(),{selectedQuestions:arr,updatedAt:serverTimestamp()});selectedQuestions=arr;$("pickerList").dataset.editing='false';renderPicker();}
  catch(e){hostFailure(e);}
 };
 window.jumpQuestion=async i=>{
+ if(!selectedIndices().includes(i))return alert('Primero selecciona y guarda esta pregunta.');
  if(!confirm(`¿Presentar la pregunta ${i+1}? La pregunta actual se cerrará y los puntajes se conservarán.`))return;
  try{hostClearError();await updateDoc(roomRef(),{questionIndex:i,status:"lobby",openedAt:0,updatedAt:serverTimestamp()});}
  catch(e){hostFailure(e);}
 };
 $("nextQ").onclick=async()=>{
  const available=selectedIndices();const current=state?.questionIndex??0;
- const next=available.find(i=>i>current)??available.find(i=>i!==current);
+ const next=available[(available.indexOf(current)+1)%available.length];
  if(next==null)return;
  try{hostClearError();await updateDoc(roomRef(),{questionIndex:next,status:"lobby",openedAt:0,updatedAt:serverTimestamp()});}
  catch(e){hostFailure(e);}
