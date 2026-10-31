@@ -394,6 +394,78 @@ match /ocai_rooms/{roomCode} {
 }
 
     // =====================================================
+    // NEXUS — SALAS, EQUIPOS PRIVADOS Y RANKING
+    // =====================================================
+    function nexusFacilitator() {
+      return request.auth != null && request.auth.token.facilitator == true;
+    }
+    function nexusHost(code) {
+      return nexusFacilitator()
+        && get(/databases/$(database)/documents/nexus_rooms/$(code)).data.hostUid == request.auth.uid;
+    }
+    match /nexus_rooms/{roomCode} {
+      allow get: if request.auth != null;
+      allow list: if nexusFacilitator();
+      allow create: if nexusFacilitator()
+        && request.resource.data.gameId == 'nexus-v1'
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.classCode == roomCode
+        && request.resource.data.status == 'open';
+      allow update: if nexusHost(roomCode)
+        && request.resource.data.hostUid == resource.data.hostUid;
+      allow delete: if false;
+
+      match /teams/{teamId} {
+        allow get: if request.auth != null
+          && (request.auth.uid == teamId || nexusHost(roomCode));
+        allow list: if nexusHost(roomCode);
+        allow create: if request.auth != null
+          && request.auth.uid == teamId
+          && request.resource.data.ownerUid == teamId
+          && request.resource.data.team is string
+          && request.resource.data.team.size() >= 2
+          && request.resource.data.team.size() <= 35
+          && request.resource.data.gameState is map
+          && request.resource.data.score is int
+          && request.resource.data.score >= 0
+          && request.resource.data.score <= 100
+          && get(/databases/$(database)/documents/nexus_rooms/$(roomCode)).data.status == 'open';
+        allow update: if request.auth != null
+          && request.auth.uid == teamId
+          && resource.data.ownerUid == teamId
+          && request.resource.data.ownerUid == teamId
+          && request.resource.data.team == resource.data.team
+          && request.resource.data.round >= resource.data.round
+          && request.resource.data.borrowed >= resource.data.borrowed
+          && request.resource.data.spent >= resource.data.spent
+          && request.resource.data.score is int
+          && request.resource.data.score >= 0
+          && request.resource.data.score <= 100;
+        allow delete: if false;
+      }
+
+      match /ranking/{teamId} {
+        allow read: if request.auth != null;
+        allow create, update: if request.auth != null
+          && request.auth.uid == teamId
+          && request.resource.data.ownerUid == teamId
+          && request.resource.data.keys().hasOnly([
+            'ownerUid','team','score','round','borrowed','updatedAt'
+          ])
+          && request.resource.data.score is int
+          && request.resource.data.score >= 0
+          && request.resource.data.score <= 100
+          && request.resource.data.score == getAfter(
+            /databases/$(database)/documents/nexus_rooms/$(roomCode)/teams/$(teamId)
+          ).data.score
+          && request.resource.data.borrowed == getAfter(
+            /databases/$(database)/documents/nexus_rooms/$(roomCode)/teams/$(teamId)
+          ).data.borrowed;
+        allow delete: if false;
+      }
+    }
+
+    // =====================================================
     // TODO LO DEMÁS CONTINÚA CERRADO
     // =====================================================
 
