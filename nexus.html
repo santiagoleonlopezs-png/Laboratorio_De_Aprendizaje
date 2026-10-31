@@ -315,7 +315,7 @@ function remainingBudget(){return TOTAL_BUDGET+(state.borrowed||0)-(state.spent|
 function requestLoan(amount=20){
  if(!state)return false;
  const credits=Math.max(20,Math.ceil(amount/20)*20);
- if(!confirm("COMITÉ FINANCIERO: SOLICITUD DE CRÉDITO\\n\\n¿Solicitar "+credits+" créditos adicionales?\\n\\nSe aprueba la financiación, pero queda registrada como deuda y penaliza el ranking en 0,4 puntos por crédito (máximo 50)."))return false;
+ if(!confirm("COMITÉ FINANCIERO: SOLICITUD DE CRÉDITO\n\n¿Solicitar "+credits+" créditos adicionales?\n\nSe aprueba la financiación, pero queda registrada como deuda y penaliza el ranking en 0,4 puntos por crédito (máximo 50)."))return false;
  state.borrowed=(state.borrowed||0)+credits;
  state.loans=(state.loans||[]).concat({round:state.round+1,credits});
  state.score=Math.max(0,Math.round((state.baseScore||0)-debtPenalty()));
