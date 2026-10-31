@@ -752,22 +752,34 @@ window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
   $f("facOpen").onclick=openFac;
   $f("facCancel").onclick=closeFac;
   $f("facExit").onclick=closeFac;
+  let loggingIn=false;
   $f("facLoginBtn").onclick=async()=>{
-    try {
-      const email=$f("facEmail").value.trim(), password=$f("facPassword").value;
-      if(!email||!password) throw Error("Ingresa correo y contraseña.");
-      if(!sb) throw Error("Supabase no está configurado.");
-      const {data,error}=await sb.auth.signInWithPassword({email,password});
-      if(error)throw error;
-      const {data:identity,error:verifyError}=await sb.auth.getUser();
-      if(verifyError)throw verifyError;
-      if(identity.user?.app_metadata?.facilitator!==true)throw Error("Cuenta autenticada, pero sin el permiso de facilitador en Supabase.");
+    if(loggingIn)return;
+    loggingIn=true;$f("facLoginBtn").disabled=true;
+    $f("facLoginBtn").textContent="VERIFICANDO...";
+    $f("facLoginError").textContent="";
+    try{
+      const email=$f("facEmail").value.trim(),password=$f("facPassword").value;
+      if(!email||!password)throw Error("Ingresa correo y contraseña.");
+      await window.NEXUS_FIREBASE.login(email,password);
       $f("facPassword").value="";
-    }catch(e){$f("facLoginError").textContent=nexusError(e);return;}
-    $f("facLogin").style.display="none";$f("facDashboard").style.display="block";
-    $f("facClassCode").value=(localStorage.getItem("changeClassCode")||window.CHANGE_LAB_CONFIG.classCode||"").toUpperCase();
-    loadFac();
-    if(timer)clearInterval(timer);timer=setInterval(loadFac,5000);
+      $f("facLogin").style.display="none";$f("facDashboard").style.display="block";
+      $f("facClassCode").value=(localStorage.getItem("changeClassCode")||window.CHANGE_LAB_CONFIG.classCode||"").toUpperCase();
+      loadFac();
+    }catch(e){$f("facLoginError").textContent=nexusError(e);console.error("NEXUS facilitador",e);}
+    finally{loggingIn=false;$f("facLoginBtn").disabled=false;$f("facLoginBtn").textContent="INGRESAR";}
+  };
+  $f("facCreate").onclick=async()=>{
+    const code=$f("facClassCode").value.trim().toUpperCase();
+    if(!/^[A-Z0-9-]{3,30}$/.test(code)){
+      $f("facError").textContent="El código debe tener entre 3 y 30 caracteres (letras, números o guiones).";return;
+    }
+    $f("facError").textContent="";
+    try{
+      const created=await window.NEXUS_FIREBASE.createRoom(code);
+      await loadFac();
+      if(!$f("facError").textContent)$f("facError").textContent=created?"Sala creada. Comparte el código con los equipos.":"Esta sala ya existe y te pertenece.";
+    }catch(e){$f("facError").textContent=nexusError(e);}
   };
   $f("facLoad").onclick=loadFac;
   $f("facRefresh").onclick=loadFac;
