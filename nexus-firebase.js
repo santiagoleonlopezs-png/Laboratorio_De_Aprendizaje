@@ -50,6 +50,14 @@
       updatedAt:firebase.firestore.FieldValue.serverTimestamp()
     };
   }
+  function publicScore(team,state){
+    return {
+      ownerUid:activeUid,team,score:Math.max(0,Math.min(100,Math.round(state.score||0))),
+      round:Math.max(1,Math.min(5,(state.round||0)+1)),
+      borrowed:Math.max(0,Math.round(state.borrowed||0)),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    };
+  }
   async function join(code,team,state){
     init();
     stopRanking();
@@ -68,7 +76,11 @@
     if(existing.exists){
       restore=existing.data().gameState||null;
     }else{
-      await ref.set(scoreData(code,team,state));
+      // Registro atómico: las decisiones completas quedan privadas, el ranking es público en la sala.
+      const batch=db.batch();
+      batch.set(ref,scoreData(code,team,state));
+      batch.set(roomRef(code).collection('ranking').doc(uid),publicScore(team,state));
+      await batch.commit();
     }
     return {restore};
   }
@@ -76,13 +88,16 @@
     init();
     if(!auth.currentUser||auth.currentUser.uid!==activeUid||code!==activeCode||team!==activeTeam)
       throw Error('No hay una sesión de equipo activa para esta sala.');
-    await roomRef(code).collection('teams').doc(activeUid).update(scoreData(code,team,state));
+    const batch=db.batch();
+    batch.update(roomRef(code).collection('teams').doc(activeUid),scoreData(code,team,state));
+    batch.set(roomRef(code).collection('ranking').doc(activeUid),publicScore(team,state));
+    await batch.commit();
     return true;
   }
   function ranking(code,onUpdate,onError){
     init();stopRanking();
     if(!auth.currentUser)throw Error('Entra a una sala antes de consultar el ranking.');
-    unsubRanking=roomRef(code).collection('teams').onSnapshot(snap=>{
+    unsubRanking=roomRef(code).collection('ranking').onSnapshot(snap=>{
       const rows=snap.docs.map(d=>({...d.data(),id:d.id,updated_at:timestamp(d.data().updatedAt)}))
         .sort((a,b)=>(b.score||0)-(a.score||0)||String(a.team).localeCompare(String(b.team)));
       onUpdate(rows);
