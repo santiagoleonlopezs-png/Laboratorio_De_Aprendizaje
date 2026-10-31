@@ -222,16 +222,12 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script>
-window.CHANGE_LAB_CONFIG = {
-  allowLocalFallback: true,
-  supabaseUrl: 'https://pcosytbiduzzvhiyfatx.supabase.co',
-  supabaseAnonKey: 'sb_publishable_dX1E2-tcy0WcPL0XxCmWOA_Ufuo55J1',
-  classCode: 'LID-CAMBIO'
-};
-</script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="nexus-firebase.js"></script>
+<script>window.CHANGE_LAB_CONFIG={classCode:'LID-CAMBIO'};</script>
 
 <script>
 const C=window.CHANGE_LAB_CONFIG||{};
@@ -280,28 +276,33 @@ let classCode="";
 let state=null;
 function freshState(){return{round:0,score:0,baseScore:0,spent:0,borrowed:0,loans:[],business:55,metrics:{Conciencia:52,Confianza:58,Energía:72,Compromiso:44,Conocimiento:61,Capacidad:42,Apropiación:35},history:[]};}
 function stateKey(){return "changeState_"+classCode+"_"+team}
-function enterGame(){
- const t=$("joinTeam").value.trim();
- const c=$("joinCode").value.trim().toUpperCase();
- if(t.length<2 || c.length<3){$("joinError").textContent="Ingresa el nombre del equipo y el código de la clase.";return}
- team=t; classCode=c;
- localStorage.setItem("changeTeam",team);localStorage.setItem("changeClassCode",classCode);
- state=JSON.parse(localStorage.getItem(stateKey())||"null")||freshState();
- if(state.metrics.Conciencia===undefined) state.metrics.Conciencia=52;
-if(state.spent===undefined) state.spent=0;
-if(state.metrics.Claridad!==undefined) delete state.metrics.Claridad;
-if(state.evolution) state.evolution.forEach(p=>{ if(p.metrics && p.metrics.Claridad!==undefined) delete p.metrics.Claridad; });
-if(!state.evolution){
-  state.evolution=[{
-    label:"Inicio",
-    metrics:{...state.metrics},
-    business:state.business
-  }];
-}
-$("teamTag").textContent=" · "+team+" · "+classCode;
- $("joinOverlay").style.display="none";
- render();updateBudget();
- void syncScore().then(ok=>{if(ok)renderRanking();});
+async function enterGame(){
+ const t=$("joinTeam").value.trim(),c=$("joinCode").value.trim().toUpperCase();
+ if(t.length<2||t.length>35||c.length<3||c.length>30||!/^[A-Z0-9-]+$/.test(c)){
+   $("joinError").textContent="Ingresa un nombre válido y un código de clase (letras, números o guiones).";return;
+ }
+ const btn=$("joinBtn");btn.disabled=true;btn.textContent="CONECTANDO...";
+ $("joinError").textContent="";
+ try{
+   const local=JSON.parse(localStorage.getItem("changeState_"+c+"_"+t)||"null")||freshState();
+   const {restore}=await window.NEXUS_FIREBASE.join(c,t,local);
+   team=t;classCode=c;state=restore||local;
+   state.borrowed=Number(state.borrowed)||0;state.spent=Number(state.spent)||0;
+   state.loans=Array.isArray(state.loans)?state.loans:[];
+   state.history=Array.isArray(state.history)?state.history:[];
+   if(!state.metrics)state.metrics={...freshState().metrics};
+   if(state.metrics.Conciencia===undefined)state.metrics.Conciencia=52;
+   if(state.metrics.Claridad!==undefined)delete state.metrics.Claridad;
+   if(state.evolution)state.evolution.forEach(p=>{if(p.metrics?.Claridad!==undefined)delete p.metrics.Claridad;});
+   if(!state.evolution)state.evolution=[{label:"Inicio",metrics:{...state.metrics},business:state.business}];
+   state.baseScore=Number(state.baseScore??state.score)||0;
+   state.score=Math.max(0,state.baseScore-debtPenalty());
+   localStorage.setItem("changeTeam",team);localStorage.setItem("changeClassCode",classCode);
+   save();$("teamTag").textContent=" · "+team+" · "+classCode;
+   $("joinOverlay").style.display="none";render();updateBudget();
+   void syncScore();
+ }catch(e){$("joinError").textContent=window.NEXUS_FIREBASE.error(e);console.error("NEXUS ingreso",e);}
+ finally{btn.disabled=false;btn.textContent="INGRESAR AL JUEGO";}
 }
 let selected=[]; let time=420, tick;
 const $=id=>document.getElementById(id);
