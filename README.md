@@ -10,9 +10,9 @@ Experiencias: **Talento & Riesgo**, **Knowledge Challenge**, **Las reglas del ju
 
 - Talento & Riesgo Lab v2 es una **competencia por equipos en una misma sala**: 8 escenarios (legislación y formación, ascensos, movilidad laboral y dilemas de desarrollo), presupuesto y métricas acumuladas, consecuencias diferidas, ranking en tiempo real y descarga CSV para el facilitador. Incluye modo práctica individual sin servidor.
 - SATURNO funciona en el navegador y guarda el progreso localmente.
-- Knowledge Challenge, Las reglas del juego y El Flaco utilizan Firebase; NEXUS usa Supabase.
+- Knowledge Challenge, Las reglas del juego, El Flaco y **Proyecto NEXUS** utilizan Firebase Authentication y Firestore. NEXUS ya no depende de Supabase.
 - Estudiantes ingresan mediante nombre y código de sala según cada experiencia.
-- El acceso de facilitadores se autentica mediante correo y contraseña (Firebase Auth o Supabase Auth). Ya no hay contraseñas de facilitador escritas en el código público.
+- El acceso de facilitadores utiliza Firebase Authentication con correo y contraseña y el rol `facilitator: true`. No se guardan contraseñas en el código público.
 
 ## Radar de Cultura de Equipos — adaptación CVF / OCAI
 
@@ -31,6 +31,19 @@ El nuevo instrumento está en [`cultura-cvf.html`](./cultura-cvf.html), accesibl
 **Firebase.** El archivo [`FIRESTORE_CULTURA_CVF.rules`](./FIRESTORE_CULTURA_CVF.rules) contiene las reglas del módulo. Están integradas en [`firestore.rules`](./firestore.rules), junto con las de los demás simuladores. Se deben **publicar manualmente** en Firebase Console tras revisar su compatibilidad con las reglas activas: GitHub no modifica la base de datos. Las respuestas viven en `ocai_rooms/{codigo}/responses/{auth.uid}`; el agregado publicado, en `ocai_rooms/{codigo}/summary/public`. El facilitador puede consultar respuestas para calcular el promedio, y solo publica agregados con tamaño mínimo de grupo de 3. En el frontend no se importan ni publican las bases de personal que pudieran adjuntarse accidentalmente.
 
 Fuentes de referencia metodológica: https://www.ocai-official.com/about-ocai y https://www.ocai-official.com/intro-to-cvf. Para usar el **cuestionario oficial OCAI™** se deben verificar las condiciones de licencia con Cameron Institute.
+
+## Proyecto NEXUS — Firebase y financiación (31/10/2026)
+
+Se conservaron las cinco rondas y las 15 intervenciones. NEXUS usa ahora el mismo proyecto Firebase `simuladores-juegos` que los demás módulos, sin conectarse a Supabase.
+
+- **Facilitador:** cuenta de Firebase Auth (Correo/Contraseña) con custom claim `facilitator: true`. Abre el panel, ingresa un código de clase (p. ej., `LID-CAMBIO`), pulsa **CREAR SALA** y comparte el código. El tablero muestra puntaje, deuda e historial de decisiones en tiempo real.
+- **Equipos:** acceden con código y nombre ficticio usando Firebase Auth anónimo. Los registros privados (hipótesis, métricas, historial) se guardan en `nexus_rooms/{codigo}/teams/{uid}`. La clasificación compartida (`ranking/{uid}`) almacena solo nombre, puntaje, ronda y deuda. Ambos registros se guardan en una operación atómica.
+- **Préstamos:** bolsa inicial de **120 créditos**. Si un equipo necesita más, puede solicitar financiación en bloques de 20 créditos, automáticamente al escoger una intervención costosa o con el botón **SOLICITAR +20 CRÉDITOS**. El comité simulado aprueba el préstamo: el juego continúa, la deuda se muestra en rojo y resta **0,4 puntos por crédito** al ranking (hasta un máximo de 50 puntos). Ejemplo: 40 créditos prestados penalizan 16 puntos.
+- **Puntaje:** indicador base = media de las siete dimensiones de cambio y el KPI de negocio. Clasificación = indicador base menos penalización de deuda (sin bajar de cero).
+- **Activación pendiente del usuario:** reemplazar las reglas actuales de **Firebase Console → Firestore Database → Reglas** por el archivo unificado [`firestore.rules`](./firestore.rules), y pulsar **Publicar**. GitHub no actualiza las reglas activas. Deben estar habilitados los proveedores **Anónimo** y **Correo/Contraseña** y autorizado el dominio de GitHub Pages.
+- **Migración de históricos:** los registros antiguos de Supabase no se importan automáticamente. El progreso local de un navegador se puede recuperar al entrar por primera vez con el mismo nombre y código. Para migrar datos históricos de Supabase se requiere exportación autorizada.
+
+Los puntajes se generan en el navegador con fines pedagógicos. No son adecuados como resultados a prueba de manipulación para concursos con premios sin liquidación en servidor.
 
 ## Talento & Riesgo Lab V2.3 — bitácora de decisiones para el facilitador
 
@@ -76,14 +89,14 @@ Se preserva el juego anterior: ocho rondas, presupuesto, cinco indicadores, efec
 
 ## Configuración obligatoria antes de sesiones grupales
 
-**La autenticación desde la interfaz no es una autorización completa.** Configura las reglas reales de Firestore y las políticas RLS de Supabase antes de cargar información o iniciar sesiones con participantes:
+**La autenticación desde la interfaz no es una autorización completa.** Configura y publica las reglas reales de Firestore antes de iniciar sesiones con participantes:
 
-1. Crear cuentas de facilitador; en Firebase Auth asignar **custom claim** `facilitator: true` con Admin SDK desde entorno confiable. En Supabase Auth asignar `app_metadata.facilitator: true` con privilegios de administrador del lado servidor; **nunca** mediante código público o user_metadata.
+1. Crear cuentas de facilitador; en Firebase Auth asignar **custom claim** `facilitator: true` con Admin SDK desde un entorno confiable, nunca mediante código público.
 2. Proteger las escrituras de facilitador en Firestore por `request.auth.token.facilitator == true` **y** propiedad/rol de la sala, y limitar al estudiante a su propio registro o decisiones autorizadas. No utilizar reglas universales `allow write: if true`.
-3. En Supabase activar RLS en `change_leadership_scores` y `change_leadership_decisions` y aplicar políticas por sala, rol y propiedad. No confiar en verificaciones exclusivas de JavaScript.
+3. En NEXUS, mantener privados los registros completos de `teams` y separados del `ranking` compartido. No confiar solo en verificaciones JavaScript.
 4. Verificar autenticación, ingreso de participantes, acceso a sala y ranking antes de usar en una clase real.
-5. Revisar los datos de prueba ya persistidos y las reglas existentes del backend. **No se han configurado los permisos en Firebase ni en Supabase mediante este repositorio**.
+5. Revisar los datos de prueba y las reglas existentes. **Las reglas se deben publicar manualmente en Firebase Console**.
 
-Las claves web de configuración Firebase y la `sb_publishable_...` de Supabase son claves *públicas de cliente* (no service-role). No colocar nunca API keys privadas, credenciales de administrador ni secretos en este repositorio.
+Las claves web de Firebase son claves *públicas de cliente*, no credenciales administrativas. Nunca colocar claves privadas, credenciales de administrador ni secretos en este repositorio.
 
 © 2026 Santiago León López. Todos los derechos reservados.
