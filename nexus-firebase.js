@@ -61,6 +61,11 @@
   async function join(code,team,state){
     init();
     stopRanking();
+    // Esperar la restauración de la sesión anónima antes de generar otra identidad.
+    await new Promise((resolve,reject)=>{
+      let unsubscribe;
+      unsubscribe=auth.onAuthStateChanged(()=>{unsubscribe();resolve();},reject);
+    });
     if(auth.currentUser&&!auth.currentUser.isAnonymous)await auth.signOut();
     if(!auth.currentUser)await auth.signInAnonymously();
     const uid=auth.currentUser.uid;
