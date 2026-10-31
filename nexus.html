@@ -744,9 +744,7 @@ window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
     if(!code){$f("facError").textContent="Ingresa el código de la clase.";return}
     $f("facError").textContent="";
     try{
-      const C=window.CHANGE_LAB_CONFIG||{};
-      if(!window.supabase||!C.supabaseUrl||!C.supabaseAnonKey) throw new Error("Supabase no está disponible.");
-      const client=window.supabase.createClient(C.supabaseUrl,C.supabaseAnonKey);
+      if(!sb)throw Error("No se cargó Supabase. Revisa la conexión o los bloqueadores de scripts.");
       const [{data,error},{data:decisions,error:decError}]=await Promise.all([
         sb.from("change_leadership_scores").select("*").eq("class_code",code).order("score",{ascending:false}),
         sb.from("change_leadership_decisions").select("*").eq("class_code",code).order("round",{ascending:true})
