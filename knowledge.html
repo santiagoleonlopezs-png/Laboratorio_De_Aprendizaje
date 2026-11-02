@@ -38,6 +38,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <h2>Ingresar al juego</h2><label>Nombre</label><input id="playerName" maxlength="30" placeholder="Tu nombre">
 <label style="display:block;margin-top:12px">Código de sala</label><input id="roomCode" maxlength="80" placeholder="Nombre de la clase, por ejemplo: Legislación Laboral">
 <div class="row" style="margin-top:14px"><button id="joinBtn">Entrar</button><button class="secondary back">Volver</button></div>
+<p class="muted">Para recuperar tu participación, vuelve desde este mismo navegador sin borrar sus datos.</p>
 <p id="joinMsg" class="muted" style="margin-top:12px"></p>
 </section>
 
@@ -136,7 +137,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {getAuth, signInWithEmailAndPassword, getIdTokenResult} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getAuth, signInWithEmailAndPassword, getIdTokenResult, signInAnonymously, signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBnHTbmdSPWjYKTiLjv7HPKkqzpD4SOmJY",
@@ -175,7 +176,12 @@ function show(id){screens.forEach(x=>$(x).classList.toggle("hidden",x!==id))}
 document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show("home"));
 $("goPlayer").onclick=()=>show("playerJoin"); $("goHost").onclick=()=>show("hostLogin");
 let classAlias="", room=DEFAULT_ROOM, playerId="", playerName="", hostUnsubs=[], playerUnsub=null, tick=null, state=null, players=[];
-const SESSION_KEY="gc_quiz_session_v7";
+const SESSION_KEY="gc_quiz_session_auth_v8";
+async function participantIdentity(){
+ await facilitatorAuth.authStateReady();
+ if(!facilitatorAuth.currentUser)await signInAnonymously(facilitatorAuth);
+ return facilitatorAuth.currentUser.uid;
+}
 const normalizeRoom=s=>String(s||"").trim().normalize("NFC").replace(/\s+/g," ").toLocaleUpperCase("es");
 const aliasRef=name=>doc(db,ROOT,normalizeRoom(name));
 const normalizeName=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
@@ -184,6 +190,7 @@ const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SESSION_KEY)||
 async function touchPresence(online=true){if(!room||!playerId)return;try{await updateDoc(pRef(playerId),{online,lastSeen:serverTimestamp()})}catch{}}
 async function restoreSession(s){
  if(!s?.room||!s?.playerId)return false;
+ if(s.playerId!==await participantIdentity())return false;
  const old=await getDoc(doc(db,ROOT,s.room));
  if(!old.exists()||old.data().recordType!=="run")return false;
  const a=await getDoc(aliasRef(old.data().className||""));
@@ -193,16 +200,16 @@ async function restoreSession(s){
  $("welcome").textContent="¡Bienvenido de nuevo, "+playerName+"!";show("waiting");await touchPresence(true);listenPlayer();return true;
 }
 async function recoverOrJoin(name,code){
- const codeName=normalizeRoom(code);playerName=String(name||"").trim();
+ const uid=await participantIdentity();const codeName=normalizeRoom(code);playerName=String(name||"").trim();
  if(!codeName)return $("joinMsg").textContent="Escribe el nombre de la clase.";
  const alias=await getDoc(aliasRef(codeName));
  if(!alias.exists()||!alias.data().activeRun)return $("joinMsg").textContent="No hay una sala activa con ese nombre. Verifica el código con tu facilitador.";
  room=alias.data().activeRun;
  if(!playerName)return $("joinMsg").textContent="Escribe tu nombre.";
- const target=normalizeName(playerName),snap=await getDocs(playersRef());
- const existing=snap.docs.find(d=>normalizeName(d.data().name)===target);
- if(existing){playerId=existing.id;playerName=existing.data().name||playerName;saveSession();$("welcome").textContent="Sesión recuperada: "+playerName+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);listenPlayer();return;}
- const ref=doc(playersRef());playerId=ref.id;await setDoc(ref,{name:playerName,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});
+ const target=normalizeName(playerName);playerId=uid;
+ const existing=await getDoc(pRef(uid));
+ if(existing.exists()){playerName=existing.data().name||playerName;saveSession();$("welcome").textContent="Sesión recuperada: "+playerName+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);listenPlayer();return;}
+ await setDoc(pRef(uid),{uid,name:playerName,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});
  saveSession();$("welcome").textContent="¡Listo, "+playerName+"!";show("waiting");listenPlayer();
 }
 
@@ -216,10 +223,10 @@ $("hostBtn").onclick=async()=>{
    if(!email || !$("hostPass").value) throw new Error("Ingresa correo y contraseña.");
    const session=await signInWithEmailAndPassword(facilitatorAuth,email,$("hostPass").value);
    const token=await getIdTokenResult(session.user,true);
-   if(token.claims.facilitator!==true) throw new Error("Esta cuenta no tiene el rol de facilitador.");
+   if(token.claims.facilitator!==true){await signOut(facilitatorAuth);throw new Error("Esta cuenta no tiene el rol de facilitador.");}
    $("hostPass").value="";
    show("roomManager");await renderRooms();
- }catch(error){$("hostMsg").textContent=error.message||"Acceso no autorizado";}
+ }catch(error){$("hostMsg").textContent=error.message||"Acceso no autorizado";}finally{$("hostPass").value="";}
 };
 $("roomBack").onclick=()=>show("home");
 async function renderRooms(){
