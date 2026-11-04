@@ -1,0 +1,27 @@
+name: Validar modalidades del quiz
+on:
+  push:
+    paths:
+      - 'knowledge.html'
+      - 'quiz-engine.mjs'
+      - 'quiz-autonomo.js'
+      - 'tests/quiz-*.test.mjs'
+      - '.github/workflows/validate-quiz.yml'
+  pull_request:
+    paths:
+      - 'knowledge.html'
+      - 'quiz-engine.mjs'
+      - 'quiz-autonomo.js'
+      - 'tests/quiz-*.test.mjs'
+      - '.github/workflows/validate-quiz.yml'
+  workflow_dispatch:
+jobs:
+  quiz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Comprobar reloj, respuestas, ranking y flujo del facilitador
+        run: node --test tests/quiz-*.test.mjs

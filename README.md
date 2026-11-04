@@ -6,6 +6,26 @@ Hub de simuladores de **Santiago León López**. Diseño oscuro y azul eléctric
 
 Abre `index.html` con servidor HTTP o publícalo con GitHub Pages desde la rama `main`, raíz `/`.
 
+## Quiz: modalidad dirigida y autónoma
+
+Knowledge Challenge (`knowledge.html`) conserva las partidas dirigidas: el facilitador abre y cierra preguntas y revela resultados. Las salas anteriores mantienen esa modalidad y sus 60 segundos por pregunta.
+
+Para enviar un instrumento que cada persona responda a su ritmo:
+
+1. En **Facilitador**, crea una nueva partida y elige **Autónoma: compartir instrumento**. Define el tiempo máximo por pregunta, entre 5 y 600 segundos; el valor inicial es 60.
+2. Abre **Banco de preguntas**, elige o importa el banco y aplica la selección de preguntas.
+3. Pulsa **Habilitar instrumento → Copiar enlace**. El enlace identifica esa partida concreta, aunque después se cree otra para la misma clase.
+4. Cada persona ingresa su nombre, pulsa **Comenzar quiz** y responde. Después de guardar, decide cuándo abrir la pregunta siguiente; el tiempo comienza al abrirla. No necesita que el facilitador permanezca conectado.
+5. El panel muestra avance, aciertos, puntos y ranking en vivo. **Cerrar instrumento** detiene nuevas respuestas; reabrir conserva los avances y los plazos de las preguntas que ya estaban abiertas.
+
+Un acierto da de **1 a 10 puntos**, de mayor a menor según el tiempo usado en diez tramos iguales del límite configurado. Un error o una pregunta vencida da **0 puntos**. El ranking se ordena por puntos, luego por cantidad de aciertos y menor tiempo acumulado en respuestas correctas. La posición es provisional mientras otras personas continúan respondiendo.
+
+El inicio de cada pregunta se guarda con una marca de tiempo de Firestore en el documento del participante. Recargar o abrir otra pestaña conserva el plazo. Las transacciones evitan guardar dos respuestas para una misma pregunta. Las preguntas y el tiempo quedan fijos después de habilitar el instrumento; para cambiarlos se crea una nueva partida o se usa el reinicio explícito. Reiniciar conserva el nombre de la clase, el banco y la modalidad, borra los resultados de esa partida e invalida los intentos anteriores.
+
+La implementación usa las colecciones existentes `gc_quiz_live` y `gc_quiz_banks`, sin agregar colecciones, índices ni cambios a `firestore.rules`. Conserva el modelo de confianza del quiz pedagógico: no convierte los puntajes calculados en el navegador en una evaluación protegida contra manipulación.
+
+Validación local sin credenciales ni escrituras a producción: `node --test tests/quiz-*.test.mjs`. La comprobación automática **Validar modalidades del quiz** ejecuta esos casos en GitHub Actions.
+
 Experiencias: **Talento & Riesgo**, **Knowledge Challenge**, **Las reglas del juego** (Ultimátum y Empresa en crisis), **Proyecto NEXUS**, **El Flaco** y **SATURNO**.
 
 - Talento & Riesgo Lab v2 es una **competencia por equipos en una misma sala**: 8 escenarios (legislación y formación, ascensos, movilidad laboral y dilemas de desarrollo), presupuesto y métricas acumuladas, consecuencias diferidas, ranking en tiempo real y descarga CSV para el facilitador. Incluye modo práctica individual sin servidor.
@@ -100,3 +120,4 @@ Se preserva el juego anterior: ocho rondas, presupuesto, cinco indicadores, efec
 Las claves web de Firebase son claves *públicas de cliente*, no credenciales administrativas. Nunca colocar claves privadas, credenciales de administrador ni secretos en este repositorio.
 
 © 2026 Santiago León López. Todos los derechos reservados.
+
