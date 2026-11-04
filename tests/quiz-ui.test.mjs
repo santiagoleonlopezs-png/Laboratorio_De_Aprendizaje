@@ -25,6 +25,7 @@ function page(search=''){
   createSelfPacedQuiz:()=>({updateRun(){},stop(){}})
  };
  vm.createContext(context);vm.runInContext(script,context);
+ $('newTotalDuration').value='20';$('totalDuration').value='20';
  return {$,store,context,run:code=>vm.runInContext(code,context),observers};
 }
 test('page has unique ids and all direct DOM lookups exist',()=>{
@@ -34,9 +35,9 @@ test('page has unique ids and all direct DOM lookups exist',()=>{
 test('facilitator creates autonomous run with the selected time, then publishes a bound link',async()=>{
  const p=page();p.$('className').value='Estrategia';p.$('newQuizMode').value='self_paced';p.$('newQuestionDuration').value='30';
  await p.$('createRoom').onclick();const runEntry=[...p.store].find(([,d])=>d.recordType==='run');assert.ok(runEntry,p.$('roomManagerMsg').textContent);
- const [path,data]=runEntry;assert.equal(data.mode,'self_paced');assert.equal(data.duration,30);assert.equal(data.selfPacedStatus,'draft');
+ const [path,data]=runEntry;assert.equal(data.mode,'self_paced');assert.equal(data.duration,30);assert.equal(data.totalDuration,1200);assert.equal(data.selfPacedStatus,'draft');
  await p.$('publishSelfQuiz').onclick();const published=p.store.get(path);assert.equal(published.selfPacedStatus,'published');assert.ok(published.quizVersion);assert.equal(published.questions.length,20);
- p.run('state='+JSON.stringify(published)+';renderHost();');assert.ok(p.$('quizShareLink').value.includes('partida='+path.split('/')[1]));assert.equal(p.$('questionDuration').disabled,true);
+ p.run('state='+JSON.stringify(published)+';renderHost();');assert.ok(p.$('quizShareLink').value.includes('partida='+path.split('/')[1]));assert.equal(p.$('questionDuration').disabled,true);assert.equal(p.$('totalDuration').disabled,true);
 });
 test('a new run defaults to directed and maximum time validation rejects invalid setup',async()=>{
  const p=page();p.$('className').value='Clase';p.$('newQuestionDuration').value='0';await p.$('createRoom').onclick();assert.equal(p.store.size,0);
@@ -61,4 +62,10 @@ test('reset preserves class identity, snapshot, modality and duration while inva
 test('invitation joins the exact instrument even when the class alias points to another run',async()=>{
  const p=page('?partida=partida-original');p.store.set('gc_quiz_live/partida-original',{recordType:'run',mode:'self_paced'});p.store.set('gc_quiz_live/CLASE',{activeRun:'partida-new'});
  await p.run("recoverOrJoin('Ana','CLASE')");assert.equal(p.run('room'),'partida-original');assert.ok([...p.store.keys()].some(path=>path.startsWith('gc_quiz_live/partida-original/players/')));
+});
+test('facilitator saves an independent total in minutes and rejects an empty total',async()=>{
+ const p=page();p.run("room='partida-test';state={mode:'self_paced',selfPacedStatus:'draft',status:'lobby',duration:60}");
+ p.$('quizMode').value='self_paced';p.$('questionDuration').value='45';p.$('totalDuration').value='8';
+ await p.$('saveQuizSettings').onclick();let data=p.store.get('gc_quiz_live/partida-test');assert.equal(data.duration,45);assert.equal(data.totalDuration,480);
+ p.$('questionDuration').value='45';p.$('totalDuration').value='';await p.$('saveQuizSettings').onclick();data=p.store.get('gc_quiz_live/partida-test');assert.equal(data.totalDuration,480);assert.match(p.$('hostError').textContent,/tiempo total/);
 });

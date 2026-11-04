@@ -9,7 +9,7 @@ const source=fs.readFileSync(new URL('../quiz-autonomo.js',import.meta.url),'utf
 const questions=Array.from({length:3},(_,i)=>({title:'Pregunta',text:`Pregunta ${i}`,options:['A','B','C','D'],correct:i}));
 function fixture(overrides={}){
  let now=1_000_000,serial=Promise.resolve();
- const run={mode:'self_paced',selfPacedStatus:'published',quizVersion:'v1',duration:10,selectedQuestions:[2,0],questions,...overrides};
+ const run={mode:'self_paced',selfPacedStatus:'published',quizVersion:'v1',duration:10,totalDuration:120,selectedQuestions:[2,0],questions,...overrides};
  const store=new Map([['room',run]]),listeners=new Set();
  function snapshot(path){return {exists:()=>store.has(path),data:()=>structuredClone(store.get(path))};}
  function notify(){for(const listener of listeners)listener.callback(listener.path==='players'?{docs:[...store].filter(([p])=>p.startsWith('players/')).map(([path])=>({id:path.split('/')[1],data:()=>structuredClone(store.get(path))}))}:snapshot(listener.path));}
@@ -91,4 +91,36 @@ test('live ranking scores answer data and breaks ties by aciertos, then time',()
  const run={quizVersion:'v1',selectedQuestions:[0,1]};
  const players=[make('Lento',{0:{points:5,correct:true,elapsed:5}}),make('Rapido',{0:{points:5,correct:true,elapsed:2}}),make('Dos aciertos',{0:{points:3,correct:true,elapsed:8},1:{points:2,correct:true,elapsed:9}})];
  assert.deepEqual(engine.selfPacedRanking(players,run,questions).map(p=>p.name),['Dos aciertos','Rapido','Lento']);
+});
+test('general countdown keeps running between questions and closes all pending questions',async()=>{
+ const f=fixture({totalDuration:60}),ana=f.client('Ana');await ana.start();f.advance(1000);await ana.answer(2);const score=ana.player().score;
+ f.advance(59000);ana.tick();await f.flush();
+ assert.equal(ana.screen(),'selfResults');assert.equal(ana.player().score,score);assert.equal(ana.player().correctCount,1);
+ assert.equal(ana.player().selfPaced.completedReason,'total_timeout');assert.equal(ana.player().answers[0].timeoutReason,'total');assert.equal(ana.player().answers[0].points,0);
+ assert.match(ana.$('selfFinalNote').textContent,/Se agotó el tiempo total/);
+});
+test('the total deadline beats a question with time left, including a late click',async()=>{
+ const f=fixture({duration:600,totalDuration:60}),ana=f.client('Ana');await ana.start();f.advance(61000);await ana.answer(2);
+ assert.equal(ana.player().score,0);assert.equal(ana.player().answers[2].option,-1);assert.equal(ana.player().answers[2].elapsed,60);
+ assert.equal(ana.screen(),'selfResults');assert.equal(ana.player().answers[0].timeoutReason,'total');
+});
+test('refresh and next-question navigation preserve the original total deadline',async()=>{
+ const f=fixture({duration:600,totalDuration:60}),ana=f.client('Ana');await ana.start();const started=ana.player().selfPaced.startedAt;
+ f.advance(45000);ana.controller.stop();const resumed=f.client('Ana');assert.equal(resumed.$('selfTotalTimer').textContent,'00:15');
+ await resumed.answer(2);await resumed.next();assert.equal(resumed.player().selfPaced.startedAt,started);assert.equal(resumed.$('selfTotalTimer').textContent,'00:15');
+ f.advance(15000);resumed.tick();await f.flush();assert.equal(resumed.screen(),'selfResults');
+});
+test('returning after the whole quiz expired saves the score instead of reopening a question',async()=>{
+ const f=fixture({duration:600,totalDuration:60}),ana=f.client('Ana');await ana.start();ana.controller.stop();f.advance(70000);
+ const resumed=f.client('Ana');await f.flush();assert.equal(resumed.screen(),'selfResults');assert.equal(resumed.player().score,0);
+ const last=f.client('Ana');assert.equal(last.screen(),'selfResults');assert.equal(last.player().selfPaced.startedAt,1_000_000);
+});
+test('an attempt captures its total limit once and a later run update does not extend it',async()=>{
+ const f=fixture({duration:600,totalDuration:60}),ana=f.client('Ana');await ana.start();f.update({totalDuration:120});ana.controller.updateRun(f.run);
+ f.advance(60000);ana.tick();await f.flush();assert.equal(ana.screen(),'selfResults');assert.equal(ana.player().selfPaced.totalDuration,60);
+});
+test('legacy quizzes derive a finite total limit and timeout only their selected questions',()=>{
+ const run={quizVersion:'v1',duration:60,selectedQuestions:[2,0]},player={answers:{2:{points:7,correct:true,elapsed:20}},selfPaced:{version:'v1',startedAt:1000,activeIndex:0,questionStartedAt:100000}};
+ assert.equal(engine.totalSeconds(run,questions),120);assert.equal(engine.formatClock(120),'02:00');
+ const expired=engine.totalTimeoutUpdate(run,player,questions,122000);assert.equal(expired.score,7);assert.equal(expired.answers[1],undefined);assert.equal(expired.answers[0].points,0);
 });

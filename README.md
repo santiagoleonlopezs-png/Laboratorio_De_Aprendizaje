@@ -12,15 +12,15 @@ Knowledge Challenge (`knowledge.html`) conserva las partidas dirigidas: el facil
 
 Para enviar un instrumento que cada persona responda a su ritmo:
 
-1. En **Facilitador**, crea una nueva partida y elige **Autónoma: compartir instrumento**. Define el tiempo máximo por pregunta, entre 5 y 600 segundos; el valor inicial es 60.
+1. En **Facilitador**, crea una nueva partida y elige **Autónoma: compartir instrumento**. Define el tiempo máximo por pregunta (5–600 segundos, inicialmente 60) y el **tiempo máximo total del quiz**, en minutos (inicialmente 20).
 2. Abre **Banco de preguntas**, elige o importa el banco y aplica la selección de preguntas.
 3. Pulsa **Habilitar instrumento → Copiar enlace**. El enlace identifica esa partida concreta, aunque después se cree otra para la misma clase.
-4. Cada persona ingresa su nombre, pulsa **Comenzar quiz** y responde. Después de guardar, decide cuándo abrir la pregunta siguiente; el tiempo comienza al abrirla. No necesita que el facilitador permanezca conectado.
+4. Cada persona ingresa su nombre y pulsa **Comenzar quiz**: en ese momento empieza el reloj general. Después de guardar, decide cuándo abrir la pregunta siguiente; el reloj general sigue corriendo durante esa espera y cada pregunta tiene su propio reloj al abrirla. No necesita que el facilitador permanezca conectado.
 5. El panel muestra avance, aciertos, puntos y ranking en vivo. **Cerrar instrumento** detiene nuevas respuestas; reabrir conserva los avances y los plazos de las preguntas que ya estaban abiertas.
 
 Un acierto da de **1 a 10 puntos**, de mayor a menor según el tiempo usado en diez tramos iguales del límite configurado. Un error o una pregunta vencida da **0 puntos**. El ranking se ordena por puntos, luego por cantidad de aciertos y menor tiempo acumulado en respuestas correctas. La posición es provisional mientras otras personas continúan respondiendo.
 
-El inicio de cada pregunta se guarda con una marca de tiempo de Firestore en el documento del participante. Recargar o abrir otra pestaña conserva el plazo. Las transacciones evitan guardar dos respuestas para una misma pregunta. Las preguntas y el tiempo quedan fijos después de habilitar el instrumento; para cambiarlos se crea una nueva partida o se usa el reinicio explícito. Reiniciar conserva el nombre de la clase, el banco y la modalidad, borra los resultados de esa partida e invalida los intentos anteriores.
+El inicio de cada pregunta y el del intento se guardan con marcas de tiempo de Firestore en el documento del participante. Recargar, salir o abrir otra pestaña conserva ambos plazos. Al agotarse el tiempo general se cierra el intento, se conservan los puntos obtenidos y las preguntas pendientes quedan en 0. Si la página estaba cerrada o sin conexión, esa finalización se guarda al volver a acceder o reconectar; no se aceptan respuestas posteriores al plazo. Las transacciones evitan guardar dos respuestas para una misma pregunta. Las preguntas y ambos límites quedan fijos después de habilitar el instrumento; para cambiarlos se crea una nueva partida o se usa el reinicio explícito. Reiniciar conserva el nombre de la clase, el banco y la modalidad, borra los resultados de esa partida e invalida los intentos anteriores. Para partidas antiguas sin un límite total explícito se usa la suma de los tiempos de sus preguntas seleccionadas, con un mínimo de un minuto.
 
 La implementación usa las colecciones existentes `gc_quiz_live` y `gc_quiz_banks`, sin agregar colecciones, índices ni cambios a `firestore.rules`. Conserva el modelo de confianza del quiz pedagógico: no convierte los puntajes calculados en el navegador en una evaluación protegida contra manipulación.
 

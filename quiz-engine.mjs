@@ -8,6 +8,15 @@ export function questionOrder(run, questions) {
   const source = Array.isArray(run?.selectedQuestions) ? run.selectedQuestions : questions.map((_, i) => i);
   return [...new Set(source.filter(i => Number.isInteger(i) && i >= 0 && i < questions.length))];
 }
+export function totalSeconds(run, questions) {
+  const value = Number(run?.totalDuration);
+  if (Number.isInteger(value) && value >= 60 && value <= 86400) return value;
+  return Math.max(60, questionSeconds(run) * questionOrder(run, questions).length);
+}
+export function formatClock(seconds) {
+  const whole = Math.ceil(Math.max(0, seconds));
+  return `${String(Math.floor(whole / 60)).padStart(2, '0')}:${String(whole % 60).padStart(2, '0')}`;
+}
 export function milliseconds(value) {
   if (typeof value?.toMillis === 'function') return value.toMillis();
   return Number.isFinite(value) ? value : 0;
@@ -45,17 +54,34 @@ export function compareSelfPaced(a, b) {
 export function selfPacedRanking(players, run, questions) {
   const order = questionOrder(run, questions);
   return players.filter(p => p.selfPaced?.version === run.quizVersion && milliseconds(p.selfPaced.startedAt))
-    .map(p => ({...p, ...answerTotals(p.answers, order)})).sort(compareSelfPaced);
+    .map(p => ({...p, ...answerTotals(p.answers, order), totalExpired: attemptView(run, p, questions).totalExpired || p.selfPaced.completedReason === 'total_timeout'})).sort(compareSelfPaced);
 }
-export function attemptView(run, player, questions) {
+export function attemptView(run, player, questions, now = Date.now()) {
   const order = questionOrder(run, questions);
   const progress = player?.selfPaced?.version === run.quizVersion ? player.selfPaced : null;
   const answers = progress ? player.answers || {} : {};
   const nextIndex = order.find(i => !answers[i]);
   const complete = !!progress && order.length > 0 && nextIndex === undefined;
   const activeIndex = progress?.activeIndex;
+  const attemptStartedAt = milliseconds(progress?.startedAt);
+  const totalDuration = totalSeconds({totalDuration: progress?.totalDuration ?? run.totalDuration, duration: run.duration, selectedQuestions: run.selectedQuestions}, questions);
+  const deadline = attemptStartedAt ? attemptStartedAt + totalDuration * 1000 : 0;
   return {order, progress, answers, nextIndex, complete, activeIndex,
+    totalDuration, deadline, remainingSeconds: deadline ? Math.max(0, (deadline - now) / 1000) : totalDuration,
+    totalExpired: !!deadline && now >= deadline && !complete,
     startedAt: milliseconds(progress?.questionStartedAt),
     answer: progress && order.includes(activeIndex) ? answers[activeIndex] : null,
     ...answerTotals(answers, order)};
+}
+export function totalTimeoutUpdate(run, player, questions, now) {
+  const view = attemptView(run, player, questions, now);
+  if (!view.totalExpired || view.complete) return null;
+  const answers = {...view.answers};
+  for (const index of view.order) {
+    if (answers[index]) continue;
+    const elapsed = index === view.activeIndex && view.startedAt ? Math.max(0, (view.deadline - view.startedAt) / 1000) : 0;
+    answers[index] = {...evaluateAnswer(null, -1, elapsed, questionSeconds(run)), timeoutReason: 'total'};
+  }
+  return {answers, ...answerTotals(answers, view.order),
+    selfPaced: {...view.progress, completedAt: now, completedReason: 'total_timeout'}};
 }
