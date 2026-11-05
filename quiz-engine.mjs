@@ -8,6 +8,23 @@ export function questionOrder(run, questions) {
   const source = Array.isArray(run?.selectedQuestions) ? run.selectedQuestions : questions.map((_, i) => i);
   return [...new Set(source.filter(i => Number.isInteger(i) && i >= 0 && i < questions.length))];
 }
+export const rankingVisibility = run => ['live', 'final', 'hidden'].includes(run?.rankingVisibility) ? run.rankingVisibility : 'live';
+export const participantIdentity = run => run?.participantIdentity === 'cedula' ? 'cedula' : 'name';
+export function identityError(value, type = 'name') {
+  if (type === 'cedula') return /^[0-9]+$/.test(String(value || '')) ? '' : 'Escribe tu cédula solo con números, sin puntos ni espacios.';
+  return String(value || '').trim() ? '' : 'Escribe tu nombre.';
+}
+export function participantLabel(player) {
+  return player?.identityType === 'cedula' ? `Cédula ••••${String(player.name || '').slice(-4)}` : String(player?.name || '');
+}
+export function canShowParticipantRanking(run, questions = [], complete = false) {
+  const visibility = rankingVisibility(run);
+  if (visibility === 'hidden') return false;
+  if (visibility === 'live') return true;
+  if (isSelfPaced(run)) return complete;
+  const order = questionOrder(run, questions);
+  return order.length > 0 && run?.status === 'revealed' && run.questionIndex === order.at(-1);
+}
 export function milliseconds(value) {
   if (typeof value?.toMillis === 'function') return value.toMillis();
   return Number.isFinite(value) ? value : 0;

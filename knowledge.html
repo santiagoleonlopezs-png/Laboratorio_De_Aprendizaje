@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Knowledge Challenge | GC</title>
+<title>Knowledge Challenge | Laboratorio de Aprendizaje y Decisión</title>
+<meta name="theme-color" content="#080f20">
+<link rel="stylesheet" href="knowledge.css">
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#667085;--line:#e4e7ec;--accent:#3157d5;--ok:#16803c;--bad:#c93636}
 *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:var(--ink)}
@@ -28,19 +30,21 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 @media(max-width:650px){.adminGrid{grid-template-columns:1fr}.qrowhead{display:block}.qactions{margin-top:10px}}
 </style>
 </head>
-<body><div style="position:relative;z-index:100;background:#070b13;border-bottom:1px solid #27334b;padding:14px 22px;font:13px system-ui;display:flex;justify-content:space-between;gap:16px"><a href="index.html#experiencias" style="color:#c2d5ff;text-decoration:none">← Volver al laboratorio</a><span style="color:#91a2bc">Santiago León López</span></div>
+<body class="play-view"><div style="position:relative;z-index:100;background:#070b13;border-bottom:1px solid #27334b;padding:14px 22px;font:13px system-ui;display:flex;justify-content:space-between;gap:16px"><a href="index.html#experiencias" style="color:#c2d5ff;text-decoration:none">← Volver al laboratorio</a><span style="color:#91a2bc">Santiago León López</span></div>
 <div class="wrap">
 <section id="home" class="card">
-<h1>Knowledge Challenge</h1><p class="muted">Elige Participar para responder un quiz o Facilitador para administrar tus salas. La modalidad autónoma no tiene límite de tiempo; aciertos y rapidez suman puntos.</p>
-<div class="grid2"><button id="goPlayer">Participar</button><button id="goHost" class="secondary">Facilitador</button></div>
-<button id="resumeQuiz" class="secondary hidden" style="margin-top:12px" type="button">Continuar mi quiz</button><p id="homeMsg" class="muted" role="status" style="margin-top:12px"></p>
+<div class="home-top"><div class="quiz-brand"><span class="brand-mark" aria-hidden="true">K</span>Knowledge Challenge</div><button id="goHost" type="button"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>Facilitador</button></div>
+<div class="home-layout"><div><span class="home-eyebrow">El conocimiento entra en juego</span><h1>Pon a prueba<br>lo que <span class="home-emphasis">sabes.</span></h1><p class="home-copy">Cada pregunta es una oportunidad para pensar, decidir y aprender. Entra a tu sala y acepta el reto.</p><div class="home-cta"><button id="goPlayer" type="button">Entrar al quiz <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19 19 5M5 5h14v14"/></svg></button></div><button id="resumeQuiz" class="secondary home-resume hidden" type="button">Continuar mi quiz →</button><p id="homeMsg" class="home-status" role="status"></p></div><div class="challenge-art" aria-hidden="true"><div class="art-orbit"><span class="art-spark"></span></div><div class="art-tile">?</div><div class="art-badge first"><i>✓</i><div><strong>Conecta ideas</strong><small>Lo que sabes, en acción</small></div></div><div class="art-badge second"><i><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 17 6-6 4 4 8-10M15 5h6v6"/></svg></i><div><strong>Supera el reto</strong><small>Precisión + rapidez</small></div></div><span class="art-caption">Piensa · decide · aprende</span></div></div>
+<div class="home-steps"><div class="home-step"><span>01</span><div><b>Entra a tu sala</b><p>Con tu enlace o código.</p></div></div><div class="home-step"><span>02</span><div><b>Responde el reto</b><p>Cada decisión cuenta.</p></div></div><div class="home-step"><span>03</span><div><b>Descubre tu resultado</b><p>Aprende en cada pregunta.</p></div></div></div>
 </section>
 
 <section id="playerJoin" class="card hidden">
-<h2>Ingresar al juego</h2><label>Nombre</label><input id="playerName" maxlength="30" placeholder="Tu nombre">
-<label style="display:block;margin-top:12px">Código de sala</label><input id="roomCode" maxlength="80" placeholder="Nombre de la clase, por ejemplo: Legislación Laboral">
+<span class="join-kicker">Tu próximo reto</span><h2 style="margin-top:12px">Entra en juego</h2><p class="muted">Un paso más y comienza el desafío.</p>
+<div id="joinRoomSummary" class="join-room hidden" role="status"></div>
+<div id="roomCodeField"><label for="roomCode">Código de sala</label><input id="roomCode" maxlength="80" autocomplete="off" placeholder="Escribe el código de tu sala"><p id="roomLookupMsg" class="mini" role="status"></p></div>
+<div id="identityField" class="hidden"><label id="playerIdentityLabel" for="playerName">Nombre</label><input id="playerName" maxlength="30" placeholder="Tu nombre" autocomplete="name" aria-describedby="identityHint joinMsg"><p id="identityHint" class="mini setting-help">Ingresa el nombre con el que responderás el quiz.</p></div>
 <div class="row" style="margin-top:14px"><button id="joinBtn">Entrar</button><button class="secondary back">Volver</button></div>
-<p id="joinMsg" class="muted" style="margin-top:12px"></p>
+<p id="joinMsg" style="margin-top:12px" role="alert"></p>
 </section>
 
 <section id="hostLogin" class="card hidden">
@@ -53,6 +57,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <h2>Mis salas</h2><p class="muted">El nombre de la clase será el código de acceso de los participantes.</p>
 <label>Nombre de la clase / código de sala</label><input id="className" maxlength="80" placeholder="Ej.: Legislación Laboral">
 <div class="quiz-settings grid2"><div><label for="newQuizMode">Modalidad de la nueva partida</label><select id="newQuizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div id="newQuestionDurationField"><label for="newQuestionDuration">Tiempo máximo por pregunta (segundos)</label><input id="newQuestionDuration" type="number" min="5" max="600" step="1" value="60"></div><p id="newSelfPacedInfo" class="mini hidden">La modalidad autónoma no tiene límite de tiempo. La espera entre preguntas cuenta para los puntos por rapidez.</p></div>
+<div class="quiz-settings grid2"><div><label for="newRankingVisibility">Ranking para participantes</label><select id="newRankingVisibility"><option value="live">Durante el quiz y al finalizar</option><option value="final">Solo al finalizar</option><option value="hidden">No mostrar</option></select></div><div><label for="newParticipantIdentity">Dato para ingresar</label><select id="newParticipantIdentity"><option value="name">Nombre</option><option value="cedula">Cédula: solo números</option></select></div></div>
 <div class="row" style="margin-top:12px"><button id="createRoom">Crear sala / nueva partida</button><button id="reopenRoom" class="secondary">Reabrir sala</button><button id="roomBack" class="secondary">Volver</button></div>
 <p id="roomManagerMsg" class="muted"></p><h3>Salas creadas</h3><div id="roomHistory"></div>
 </section>
@@ -68,14 +73,15 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <section id="playerGame" class="hidden">
 <div class="row between"><span id="pNum" class="pill"></span><span id="pTimer" class="big">60</span><button type="button" class="secondary back">Volver al inicio</button></div>
 <div id="pTimeBarBox" class="bar"><div id="pTimeBar" style="width:100%"></div></div>
-<div class="card"><div id="pQuestion" class="question"></div><div id="pAnswers" class="grid2" style="margin-top:18px"></div><p id="pMsg" role="status" style="margin-top:15px"></p><button id="selfRetry" class="secondary hidden" type="button">Reintentar guardar respuesta</button><div id="selfAfterAnswer" class="hidden"><button id="nextSelfQuestion" type="button">Siguiente pregunta</button><p class="mini" style="margin-top:10px">La espera antes de abrir la siguiente pregunta también cuenta para tu puntaje por rapidez.</p><details style="margin-top:18px"><summary>Ver ranking en vivo</summary><div id="selfLiveRanking"></div></details></div></div>
+<div class="card"><div id="pQuestion" class="question"></div><div id="pAnswers" class="grid2" style="margin-top:18px"></div><p id="pMsg" role="status" style="margin-top:15px"></p><button id="selfRetry" class="secondary hidden" type="button">Reintentar guardar respuesta</button><div id="selfAfterAnswer" class="hidden"><button id="nextSelfQuestion" type="button">Siguiente pregunta</button><p class="mini" style="margin-top:10px">La espera antes de abrir la siguiente pregunta también cuenta para tu puntaje por rapidez.</p></div><details id="selfLiveRankingBox" class="ranking-card hidden"><summary>Ver ranking en vivo</summary><div id="selfLiveRanking"></div></details></div>
+<details id="directedRankingBox" class="card ranking-card hidden"><summary>Ver ranking en vivo</summary><div id="directedRanking"></div></details>
 </section>
 
 <section id="selfIntro" class="card hidden">
 <span class="pill">Modalidad autónoma</span><h2 id="selfIntroTitle" style="margin-top:18px">Quiz autónomo</h2><p id="selfIntroInfo"></p><p id="selfIntroStatus" class="muted" role="status"></p><div class="row"><button id="startSelfQuiz" type="button">Comenzar quiz</button><button type="button" class="secondary back">Volver al inicio</button><button id="selfIntroRetry" class="secondary hidden" type="button">Reintentar guardar</button></div>
 </section>
 <section id="selfResults" class="card hidden">
-<h2>Completaste el quiz</h2><div id="selfFinalScore" class="big"></div><p id="selfFinalAccuracy" style="margin-top:10px"></p><p id="selfFinalNote" class="muted" role="status"></p><p id="selfFinalPosition" class="muted" role="status"></p><h3>Ranking en vivo</h3><div id="selfFinalRanking"></div><button class="secondary back" style="margin-top:18px">Volver al inicio</button>
+<span class="join-kicker">Reto completado</span><h2 style="margin-top:14px">¡Lo lograste!</h2><div id="selfFinalScore" class="big"></div><p id="selfFinalAccuracy" style="margin-top:10px"></p><p id="selfFinalNote" class="muted" role="status"></p><div id="selfFinalRankingBox" class="ranking-card hidden"><p id="selfFinalPosition" class="muted" role="status"></p><h3>Ranking</h3><div id="selfFinalRanking"></div></div><button class="secondary back" style="margin-top:18px">Volver al inicio</button>
 </section>
 
 <section id="hostPanel" class="hidden">
@@ -83,7 +89,9 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <div class="row" style="margin-bottom:14px"><button id="manageQuizRooms" class="secondary" type="button">← Mis salas / nueva partida</button></div>
 <div class="row between"><div><h2 style="margin-bottom:4px">Panel del facilitador</h2><span class="muted">Sala <b id="hostRoom">GC2026</b> · Estado: <b id="phaseLabel">En espera</b></span></div><div><span class="pill">Inscritos: <b id="connected">0</b></span> <span class="pill"><span id="answeredLabel">Respondieron</span>: <b id="answered">0</b></span></div></div>
 <div id="quizSettings" class="quiz-settings"><div class="grid2"><div><label for="quizMode">Modalidad</label><select id="quizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div id="questionDurationField"><label for="questionDuration">Tiempo máximo por pregunta (segundos)</label><input id="questionDuration" type="number" min="5" max="600" step="1" value="60"></div></div><button id="saveQuizSettings" class="secondary" type="button" style="margin-top:12px">Guardar configuración</button><p id="quizModeInfo" class="mini" style="margin-top:12px"></p></div>
-<div id="selfHostControls" class="quiz-settings hidden"><h3>Compartir instrumento</h3><p id="selfHostStatus" class="muted"></p><div class="row"><button id="publishSelfQuiz" type="button">Habilitar instrumento</button><button id="closeSelfQuiz" class="secondary" type="button">Cerrar instrumento</button></div><div class="share-row"><input id="quizShareLink" type="text" readonly aria-label="Enlace del instrumento"><button id="copyQuizLink" class="secondary" type="button">Copiar enlace</button></div><p id="quizShareMsg" class="mini" role="status"></p></div>
+<div id="participantSettings" class="quiz-settings access-settings"><h3>Experiencia de participantes</h3><div class="grid2"><div><label for="rankingVisibility">Mostrar ranking</label><select id="rankingVisibility"><option value="live">Durante el quiz y al finalizar</option><option value="final">Solo al finalizar</option><option value="hidden">No mostrar</option></select></div><div><label for="participantIdentity">Dato para ingresar</label><select id="participantIdentity"><option value="name">Nombre</option><option value="cedula">Cédula: solo números</option></select></div></div><p id="participantSettingsInfo" class="mini setting-help">Tú siempre podrás consultar el ranking en este panel.</p><button id="saveParticipantSettings" class="secondary" type="button" style="margin-top:12px">Guardar opciones de participantes</button><p id="participantSettingsMsg" class="mini setting-help" role="status"></p></div>
+<div id="selfHostControls" class="quiz-settings hidden"><h3>Instrumento autónomo</h3><p id="selfHostStatus" class="muted"></p><div class="row"><button id="publishSelfQuiz" type="button">Habilitar instrumento</button><button id="closeSelfQuiz" class="secondary" type="button">Cerrar instrumento</button></div></div>
+<div id="quizShareControls" class="quiz-settings"><h3>Comparte el acceso a esta sala</h3><p class="mini">El enlace ya incluye la sala. La persona solo deberá ingresar su nombre o cédula, según tu configuración.</p><div class="share-row"><input id="quizShareLink" type="text" readonly aria-label="Enlace de la sala"><button id="copyQuizLink" class="secondary" type="button">Copiar enlace</button></div><p id="quizShareMsg" class="mini" role="status"></p></div>
 <div id="facilitatedControls" class="row" style="margin-top:16px"><button id="openQ">Abrir pregunta</button><button id="closeQ" class="secondary">Cerrar respuestas</button><button id="revealQ" class="secondary">Mostrar resultados</button><button id="nextQ">Siguiente pregunta</button></div>
 <div id="hostError" role="alert" style="display:none;margin-top:12px;padding:12px;border-radius:10px;background:#fff1f1;color:#9a1b1b"></div><div class="row" style="margin-top:10px"><button id="resetGame" class="danger">Reiniciar partida</button><button id="clearPlayers" class="secondary">Eliminar participantes</button><button id="toggleEditor" class="secondary" type="button">Banco de preguntas ↓</button></div>
 <details id="questionPicker" class="card" style="margin-top:18px">
@@ -151,7 +159,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {getAuth, signInWithEmailAndPassword, getIdTokenResult} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {isSelfPaced, questionSeconds, questionOrder, evaluateAnswer, selfPacedRanking} from './quiz-engine.mjs';
+import {isSelfPaced, questionSeconds, questionOrder, evaluateAnswer, selfPacedRanking, rankingVisibility, participantIdentity, identityError, participantLabel, canShowParticipantRanking} from './quiz-engine.mjs';
 import {createSelfPacedQuiz} from './quiz-autonomo.js';
 
 const firebaseConfig = {
@@ -187,18 +195,47 @@ let Q=[
 ["Ecosistemas inteligentes","Una organización integra expertos, comunidades de práctica, repositorios, agentes de IA, mecanismos de captura y analítica sobre el uso del conocimiento. ¿Qué característica permitiría hablar con mayor propiedad de un ecosistema inteligente de conocimiento?",["Que todos los componentes utilicen una plataforma común.","Que la mayor parte del conocimiento esté digitalizado.","Que la IA participe en los procesos de búsqueda y creación.","Que personas, procesos y tecnología se conecten para aprender y actuar."],3]
 ];
 const $=id=>document.getElementById(id), screens=["home","playerJoin","hostLogin","waiting","playerGame","hostPanel","roomManager","selfIntro","selfResults"];
-function show(id){screens.forEach(x=>$(x).classList.toggle("hidden",x!==id))}
+function show(id){screens.forEach(x=>$(x).classList.toggle("hidden",x!==id));document.body?.classList.toggle('play-view',!['hostLogin','hostPanel','roomManager'].includes(id));}
 function detachPlayer(){navigationEpoch++;if(playerUnsub){playerUnsub();playerUnsub=null;}selfPaced.stop();clearInterval(tick);}
 document.querySelectorAll(".back").forEach(b=>b.onclick=()=>{detachPlayer();show("home");});
-$("goPlayer").onclick=()=>{detachPlayer();show("playerJoin");}; $("goHost").onclick=()=>{detachPlayer();show("hostLogin");};
+$("goPlayer").onclick=()=>{detachPlayer();show("playerJoin");if(inviteRunId||$("roomCode").value)loadJoinRoom();}; $("goHost").onclick=()=>{detachPlayer();show("hostLogin");};
 let classAlias="", room=DEFAULT_ROOM, playerId="", playerName="", hostUnsubs=[], playerUnsub=null, tick=null, state=null, players=[], navigationEpoch=0;
 const SESSION_KEY="gc_quiz_session_v7";
 const inviteRunId=new URLSearchParams(location.search).get('partida')||'';
+let joinRun=null,joinLookup=0,joinBusy=false;
 const normalizeRoom=s=>String(s||"").trim().normalize("NFC").replace(/\s+/g," ").toLocaleUpperCase("es");
 const aliasRef=name=>doc(db,ROOT,normalizeRoom(name));
 const normalizeName=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
+async function cedulaKey(value){const bytes=new TextEncoder().encode(room+':'+value);const hash=await crypto.subtle.digest('SHA-256',bytes);return Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,'0')).join('');}
 const saveSession=()=>{localStorage.setItem(SESSION_KEY,JSON.stringify({room,playerId,playerName}));$("resumeQuiz").classList.remove('hidden');};
 const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{return null}};
+function configureIdentity(run){
+ joinRun=run;const cedula=participantIdentity(run)==='cedula',input=$("playerName");
+ $("identityField").classList.remove('hidden');$("playerIdentityLabel").textContent=cedula?'Cédula':'Nombre';
+ input.placeholder=cedula?'Ej.: 1020304050':'Tu nombre';input.inputMode=cedula?'numeric':'text';input.autocomplete=cedula?'off':'name';input.pattern=cedula?'[0-9]+':'.*\\S.*';
+ $("identityHint").textContent=cedula?'Solo números. No se aceptan puntos, espacios ni otros caracteres.':'Ingresa el nombre con el que responderás el quiz.';
+ input.setAttribute('aria-invalid','false');$("joinMsg").textContent='';$("joinBtn").disabled=false;
+}
+async function loadJoinRoom(){
+ const request=++joinLookup;$("joinBtn").disabled=true;$("joinMsg").textContent='';
+ $("roomLookupMsg").textContent='Buscando sala…';
+ try{
+  let id=inviteRunId;
+  if(id&&!/^partida-[a-zA-Z0-9-]{1,100}$/.test(id))throw Error('El enlace no es válido.');
+  if(!id){const code=normalizeRoom($("roomCode").value);if(!code)throw Error('Escribe el código de tu sala.');const alias=await getDoc(aliasRef(code));if(!alias.exists()||!alias.data().activeRun)throw Error('No hay una sala activa con ese código.');id=alias.data().activeRun;}
+  const snap=await getDoc(doc(db,ROOT,id));if(request!==joinLookup)return;
+  if(!snap.exists()||snap.data().recordType!=='run')throw Error('Esta sala ya no está disponible.');
+  configureIdentity(snap.data());$("roomLookupMsg").textContent='Sala encontrada.';
+  $("joinRoomSummary").textContent='Sala · '+(joinRun.className||'Quiz');$("joinRoomSummary").classList.remove('hidden');
+  if(inviteRunId){$("roomCode").value=joinRun.className||'Quiz';$("roomCodeField").classList.add('hidden');$("homeMsg").textContent='Tu sala está lista: '+(joinRun.className||'Quiz')+'.';}
+ }catch(e){if(request!==joinLookup)return;joinRun=null;$("identityField").classList.add('hidden');$("joinRoomSummary").classList.add('hidden');$("roomLookupMsg").textContent='';$("joinMsg").textContent=e.message;$("joinBtn").disabled=true;}
+}
+$("roomCode").oninput=()=>{joinLookup++;joinRun=null;$("identityField").classList.add('hidden');$("joinRoomSummary").classList.add('hidden');$("joinMsg").textContent='';$("roomLookupMsg").textContent='';$("joinBtn").disabled=true;};
+$("roomCode").onchange=loadJoinRoom;
+$("roomCode").onblur=()=>{if(!joinRun&&$("roomCode").value)return loadJoinRoom();};
+$("roomCode").onkeydown=async e=>{if(e.key==='Enter'){e.preventDefault();await loadJoinRoom();if(joinRun)$("playerName").focus();}};
+$("playerName").oninput=()=>{const error=identityError($("playerName").value,participantIdentity(joinRun));$("playerName").setAttribute('aria-invalid',error?'true':'false');$("joinMsg").textContent=error;$("joinBtn").disabled=!!error||!joinRun;};
+$("playerName").onkeydown=e=>{if(e.key==='Enter'&&!$("joinBtn").disabled){e.preventDefault();$("joinBtn").click();}};
 $("resumeQuiz").onclick=async()=>{
  detachPlayer();const epoch=navigationEpoch;
  try{const saved=loadSession(),restored=saved&&await restoreSession(saved);if(epoch!==navigationEpoch)return;if(!restored){$("homeMsg").textContent='La sesión anterior ya no está disponible. Puedes ingresar de nuevo o entrar como facilitador.';show('home');}}
@@ -211,18 +248,18 @@ async function restoreSession(s){
  const old=await getDoc(doc(db,ROOT,s.room));
  if(!old.exists()||old.data().recordType!=="run")return false;
  if(inviteRunId && inviteRunId!==s.room)return false;
- if(!isSelfPaced(old.data())){const a=await getDoc(aliasRef(old.data().className||""));if(!a.exists()||a.data().activeRun!==s.room)return false;}
+ if(!inviteRunId&&!isSelfPaced(old.data())){const a=await getDoc(aliasRef(old.data().className||""));if(!a.exists()||a.data().activeRun!==s.room)return false;}
  if(epoch!==navigationEpoch)return true;room=s.room;playerId=s.playerId;playerName=s.playerName||"";
  const ps=await getDoc(pRef(playerId));if(!ps.exists())return false;if(epoch!==navigationEpoch)return true;playerName=ps.data().name||playerName;saveSession();
- $("welcome").textContent="¡Bienvenido de nuevo, "+playerName+"!";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return true;
+ $("welcome").textContent="¡Bienvenido de nuevo, "+participantLabel(ps.data())+"!";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return true;
 }
 async function recoverOrJoin(name,code){
  const epoch=navigationEpoch;
- const codeName=normalizeRoom(code);playerName=String(name||"").trim();
- if(!codeName)return $("joinMsg").textContent="Escribe el nombre de la clase.";
+ const codeName=normalizeRoom(code);let runSnapshot;
+ if(!inviteRunId&&!codeName)return $("joinMsg").textContent="Escribe el código de tu sala.";
  if(inviteRunId){
   if(!/^partida-[a-zA-Z0-9-]{1,100}$/.test(inviteRunId))throw Error('El enlace del instrumento no es válido.');
-  const invitation=await getDoc(doc(db,ROOT,inviteRunId));
+  const invitation=await getDoc(doc(db,ROOT,inviteRunId));runSnapshot=invitation;
   if(epoch!==navigationEpoch)return;
   if(!invitation.exists()||invitation.data().recordType!=='run')return $("joinMsg").textContent='Este instrumento ya no está disponible.';
   room=inviteRunId;
@@ -231,21 +268,26 @@ async function recoverOrJoin(name,code){
   if(epoch!==navigationEpoch)return;
   if(!alias.exists()||!alias.data().activeRun)return $("joinMsg").textContent="No hay una sala activa con ese nombre. Verifica el código con tu facilitador.";
   room=alias.data().activeRun;
+  runSnapshot=await getDoc(roomRef());if(epoch!==navigationEpoch)return;
  }
- if(!playerName)return $("joinMsg").textContent="Escribe tu nombre.";
- const target=normalizeName(playerName),snap=await getDocs(playersRef());
- const existing=snap.docs.find(d=>normalizeName(d.data().name)===target);
+ if(!runSnapshot.exists()||runSnapshot.data().recordType!=='run')throw Error('Esta sala ya no está disponible.');
+ const live=runSnapshot.data(),identityType=participantIdentity(live);configureIdentity(live);
+ const error=identityError(name,identityType);if(error){$("playerName").setAttribute('aria-invalid','true');$("joinBtn").disabled=true;return $("joinMsg").textContent=error;}
+ playerName=identityType==='cedula'?participantLabel({name:String(name),identityType}):String(name).trim();
+ // Store a room-specific digest for recovery; never persist the full document number.
+ const target=identityType==='cedula'?await cedulaKey(String(name)):normalizeName(playerName),snap=await getDocs(playersRef());
+ const existing=snap.docs.find(d=>(d.data().identityType||'name')===identityType&&(identityType==='cedula'?d.data().normalizedName===target:normalizeName(d.data().name)===target));
  if(epoch!==navigationEpoch)return;
- if(existing){playerId=existing.id;playerName=existing.data().name||playerName;saveSession();$("welcome").textContent="Sesión recuperada: "+playerName+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return;}
- const ref=doc(playersRef());playerId=ref.id;await setDoc(ref,{name:playerName,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});
- if(epoch!==navigationEpoch)return;saveSession();$("welcome").textContent="¡Listo, "+playerName+"!";show("waiting");listenPlayer();
+ if(existing){playerId=existing.id;playerName=existing.data().name||playerName;saveSession();$("welcome").textContent="Sesión recuperada: "+participantLabel(existing.data())+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return;}
+ const ref=doc(playersRef());playerId=ref.id;await setDoc(ref,{name:playerName,identityType,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});
+ if(epoch!==navigationEpoch)return;saveSession();$("welcome").textContent="¡Listo, "+participantLabel({name:playerName,identityType})+"!";show("waiting");listenPlayer();
 }
 
 const roomRef=()=>doc(db,ROOT,room); const playersRef=()=>collection(db,ROOT,room,"players"); const pRef=id=>doc(db,ROOT,room,"players",id); const scoreboardRef=()=>doc(db,ROOT,room,"public","scoreboard");
 const selfPaced=createSelfPacedQuiz({db,roomRef,playerRef:()=>pRef(playerId),playersRef,getQuestions:()=>Q,getPlayerId:()=>playerId,getPlayerName:()=>playerName,$,show,escapeHtml});
 function safeId(s){return (s.toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi,"-").replace(/^-|-$/g,"").slice(0,40)||"jugador")+"-"+Math.random().toString(36).slice(2,7)}
 async function ensureRoom(){const r=await getDoc(roomRef());if(!r.exists())await setDoc(roomRef(),{questionIndex:0,status:"lobby",openedAt:0,duration:60,bankId:currentBankId,updatedAt:serverTimestamp()})}
-$("joinBtn").onclick=async()=>{try{await recoverOrJoin($("playerName").value,$("roomCode").value)}catch(e){console.error(e);$("joinMsg").textContent="No fue posible entrar o recuperar la sesión.";}};
+$("joinBtn").onclick=async()=>{if(joinBusy)return;joinBusy=true;$("joinBtn").disabled=true;try{await recoverOrJoin($("playerName").value,$("roomCode").value)}catch(e){console.error(e);$("joinMsg").textContent=e.message||"No fue posible entrar o recuperar la sesión.";}finally{joinBusy=false;$("joinBtn").disabled=!joinRun||!!identityError($("playerName").value,participantIdentity(joinRun));}};
 $("hostBtn").onclick=async()=>{
  try {
    const email=$("hostEmail").value.trim();
@@ -270,7 +312,7 @@ async function renderRooms(){
 }
 window.openClassRoom=async encoded=>{$("className").value=decodeURIComponent(encoded);await reopenClass()};
 async function enterHostRun(runId){
- hostUnsubs.forEach(u=>u());hostUnsubs=[];if(playerUnsub)playerUnsub();selfPaced.stop();clearInterval(tick);room=runId;state=null;players=[];selectedQuestions=null;$("pickerList").dataset.editing='false';$("quizSettings").dataset.editing='false';
+ hostUnsubs.forEach(u=>u());hostUnsubs=[];if(playerUnsub)playerUnsub();selfPaced.stop();clearInterval(tick);room=runId;state=null;players=[];selectedQuestions=null;$("pickerList").dataset.editing='false';$("quizSettings").dataset.editing='false';$("participantSettings").dataset.editing='false';$("participantSettingsMsg").textContent='';
  const rs=await getDoc(roomRef());if(!rs.exists())throw Error("No existe la partida seleccionada.");
  const rd=rs.data();state=rd;selectedQuestions=Array.isArray(rd.selectedQuestions)?rd.selectedQuestions:null;currentBankId=rd.bankId||"agilismo";
  if(Array.isArray(rd.questions))Q=questionsFromFirestore(rd.questions);
@@ -297,7 +339,7 @@ $("createRoom").onclick=async()=>{
   const bank=await getDoc(doc(db,BANKS,currentBankId));
   const questions=bank.exists()&&Array.isArray(bank.data().questions)?bank.data().questions:questionsToFirestore(Q);
   const b=writeBatch(db);
-  b.set(doc(db,ROOT,runId),{recordType:"run",className:name,questionIndex:0,status:"lobby",openedAt:0,duration,mode,selfPacedStatus:'draft',bankId:currentBankId,questions,updatedAt:serverTimestamp(),createdAt:serverTimestamp()});
+  b.set(doc(db,ROOT,runId),{recordType:"run",className:name,questionIndex:0,status:"lobby",openedAt:0,duration,mode,rankingVisibility:rankingVisibility({rankingVisibility:$("newRankingVisibility").value}),participantIdentity:participantIdentity({participantIdentity:$("newParticipantIdentity").value}),selfPacedStatus:'draft',bankId:currentBankId,questions,updatedAt:serverTimestamp(),createdAt:serverTimestamp()});
   b.set(alias,{recordType:"class_alias",displayName:$("className").value.trim(),activeRun:runId,runs:[...(data.runs||[]),runId].slice(-100),updatedAt:serverTimestamp()},{merge:true});
   await b.commit();classAlias=$("className").value.trim();await enterHostRun(runId);
  }catch(e){$("roomManagerMsg").textContent="No se pudo crear la sala: "+e.message;}
@@ -309,45 +351,57 @@ window.addEventListener("pagehide",()=>{touchPresence(false);});
 function listenPlayer(){
   if(playerUnsub)playerUnsub();
   selfPaced.stop();
-  let unsubRoom=null,unsubScore=null;
+  let unsubRoom=null,unsubScore=null,board=null,mine=null;
+  const epoch=navigationEpoch;
+  const rankingAllowed=()=>!isSelfPaced(state)&&canShowParticipantRanking(state,Q);
+  function clearRanking(){
+    if(unsubScore){unsubScore();unsubScore=null;}board=null;mine=null;
+    $("playerRankingBox").classList.add('hidden');$("directedRankingBox").classList.add('hidden');
+    $("playerRanking").innerHTML='';$("directedRanking").innerHTML='';
+  }
+  function renderParticipantBoard(){
+    if(epoch!==navigationEpoch||!rankingAllowed())return;
+    const latest=board&&(!state.lastResults||Number(board.questionIndex)>=Number(state.lastResults.questionIndex))?board:state.lastResults||board||{};
+    const top=Array.isArray(latest.top)?latest.top:[];
+    const html=top.map((p,i)=>`<div class="rankrow"><b>#${i+1}</b><span>${escapeHtml(p.name)}</span><b>${p.score||0} pts</b></div>`).join('')
+      +(mine&&mine.rank?`<div class="rankrow"><b>#${mine.rank}</b><span>${escapeHtml(participantLabel(mine))} · tú</span><b>${mine.score||0} pts</b></div>`:'');
+    $("playerRanking").innerHTML=$("directedRanking").innerHTML=html||'<p class="muted">El ranking aparecerá al revelar los primeros resultados.</p>';
+  }
+  function syncParticipantRanking(){
+    if(!rankingAllowed()){clearRanking();return;}
+    $("playerRankingBox").classList.remove('hidden');$("directedRankingBox").classList.remove('hidden');
+    renderParticipantBoard();
+    if(!unsubScore)unsubScore=onSnapshot(scoreboardRef(),async s=>{
+      if(epoch!==navigationEpoch||!rankingAllowed())return;board=s.exists()?s.data():null;
+      try{const me=await getDoc(pRef(playerId));if(epoch!==navigationEpoch||!rankingAllowed())return;if(me.exists())mine=me.data();}catch{}
+      renderParticipantBoard();
+    },()=>{board=null;renderParticipantBoard();});
+  }
   unsubRoom=onSnapshot(roomRef(),snap=>{
-    if(!snap.exists())return;
+    if(epoch!==navigationEpoch)return;
+    if(!snap.exists()){clearRanking();return;}
     state=snap.data();
     if(Array.isArray(state.questions))Q=questionsFromFirestore(state.questions);
     if(isSelfPaced(state)){
-      clearInterval(tick);if(unsubScore){unsubScore();unsubScore=null;}
+      clearInterval(tick);clearRanking();
       selfPaced.updateRun(state);return;
     }
     selfPaced.stop();$("selfAfterAnswer").classList.add('hidden');$("selfRetry").classList.add('hidden');$("pTimer").classList.remove('hidden');$("pTimeBarBox").classList.remove('hidden');
     if($("connStatus"))$("connStatus").textContent=navigator.onLine?"🟢 Conectado":"🔴 Sin conexión";
     if(state.status==="open"){
-      if(unsubScore){unsubScore();unsubScore=null;}
-      $("playerRankingBox").classList.add("hidden");
       renderPlayer();
     }else{
+      clearInterval(tick);
       show("waiting");
-      $("waitText").textContent=state.status==="revealed"?"Resultados de la ronda. Espera a que el facilitador continúe.":"Espera a que el facilitador abra la pregunta.";
-      getDoc(pRef(playerId)).then(x=>{if(x.exists())$("waitScore").textContent=(x.data().score||0)+" pts"});
-      if(state.status==="revealed"){
-        $("playerRankingBox").classList.remove("hidden");
-        if(unsubScore)unsubScore();
-        unsubScore=onSnapshot(scoreboardRef(),async s=>{
-          const d=s.exists()?s.data():{},top=Array.isArray(d.top)?d.top:[];
-          let mine=null;
-          try{const me=await getDoc(pRef(playerId));if(me.exists())mine=me.data();}catch{}
-          $("playerRanking").innerHTML=
-            top.map((p,i)=>`<div class="rankrow"><b>${i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1)}</b><span>${escapeHtml(p.name)}</span><b>${p.score||0} pts</b></div>`).join("")+
-            (mine?`<div class="rankrow" style="margin-top:10px"><b>Tu posición</b><span>${escapeHtml(mine.name||playerName)}</span><b>${mine.rank||"—"} de ${d.total||"—"} · ${mine.score||0} pts</b></div>`:"");
-        });
-      }else{
-        $("playerRankingBox").classList.add("hidden");
-        if(unsubScore){unsubScore();unsubScore=null;}
-      }
+      const ended=canShowParticipantRanking({...state,rankingVisibility:'final'},Q);
+      $("waitText").textContent=ended?'Completaste el quiz. Este es tu resultado.':state.status==="revealed"?"Resultados de la ronda. Espera a que el facilitador continúe.":"Espera a que el facilitador abra la pregunta.";
     }
+    getDoc(pRef(playerId)).then(x=>{if(epoch!==navigationEpoch)return;if(x.exists()){mine=x.data();$("waitScore").textContent=(mine.score||0)+" pts";renderParticipantBoard();}}).catch(()=>{});
+    syncParticipantRanking();
   });
-  playerUnsub=()=>{if(unsubRoom)unsubRoom();if(unsubScore)unsubScore();selfPaced.stop();clearInterval(tick);};
+  playerUnsub=()=>{if(unsubRoom)unsubRoom();clearRanking();selfPaced.stop();clearInterval(tick);};
 }
-function renderPlayer(){let i=state.questionIndex,q=Q[i];if(!q)return;show("playerGame");$("pMsg").textContent='';$("pNum").textContent=`Pregunta ${i+1} / ${Q.length}`;$("pQuestion").textContent=q[1];$("pAnswers").innerHTML="";q[2].forEach((a,k)=>{let b=document.createElement("button");b.className="answer";b.textContent=String.fromCharCode(65+k)+". "+a;b.onclick=()=>submitAnswer(k,b);$("pAnswers").appendChild(b)});runPlayerTimer()}
+function renderPlayer(){let i=state.questionIndex,q=Q[i];if(!q)return;show("playerGame");const order=questionOrder(state,Q);$("pMsg").textContent='';$("pNum").textContent=`Pregunta ${order.indexOf(i)+1} / ${order.length}`;$("pQuestion").textContent=q[1];$("pAnswers").innerHTML="";q[2].forEach((a,k)=>{let b=document.createElement("button");b.className="answer";b.innerHTML=`<span class="answer-letter">${'ABCD'[k]}</span><span>${escapeHtml(a)}</span>`;b.onclick=()=>submitAnswer(k,b);$("pAnswers").appendChild(b)});runPlayerTimer()}
 function runPlayerTimer(){clearInterval(tick);const duration=questionSeconds(state);const update=()=>{let remain=Math.max(0,duration-(Date.now()-(state.openedAt||Date.now()))/1000);$("pTimer").textContent=Math.ceil(remain);$("pTimeBar").style.width=(remain/duration*100)+"%";if(remain<=0){clearInterval(tick);$("pAnswers").querySelectorAll("button").forEach(b=>b.disabled=true);$("pMsg").textContent="Tiempo agotado."}};update();tick=setInterval(update,250)}
 async function submitAnswer(k,b){
   $("pAnswers").querySelectorAll("button").forEach(x=>x.disabled=true);
@@ -363,8 +417,27 @@ async function submitAnswer(k,b){
 function listenHost(){hostUnsubs.forEach(u=>u());hostUnsubs=[onSnapshot(roomRef(),s=>{if(s.exists()){state=s.data();selectedQuestions=Array.isArray(state.selectedQuestions)?state.selectedQuestions:null;if(Array.isArray(state.questions))Q=questionsFromFirestore(state.questions);renderHost()}}),onSnapshot(playersRef(),s=>{players=s.docs.map(d=>({id:d.id,...d.data()}));renderHost()})]}
 function instrumentLocked(){return isSelfPaced(state)&&!!state.selfPacedStatus&&state.selfPacedStatus!=='draft';}
 function assertInstrumentEditable(){if(instrumentLocked())throw Error('El instrumento ya está habilitado. Crea una nueva partida para cambiar preguntas, selección o tiempo sin mezclar los resultados.');}
+function renderParticipantSettings(){
+ if($("participantSettings").dataset.editing!=='true'){$("rankingVisibility").value=rankingVisibility(state);$("participantIdentity").value=participantIdentity(state);}
+ $("participantIdentity").disabled=players.length>0;
+ $("participantSettingsInfo").textContent='Tú siempre podrás consultar el ranking en este panel. '+(players.length?'El tipo de identificación queda fijo desde la primera inscripción.':'Puedes elegir nombre o cédula antes de recibir inscripciones.');
+ const link=new URL(location.href);link.search='';link.hash='';link.searchParams.set('partida',room);$("quizShareLink").value=link.href;
+ $("copyQuizLink").disabled=isSelfPaced(state)&&(!state.selfPacedStatus||state.selfPacedStatus==='draft');
+}
+$("participantSettings").addEventListener('input',()=>{$("participantSettings").dataset.editing='true';$("participantSettingsMsg").textContent='Tienes opciones sin guardar.';});
+$("saveParticipantSettings").onclick=async()=>{
+ try{
+  const visibility=rankingVisibility({rankingVisibility:$("rankingVisibility").value}),identity=participantIdentity({participantIdentity:$("participantIdentity").value});
+  const live=await getDoc(roomRef());if(!live.exists())throw Error('La sala ya no está disponible.');
+  if(identity!==participantIdentity(live.data())){const registrations=await getDocs(playersRef());if(registrations.docs.length)throw Error('Ya hay personas inscritas. Crea una nueva partida para cambiar entre nombre y cédula.');}
+  await updateDoc(roomRef(),{rankingVisibility:visibility,participantIdentity:identity,updatedAt:serverTimestamp()});
+  state={...state,rankingVisibility:visibility,participantIdentity:identity};$("participantSettings").dataset.editing='false';renderParticipantSettings();
+  $("participantSettingsMsg").textContent='Opciones guardadas. Se aplican a quienes ingresen y a quienes ya estén respondiendo.';hostClearError();
+ }catch(e){$("participantSettingsMsg").textContent=e.message;}
+};
 function renderModeSettings(){
  const autonomous=isSelfPaced(state),locked=instrumentLocked();
+ renderParticipantSettings();
  if($("quizSettings").dataset.editing!=='true'){$("quizMode").value=autonomous?'self_paced':'facilitated';$("questionDuration").value=questionSeconds(state);}
  $("questionDurationField").classList.toggle('hidden',$("quizMode").value==='self_paced');
  $("facilitatedControls").classList.toggle('hidden',autonomous);$("selfHostControls").classList.toggle('hidden',!autonomous);$("hostQuestionCard").classList.toggle('hidden',autonomous);
@@ -380,7 +453,6 @@ function renderModeSettings(){
  $("selfHostStatus").textContent=`${count} preguntas · sin límite de tiempo. `+(status==='draft'?'Selecciona el banco y las preguntas; después habilita el instrumento.':'Las preguntas quedan fijas para esta partida.');
  $("publishSelfQuiz").textContent=status==='closed'?'Reabrir instrumento':'Habilitar instrumento';$("publishSelfQuiz").disabled=status==='published'||!count;
  $("closeSelfQuiz").disabled=status!=='published';
- const link=new URL(location.href);link.search='';link.hash='';link.searchParams.set('partida',room);$("quizShareLink").value=link.href;$("copyQuizLink").disabled=status==='draft';
 }
 $("quizSettings").addEventListener('input',()=>{$("quizSettings").dataset.editing='true';$("questionDurationField").classList.toggle('hidden',$("quizMode").value==='self_paced');});
 $("saveQuizSettings").onclick=async()=>{try{
@@ -449,7 +521,7 @@ function renderRank(){
     return;
   }
   let a=[...players].sort(rankComparator);
-  const isFinal=(state.questionIndex||0)===Q.length-1;
+ const isFinal=state.questionIndex===selectedIndices().at(-1);
   const visible=isFinal?a:a.slice(0,10);
   $("ranking").innerHTML=visible.length
     ? visible.map((p,i)=>`<div class="rankrow"><b>${i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1)}</b><span>${escapeHtml(p.name)}</span><b>${p.score||0} pts</b></div>`).join("")
@@ -476,11 +548,11 @@ $("revealQ").onclick=async()=>{
       }
       let score=0,correctTime=0;
       Object.values(ans).forEach(a=>{score+=Number(a.points||0);if(a.correct)correctTime+=Number(a.elapsed||0);});
-      return {id:d.id,ref:d.ref,name:p.name||"",answers:ans,score,correctTime:+correctTime.toFixed(3)};
+      return {id:d.id,ref:d.ref,name:p.name||"",identityType:p.identityType||'name',answers:ans,score,correctTime:+correctTime.toFixed(3)};
     }).sort(rankComparator);
     await commitInChunks(scored.map((p,idx)=>b=>b.update(p.ref,{answers:p.answers,score:p.score,correctTime:p.correctTime,rank:idx+1})));
     // Publicar resultados incluso si las reglas aún no permiten la subcolección /public.
-    const top=scored.slice(0,10).map(p=>({name:p.name,score:p.score}));
+    const top=(i===selectedIndices().at(-1)?scored:scored.slice(0,10)).map(p=>({name:participantLabel(p),score:p.score}));
     try{await setDoc(scoreboardRef(),{top,total:scored.length,questionIndex:i,updatedAt:serverTimestamp()},{merge:true});}
     catch(e){console.warn("Tablero público no disponible; se conservan resultados en jugadores y sala.",e);}
     await updateDoc(roomRef(),{status:"revealed",updatedAt:serverTimestamp(),lastResults:{questionIndex:i,top,total:scored.length}});
@@ -719,11 +791,10 @@ function escapeHtml(s){let d=document.createElement("div");d.textContent=s||"";r
 setTimeout(async()=>{
  show('home');
  const s=loadSession();
- if(s&&(!inviteRunId||s.room===inviteRunId)){$("resumeQuiz").classList.remove('hidden');$("playerName").value=s.playerName||'';}
+ if(s&&(!inviteRunId||s.room===inviteRunId)){$("resumeQuiz").classList.remove('hidden');$("playerName").value=String(s.playerName||'').startsWith('Cédula ••••')?'':s.playerName||'';}
  if(inviteRunId){
-  $("homeMsg").textContent='Tienes un instrumento compartido. Elige Participar para responderlo o Facilitador para administrar tus salas.';$("roomCode").value='Instrumento compartido';$("roomCode").readOnly=true;
-  try{if(!/^partida-[a-zA-Z0-9-]{1,100}$/.test(inviteRunId))throw Error('El enlace no es válido.');const snap=await getDoc(doc(db,ROOT,inviteRunId));if(!snap.exists())throw Error('Este instrumento ya no está disponible.');$("roomCode").value=snap.data().className||'Instrumento compartido';}
-  catch(e){$("joinMsg").textContent=e.message;$("joinBtn").disabled=true;}
+  $("homeMsg").textContent='Tienes una invitación. Entra al quiz para comenzar.';$("roomCodeField").classList.add('hidden');$("roomCode").readOnly=true;
+  await loadJoinRoom();
  }
 },0);
 </script>

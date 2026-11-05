@@ -1,5 +1,5 @@
 import {onSnapshot, runTransaction, serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-import {attemptView, evaluateSelfPacedAnswer, answerTotals, questionOrder, milliseconds, selfPacedRanking} from './quiz-engine.mjs';
+import {attemptView, evaluateSelfPacedAnswer, answerTotals, questionOrder, milliseconds, selfPacedRanking, canShowParticipantRanking, rankingVisibility, participantLabel} from './quiz-engine.mjs';
 
 export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQuestions, getPlayerId, getPlayerName, $, show, escapeHtml}) {
   let run = null, player = null, participants = [], key = '', viewKey = '', busy = false, failedOperation = null;
@@ -15,6 +15,8 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
     if (unsubscribeRanking) unsubscribeRanking();
     unsubscribePlayer = unsubscribeRanking = null;
     key = ''; viewKey = ''; player = null; participants = []; run = null; failedOperation = null; busy = false;
+    $('selfLiveRankingBox').classList.add('hidden');$('selfFinalRankingBox').classList.add('hidden');
+    $('selfLiveRanking').innerHTML = '';$('selfFinalRanking').innerHTML = '';$('selfFinalPosition').textContent = '';
   }
   function updateRun(next) {
     const nextKey = playerRef().path;
@@ -29,9 +31,6 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
         }
         render();
       }, failure);
-      unsubscribeRanking = onSnapshot(playersRef(), snapshot => {
-        participants = snapshot.docs.map(d => ({id: d.id, ...d.data()})); renderRanking();
-      }, failure);
     } else {
       if (run?.quizVersion !== next.quizVersion) {viewKey = ''; failedOperation = null;}
       run = next;
@@ -40,9 +39,29 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
   }
   function renderRanking() {
     if (!run) return;
+    const complete = !!player && attemptView(run, player, getQuestions()).complete;
+    const visible = canShowParticipantRanking(run, getQuestions(), complete);
+    $('selfLiveRankingBox').classList.toggle('hidden', !visible || complete);
+    $('selfFinalRankingBox').classList.toggle('hidden', !visible || !complete);
+    if (!visible) {
+      if (unsubscribeRanking) unsubscribeRanking();
+      unsubscribeRanking = null; participants = [];
+      $('selfLiveRanking').innerHTML = '';$('selfFinalRanking').innerHTML = '';$('selfFinalPosition').textContent = '';
+      return;
+    }
+    if (!unsubscribeRanking) {
+      const requestKey = key;
+      unsubscribeRanking = () => {};
+      unsubscribeRanking = onSnapshot(playersRef(), snapshot => {
+        if (key !== requestKey) return;
+        participants = snapshot.docs.map(d => ({id: d.id, ...d.data()})); renderRanking();
+      }, () => {
+        $('selfLiveRanking').textContent = $('selfFinalRanking').textContent = 'No se pudo cargar el ranking. Tus respuestas siguen guardadas.';
+      });
+    }
     const ranking = selfPacedRanking(participants, run, getQuestions());
     const mine = ranking.findIndex(p => p.id === getPlayerId());
-    const html = ranking.length ? ranking.map((p, i) => `<div class="rankrow"><b>#${i + 1}</b><span>${escapeHtml(p.name)}<small class="mini rankdetail">${p.correctCount} aciertos · avance ${p.answeredCount}/${questionOrder(run, getQuestions()).length}</small></span><b>${p.score} pts</b></div>`).join('') : '<p class="muted">El ranking aparecerá cuando alguien comience.</p>';
+    const html = ranking.length ? ranking.map((p, i) => `<div class="rankrow"><b>#${i + 1}</b><span>${escapeHtml(participantLabel(p))}<small class="mini rankdetail">${p.correctCount} aciertos · avance ${p.answeredCount}/${questionOrder(run, getQuestions()).length}</small></span><b>${p.score} pts</b></div>`).join('') : '<p class="muted">El ranking aparecerá cuando alguien comience.</p>';
     $('selfLiveRanking').innerHTML = html;
     $('selfFinalRanking').innerHTML = html;
     $('selfFinalPosition').textContent = mine < 0 ? '' : `Tu posición actual: ${mine + 1} de ${ranking.length}. El ranking se actualiza mientras otras personas responden.`;
@@ -51,6 +70,7 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
     if (!run || !player) return;
     const questions = getQuestions(), view = attemptView(run, player, questions);
     const available = run.selfPacedStatus === 'published';
+    renderRanking();
     $('selfIntroRetry').classList.add('hidden');
     if (view.complete) {
       show('selfResults');
@@ -61,8 +81,9 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
     }
     if (!available || !view.progress || !view.order.includes(view.activeIndex) || !view.startedAt) {
       show('selfIntro');
-      $('selfIntroTitle').textContent = `Hola, ${getPlayerName()}`;
-      $('selfIntroInfo').textContent = `${view.order.length} preguntas · sin límite de tiempo. Cada acierto suma de 1 a 10 puntos según la rapidez. Una respuesta incorrecta suma 0 puntos.`;
+      $('selfIntroTitle').textContent = `Hola, ${participantLabel(player) || getPlayerName()}`;
+      const rankingNote = {live:'Podrás consultar el ranking durante el quiz.',final:'Verás el ranking cuando completes todas las preguntas.',hidden:'Verás tu resultado individual; no se mostrará ranking.'}[rankingVisibility(run)];
+      $('selfIntroInfo').textContent = `${view.order.length} preguntas · sin límite de tiempo. Cada acierto suma de 1 a 10 puntos según la rapidez. Una respuesta incorrecta suma 0 puntos. ${rankingNote}`;
       $('selfIntroStatus').textContent = !available ? (run.selfPacedStatus === 'closed' ? 'El instrumento está cerrado.' : 'El facilitador todavía está preparando el instrumento.') : 'La rapidez cuenta desde Comenzar quiz y, después, desde que guardas la respuesta anterior. Si te demoras en abrir la siguiente pregunta, obtendrás menos puntos por rapidez. Salir o recargar no detiene ese registro.';
       $('startSelfQuiz').textContent = view.progress ? 'Continuar quiz' : 'Comenzar quiz';
       $('startSelfQuiz').disabled = !available || busy || !view.order.length;
@@ -81,7 +102,7 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
       $('pAnswers').innerHTML = '';
       questions[view.activeIndex][2].forEach((option, i) => {
         const button = document.createElement('button'); button.className = 'answer';
-        button.textContent = `${'ABCD'[i]}. ${option}`; button.disabled = !!view.answer || busy;
+        button.innerHTML = `<span class="answer-letter">${'ABCD'[i]}</span><span>${escapeHtml(option)}</span>`; button.disabled = !!view.answer || busy;
         button.onclick = () => answer(i, view.activeIndex);
         if (view.answer?.option === i) button.classList.add('chosen');
         $('pAnswers').appendChild(button);

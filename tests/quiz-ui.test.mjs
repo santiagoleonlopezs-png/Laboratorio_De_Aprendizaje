@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {webcrypto} from 'node:crypto';
 import * as engine from '../quiz-engine.mjs';
 
 const html=fs.readFileSync(new URL('../knowledge.html',import.meta.url),'utf8');
@@ -10,18 +11,19 @@ function page(search='', saved=null){
  const elements=new Map(),store=new Map(),observers=[],startup=[],savedValues=new Map(),errors=[];let autoId=0;
  if(saved)savedValues.set('gc_quiz_session_v7',JSON.stringify(saved));
  function element(id){
-  const classes=new Set();
+  const tag=html.match(new RegExp('<[^>]+\\bid="'+id+'"[^>]*>'))?.[0]||'';
+  const classes=new Set((tag.match(/class="([^"]*)"/)?.[1]||'').split(/\s+/).filter(Boolean)),attributes={};
   return {id,value:'',textContent:'',dataset:{},style:{},disabled:false,
    classList:{toggle(name,force){const on=force===undefined?!classes.has(name):force;if(on)classes.add(name);else classes.delete(name);},add:name=>classes.add(name),remove:name=>classes.delete(name),contains:name=>classes.has(name)},
-   addEventListener(){},querySelectorAll:()=>[],scrollIntoView(){},appendChild(){},
-   set innerHTML(s){this._html=s;this.textContent=s;},get innerHTML(){return this._html||'';}};
+   addEventListener(){},querySelectorAll:()=>[],scrollIntoView(){},appendChild(){},focus(){},setAttribute:(key,value)=>attributes[key]=value,getAttribute:key=>attributes[key],
+   set innerHTML(s){this._html=s;this.textContent=s;},get innerHTML(){return this._html||String(this.textContent||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}};
  }
  const $=id=>{if(!elements.has(id))elements.set(id,element(id));return elements.get(id);};
  const backButtons=Array.from({length:[...html.matchAll(/class="[^"]*\bback\b[^"]*"/g)].length},(_,i)=>element('back-'+i));
  const ref=(...parts)=>{const path=parts.slice(parts[0]?.kind==='db'?1:0).map(p=>p?.path||p).join('/');return {path,id:path.split('/').at(-1)};};
  const getDoc=async r=>({exists:()=>store.has(r.path),data:()=>structuredClone(store.get(r.path))});
  const put=async(r,data,options)=>{store.set(r.path,options?.merge?{...store.get(r.path),...structuredClone(data)}:structuredClone(data));};
- const context={...engine,console:{...console,error:error=>errors.push(error)},URL,URLSearchParams,crypto:{randomUUID:()=>`version-${++autoId}`},location:{href:'https://example.test/knowledge.html'+search,search},navigator:{onLine:true,clipboard:{writeText:async()=>{}}},
+ const context={...engine,console:{...console,error:error=>errors.push(error)},URL,URLSearchParams,TextEncoder,crypto:{randomUUID:()=>`version-${++autoId}`,subtle:webcrypto.subtle},location:{href:'https://example.test/knowledge.html'+search,search},navigator:{onLine:true,clipboard:{writeText:async()=>{}}},
   document:{getElementById:$,querySelectorAll:selector=>selector==='.back'?backButtons:[],createElement:()=>element('generated'),activeElement:null},window:{addEventListener(){}},
   localStorage:{getItem:key=>savedValues.get(key)||null,setItem:(key,value)=>savedValues.set(key,value)},
   setTimeout:fn=>{startup.push(fn);},setInterval:()=>0,clearInterval(){},confirm:()=>true,alert(){},prompt:()=>null,
@@ -35,6 +37,7 @@ function page(search='', saved=null){
  };
  vm.createContext(context);vm.runInContext(script,context);
  return {$,store,context,run:code=>vm.runInContext(code,context),observers,backButtons,errors,
+  emit:async(path,data)=>{store.set(path,data);for(const o of [...observers])if(o.active&&o.r.path===path)await o.cb({exists:()=>true,data:()=>structuredClone(data)});},
   boot:async()=>{for(const fn of startup)await fn();},isShown:id=>!$(id).classList.contains('hidden')};
 }
 test('page has unique ids and all direct DOM lookups exist',()=>{
@@ -112,4 +115,71 @@ test('a delayed resume cannot steal the screen after switching to facilitator',a
 test('an invalid shared link never blocks facilitator access',async()=>{
  const p=page('?partida=partida-missing');await p.boot();assert.equal(p.isShown('home'),true);assert.equal(p.$('joinBtn').disabled,true);
  p.$('goHost').onclick();assert.equal(p.isShown('hostLogin'),true);
+});
+
+test('new directed and autonomous runs persist ranking and identity choices',async()=>{
+ for(const mode of ['facilitated','self_paced']){
+  const p=page();p.$('className').value='Reto';p.$('newQuizMode').value=mode;p.$('newQuestionDuration').value='60';p.$('newRankingVisibility').value='final';p.$('newParticipantIdentity').value='cedula';
+  await p.$('createRoom').onclick();const run=[...p.store.values()].find(r=>r.recordType==='run');
+  assert.equal(run.rankingVisibility,'final');assert.equal(run.participantIdentity,'cedula');
+  assert.ok(p.$('quizShareLink').value.includes('partida='));assert.equal(p.$('copyQuizLink').disabled,mode==='self_paced');
+ }
+});
+test('shared links hide the room field and load the correct identity for both modes',async()=>{
+ for(const mode of ['facilitated','self_paced']){
+  const p=page('?partida=partida-fixed');p.store.set('gc_quiz_live/partida-fixed',{recordType:'run',className:'SALA UNO',mode,participantIdentity:'cedula'});
+  await p.boot();assert.equal(p.isShown('home'),true);assert.equal(p.$('roomCodeField').classList.contains('hidden'),true);
+  assert.equal(p.$('playerIdentityLabel').textContent,'Cédula');assert.equal(p.$('playerName').inputMode,'numeric');assert.equal(p.$('joinRoomSummary').textContent,'Sala · SALA UNO');
+  await p.run("recoverOrJoin('0010203040','')");const player=[...p.store.entries()].find(([path])=>path.includes('/players/'))?.[1];
+  assert.equal(player.name,'Cédula ••••3040');assert.equal(player.identityType,'cedula');assert.equal(player.normalizedName.length,64);
+  assert.equal(JSON.stringify(player).includes('0010203040'),false);assert.equal(JSON.stringify(p.run('loadSession()')).includes('0010203040'),false);
+ }
+});
+test('manual room lookup determines identity before the participant supplies it',async()=>{
+ const p=page();p.store.set('gc_quiz_live/CLASE',{activeRun:'partida-class'});p.store.set('gc_quiz_live/partida-class',{recordType:'run',participantIdentity:'cedula',className:'CLASE'});
+ p.$('roomCode').value='clase';await p.run('loadJoinRoom()');assert.equal(p.$('playerIdentityLabel').textContent,'Cédula');assert.equal(p.$('identityField').classList.contains('hidden'),false);
+ p.$('roomCode').oninput();assert.equal(p.$('identityField').classList.contains('hidden'),true);assert.equal(p.$('joinBtn').disabled,true);
+});
+test('cedula validation rejects spaces, dots and non-digits without creating or recovering a player',async()=>{
+ const p=page('?partida=partida-fixed');p.store.set('gc_quiz_live/partida-fixed',{recordType:'run',participantIdentity:'cedula'});
+ for(const value of ['','123 456','123.456',' 123456','123456 ','123\t456','123\n456','123-456','1e6','+123456','123abc']){
+  await p.run('recoverOrJoin('+JSON.stringify(value)+',"")');
+  assert.equal([...p.store.keys()].filter(path=>path.includes('/players/')).length,0,value);
+  assert.match(p.$('joinMsg').textContent,/sin puntos ni espacios/);assert.equal(p.$('playerName').getAttribute('aria-invalid'),'true');
+ }
+ await p.run('recoverOrJoin("123456","")');const id=p.run('playerId');await p.run('recoverOrJoin("123456","")');assert.equal(p.run('playerId'),id);
+ assert.equal([...p.store.keys()].filter(path=>path.includes('/players/')).length,1);
+});
+test('ordinary names keep spaces and recover the same participant',async()=>{
+ const p=page('?partida=partida-fixed');p.store.set('gc_quiz_live/partida-fixed',{recordType:'run'});
+ await p.run('recoverOrJoin(" Ana María ","")');const id=p.run('playerId');await p.run('recoverOrJoin("ana maria","")');
+ assert.equal(p.run('playerId'),id);assert.equal(p.run('playerName'),'Ana María');
+});
+test('ranking visibility remains editable after publication without changing questions or scoring',async()=>{
+ const p=page(),path='gc_quiz_live/partida-fixed';p.store.set(path,{recordType:'run',mode:'self_paced',selfPacedStatus:'published',quizVersion:'keep',participantIdentity:'cedula',selectedQuestions:[1]});
+ p.store.set(path+'/players/ana',{name:'123',identityType:'cedula',score:10});p.run("room='partida-fixed';state="+JSON.stringify(p.store.get(path)));
+ p.$('rankingVisibility').value='hidden';p.$('participantIdentity').value='cedula';await p.$('saveParticipantSettings').onclick();
+ const run=p.store.get(path);assert.equal(run.rankingVisibility,'hidden');assert.equal(run.quizVersion,'keep');assert.deepEqual(run.selectedQuestions,[1]);assert.equal(p.store.get(path+'/players/ana').score,10);
+ p.$('participantIdentity').value='name';await p.$('saveParticipantSettings').onclick();assert.equal(p.store.get(path).participantIdentity,'cedula');assert.match(p.$('participantSettingsMsg').textContent,/Ya hay personas/);
+});
+test('directed hidden ranking is absent and does not subscribe to the scoreboard',async()=>{
+ const p=page();p.run("room='partida-fixed';playerId='ana';listenPlayer()");
+ for(const status of ['lobby','open','closed','revealed'])await p.emit('gc_quiz_live/partida-fixed',{mode:'facilitated',rankingVisibility:'hidden',status,questionIndex:0});
+ assert.equal(p.$('playerRankingBox').classList.contains('hidden'),true);assert.equal(p.$('directedRankingBox').classList.contains('hidden'),true);
+ assert.equal(p.$('playerRanking').innerHTML,'');assert.equal(p.observers.filter(o=>o.active&&o.r.path.endsWith('/scoreboard')).length,0);
+});
+test('directed final ranking waits for the last selected question and respects live changes',async()=>{
+ const p=page();p.run("room='partida-fixed';playerId='ana';listenPlayer()");
+ const base={mode:'facilitated',rankingVisibility:'final',selectedQuestions:[3,1],status:'revealed'};
+ await p.emit('gc_quiz_live/partida-fixed',{...base,questionIndex:3});assert.equal(p.$('playerRankingBox').classList.contains('hidden'),true);
+ await p.emit('gc_quiz_live/partida-fixed',{...base,questionIndex:1,lastResults:{questionIndex:1,top:[{name:'Ana',score:8}]}});
+ assert.equal(p.$('playerRankingBox').classList.contains('hidden'),false);assert.match(p.$('playerRanking').innerHTML,/Ana/);
+ await p.emit('gc_quiz_live/partida-fixed',{...base,questionIndex:1,rankingVisibility:'hidden'});
+ assert.equal(p.$('playerRanking').innerHTML,'');assert.equal(p.observers.filter(o=>o.active&&o.r.path.endsWith('/scoreboard')).length,0);
+ await p.emit('gc_quiz_live/partida-fixed',{...base,questionIndex:3,status:'open',rankingVisibility:'live'});
+ assert.equal(p.$('directedRankingBox').classList.contains('hidden'),false);assert.equal(p.observers.filter(o=>o.active&&o.r.path.endsWith('/scoreboard')).length,1);
+});
+test('public participant labels mask cedulas while names remain intact',()=>{
+ assert.equal(engine.participantLabel({name:'1020304050',identityType:'cedula'}),'Cédula ••••4050');
+ assert.equal(engine.participantLabel({name:'Ana María'}),'Ana María');
 });

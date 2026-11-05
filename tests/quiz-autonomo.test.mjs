@@ -13,7 +13,7 @@ function fixture(overrides={}){
  const store=new Map([['room',run]]),listeners=new Set();
  function snapshot(path){return {exists:()=>store.has(path),data:()=>structuredClone(store.get(path))};}
  function notify(){for(const listener of listeners)listener.callback(listener.path==='players'?{docs:[...store].filter(([p])=>p.startsWith('players/')).map(([path])=>({id:path.split('/')[1],data:()=>structuredClone(store.get(path))}))}:snapshot(listener.path));}
- function element(){return {textContent:'',disabled:false,value:'',style:{},children:[],classList:{add(){},remove(){},toggle(){}},set innerHTML(value){this.children=[];this._html=value;},get innerHTML(){return this._html||'';},appendChild(child){this.children.push(child);},querySelectorAll(){return this.children;}};}
+ function element(){const classes=new Set();return {textContent:'',disabled:false,value:'',style:{},children:[],classList:{add:n=>classes.add(n),remove:n=>classes.delete(n),contains:n=>classes.has(n),toggle(n,on){if(on)classes.add(n);else classes.delete(n);}},set innerHTML(value){this.children=[];this._html=value;},get innerHTML(){return this._html||'';},appendChild(child){this.children.push(child);},querySelectorAll(){return this.children;}};}
  function client(id){
   if(!store.has('players/'+id))store.set('players/'+id,{name:id,answers:{},score:0});
   const elements=new Map(),$=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
@@ -29,7 +29,7 @@ function fixture(overrides={}){
   const api={controller,$,start:()=>$('startSelfQuiz').onclick(),next:()=>$('nextSelfQuestion').onclick(),answer:i=>$('pAnswers').children[i].onclick(),tick:()=>{for(const fn of [...intervals.values()])fn();},screen:()=>screen,player:()=>store.get('players/'+id)};
   controller.updateRun(run);return api;
  }
- return {run,store,client,advance:ms=>{now+=ms;},flush:async()=>{await serial;await new Promise(resolve=>setImmediate(resolve));},update:patch=>{Object.assign(run,patch);notify();}};
+ return {run,store,client,subscriptions:()=>[...listeners].map(l=>l.path),advance:ms=>{now+=ms;},flush:async()=>{await serial;await new Promise(resolve=>setImmediate(resolve));},update:patch=>{Object.assign(run,patch);notify();}};
 }
 
 test('directed quiz keeps its time cap and existing scoring',()=>{
@@ -104,4 +104,26 @@ test('ranking breaks point ties by accuracy and accumulated time, including wron
  make('Fast',{0:{points:5,correct:true,elapsed:2},1:{points:0,correct:false,elapsed:1}}),
  make('More correct',{0:{points:3,correct:true,elapsed:8},1:{points:2,correct:true,elapsed:9}})];
  assert.deepEqual(engine.selfPacedRanking(rows,run,questions).map(p=>p.id),['More correct','Fast','Slow']);
+});
+
+test('final-only ranking never loads other participants before completion',async()=>{
+ const f=fixture({rankingVisibility:'final'}),ana=f.client('Ana');
+ assert.equal(f.subscriptions().includes('players'),false);assert.equal(ana.$('selfLiveRankingBox').classList.contains('hidden'),true);
+ await ana.start();await ana.answer(2);assert.equal(f.subscriptions().includes('players'),false);assert.equal(ana.$('selfFinalPosition').textContent,'');
+ await ana.next();await ana.answer(0);assert.equal(ana.screen(),'selfResults');assert.equal(f.subscriptions().includes('players'),true);
+ assert.equal(ana.$('selfFinalRankingBox').classList.contains('hidden'),false);assert.match(ana.$('selfFinalPosition').textContent,/Tu posición/);
+});
+test('hidden ranking remains empty after completion and reopening results',async()=>{
+ const f=fixture({rankingVisibility:'hidden'}),ana=f.client('Ana');await ana.start();await ana.answer(2);await ana.next();await ana.answer(0);
+ assert.equal(ana.screen(),'selfResults');assert.equal(ana.$('selfFinalScore').textContent,'20 puntos');
+ assert.equal(f.subscriptions().includes('players'),false);assert.equal(ana.$('selfFinalRankingBox').classList.contains('hidden'),true);
+ assert.equal(ana.$('selfFinalRanking').innerHTML,'');assert.equal(ana.$('selfFinalPosition').textContent,'');
+ ana.controller.stop();const resumed=f.client('Ana');assert.equal(resumed.screen(),'selfResults');assert.equal(resumed.$('selfFinalRankingBox').classList.contains('hidden'),true);
+});
+test('changing visibility removes existing ranking rows and their subscription immediately',async()=>{
+ const f=fixture({rankingVisibility:'live'}),ana=f.client('Ana');await ana.start();await ana.answer(2);
+ assert.equal(f.subscriptions().includes('players'),true);assert.match(ana.$('selfLiveRanking').innerHTML,/Ana/);
+ f.update({rankingVisibility:'hidden'});ana.controller.updateRun(f.run);
+ assert.equal(f.subscriptions().includes('players'),false);assert.equal(ana.$('selfLiveRanking').innerHTML,'');assert.equal(ana.$('selfFinalPosition').textContent,'');
+ f.update({rankingVisibility:'live'});ana.controller.updateRun(f.run);assert.equal(f.subscriptions().includes('players'),true);
 });
