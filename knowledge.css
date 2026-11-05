@@ -1,4 +1,4 @@
-/* Knowledge Challenge: participant experience. Facilitator tools keep their workspace theme. */
+/* Reto de Conocimiento: participant experience. Facilitator tools keep their workspace theme. */
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #7db8ff;outline-offset:4px}
 input:focus,select:focus{outline:2px solid #7db8ff;outline-offset:2px}
 body.play-view{--bg:#080f20;--card:#111e34;--ink:#edf4ff;--muted:#a5b6d0;--line:#293c58;--accent:#4775ff;background:radial-gradient(ellipse at 85% 18%,#19366b66,transparent 48%),radial-gradient(ellipse at 0% 80%,#123f5a44,transparent 45%),#080f20;min-height:100vh}
