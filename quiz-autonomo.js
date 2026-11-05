@@ -1,8 +1,8 @@
 import {onSnapshot, runTransaction, serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-import {attemptView, evaluateAnswer, answerTotals, questionOrder, questionSeconds, milliseconds, selfPacedRanking, formatClock, totalTimeoutUpdate} from './quiz-engine.mjs';
+import {attemptView, evaluateSelfPacedAnswer, answerTotals, questionOrder, milliseconds, selfPacedRanking} from './quiz-engine.mjs';
 
 export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQuestions, getPlayerId, getPlayerName, $, show, escapeHtml}) {
-  let run = null, player = null, participants = [], key = '', viewKey = '', busy = false, timer = null, timeoutQueued = false, totalTimeoutQueued = false;
+  let run = null, player = null, participants = [], key = '', viewKey = '', busy = false, failedOperation = null;
   let unsubscribePlayer = null, unsubscribeRanking = null;
   const failure = error => {
     $('pMsg').textContent = error.message || 'No se pudo guardar. Revisa tu conexión.';
@@ -14,7 +14,7 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
     if (unsubscribePlayer) unsubscribePlayer();
     if (unsubscribeRanking) unsubscribeRanking();
     unsubscribePlayer = unsubscribeRanking = null;
-    clearInterval(timer); timer = null; key = ''; viewKey = ''; player = null; participants = []; run = null; timeoutQueued = totalTimeoutQueued = false; busy = false;
+    key = ''; viewKey = ''; player = null; participants = []; run = null; failedOperation = null; busy = false;
   }
   function updateRun(next) {
     const nextKey = playerRef().path;
@@ -23,7 +23,7 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
       unsubscribePlayer = onSnapshot(playerRef(), snapshot => {
         player = snapshot.exists() ? snapshot.data() : null;
         if (!player) {
-          clearInterval(timer); show('selfIntro'); $('startSelfQuiz').disabled = true;
+          show('selfIntro'); $('startSelfQuiz').disabled = true;
           $('selfIntroStatus').textContent = 'Tu inscripción ya no está disponible. Vuelve a ingresar al quiz.';
           return;
         }
@@ -33,7 +33,7 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
         participants = snapshot.docs.map(d => ({id: d.id, ...d.data()})); renderRanking();
       }, failure);
     } else {
-      if (run?.quizVersion !== next.quizVersion) {viewKey = ''; timeoutQueued = totalTimeoutQueued = false;}
+      if (run?.quizVersion !== next.quizVersion) {viewKey = ''; failedOperation = null;}
       run = next;
     }
     render();
@@ -49,36 +49,33 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
   }
   function render() {
     if (!run || !player) return;
-    clearInterval(timer); timer = null;
-    const questions = getQuestions(), view = attemptView(run, player, questions, Date.now());
+    const questions = getQuestions(), view = attemptView(run, player, questions);
     const available = run.selfPacedStatus === 'published';
     $('selfIntroRetry').classList.add('hidden');
     if (view.complete) {
       show('selfResults');
       $('selfFinalScore').textContent = `${view.score} puntos`;
       $('selfFinalAccuracy').textContent = `${view.correctCount} aciertos de ${view.order.length} preguntas`;
-      const pending = Object.values(view.answers).filter(a => a.timeoutReason === 'total').length;
-      $('selfFinalNote').textContent = view.progress.completedReason === 'total_timeout' ? `Se agotó el tiempo total. Conservas tus puntos; ${pending} pregunta(s) pendiente(s) quedaron en 0.` : 'Respuestas guardadas dentro del tiempo máximo del quiz.';
+      $('selfFinalNote').textContent = 'El puntaje combina aciertos y rapidez. El tiempo registrado incluye la espera entre preguntas.';
       renderRanking(); return;
     }
     if (!available || !view.progress || !view.order.includes(view.activeIndex) || !view.startedAt) {
       show('selfIntro');
       $('selfIntroTitle').textContent = `Hola, ${getPlayerName()}`;
-      $('selfIntroInfo').textContent = `${view.order.length} preguntas · ${questionSeconds(run)} segundos por pregunta · tiempo máximo total: ${formatClock(view.totalDuration)} (min:seg). Cada acierto suma de 1 a 10 puntos según la rapidez. Error o tiempo agotado: 0 puntos.`;
-      $('selfIntroStatus').textContent = !available ? (run.selfPacedStatus === 'closed' ? 'El instrumento está cerrado.' : 'El facilitador todavía está preparando el instrumento.') : 'El tiempo total empieza al pulsar Comenzar quiz y sigue corriendo entre preguntas. Cada pregunta tiene además su propio límite. Recargar o salir no reinicia los relojes.';
-      $('selfIntroTimerBox').classList.toggle('hidden', !view.deadline);
+      $('selfIntroInfo').textContent = `${view.order.length} preguntas · sin límite de tiempo. Cada acierto suma de 1 a 10 puntos según la rapidez. Una respuesta incorrecta suma 0 puntos.`;
+      $('selfIntroStatus').textContent = !available ? (run.selfPacedStatus === 'closed' ? 'El instrumento está cerrado.' : 'El facilitador todavía está preparando el instrumento.') : 'La rapidez cuenta desde Comenzar quiz y, después, desde que guardas la respuesta anterior. Si te demoras en abrir la siguiente pregunta, obtendrás menos puntos por rapidez. Salir o recargar no detiene ese registro.';
       $('startSelfQuiz').textContent = view.progress ? 'Continuar quiz' : 'Comenzar quiz';
-      $('startSelfQuiz').disabled = !available || busy || !view.order.length || view.totalExpired;
-      if (view.deadline) {timer = setInterval(tick, 200); tick();}
+      $('startSelfQuiz').disabled = !available || busy || !view.order.length;
       return;
     }
     show('playerGame');
-    $('selfTotalTimerBox').classList.remove('hidden');
+    $('pTimer').classList.add('hidden');
+    $('pTimeBarBox').classList.add('hidden');
     $('selfAfterAnswer').classList.toggle('hidden', !view.answer);
     $('selfRetry').classList.add('hidden');
     const nextViewKey = `${run.quizVersion}:${view.activeIndex}:${view.startedAt}:${!!view.answer}`;
     if (viewKey !== nextViewKey) {
-      viewKey = nextViewKey; timeoutQueued = false;
+      viewKey = nextViewKey;
       $('pNum').textContent = `Pregunta ${view.order.indexOf(view.activeIndex) + 1} / ${view.order.length}`;
       $('pQuestion').textContent = questions[view.activeIndex][1];
       $('pAnswers').innerHTML = '';
@@ -89,39 +86,16 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
         if (view.answer?.option === i) button.classList.add('chosen');
         $('pAnswers').appendChild(button);
       });
-      $('pMsg').textContent = view.answer ? (view.answer.timedOut ? 'Tiempo agotado. Esta pregunta suma 0 puntos.' : `Respuesta guardada. +${view.answer.points} puntos.`) : '';
+      $('pMsg').textContent = view.answer ? `Respuesta guardada. +${view.answer.points} puntos.` : '';
     }
-    $('nextSelfQuestion').disabled = busy || view.totalExpired;
-    $('pAnswers').querySelectorAll('button').forEach(button => button.disabled = !!view.answer || busy || view.totalExpired);
+    $('nextSelfQuestion').disabled = busy;
+    $('pAnswers').querySelectorAll('button').forEach(button => button.disabled = !!view.answer || busy);
     if (view.answer) {
-      $('pTimer').textContent = 'Guardada'; $('pTimeBar').style.width = '0%'; renderRanking();
-    }
-    timer = setInterval(tick, 200); tick();
-  }
-  function tick() {
-    if (!run || !player) return;
-    const view = attemptView(run, player, getQuestions(), Date.now());
-    $('selfTotalTimer').textContent = formatClock(view.remainingSeconds);
-    $('selfIntroTimer').textContent = formatClock(view.remainingSeconds);
-    if (view.totalExpired) {
-      $('pAnswers').querySelectorAll('button').forEach(b => b.disabled = true);
-      $('nextSelfQuestion').disabled = $('startSelfQuiz').disabled = true;
-      $('pMsg').textContent = 'Tiempo total agotado. Guardando el resultado…';
-      if (!busy && !totalTimeoutQueued) {totalTimeoutQueued = true; expireAttempt();}
-      return;
-    }
-    if (view.complete || run.selfPacedStatus !== 'published') return;
-    if (!view.startedAt || view.answer) return;
-    const duration = questionSeconds(run), remain = Math.max(0, duration - (Date.now() - view.startedAt) / 1000);
-    $('pTimer').textContent = Math.ceil(remain);
-    $('pTimeBar').style.width = `${remain / duration * 100}%`;
-    if (remain <= 0) {
-      $('pAnswers').querySelectorAll('button').forEach(b => b.disabled = true);
-      if (!busy && !timeoutQueued) {timeoutQueued = true; answer(null, view.activeIndex);}
+      renderRanking();
     }
   }
   async function beginNext() {
-    if (busy) return;
+    if (busy || !run) return;
     busy = true; $('startSelfQuiz').disabled = true; $('nextSelfQuestion').disabled = true;
     const expectedVersion = run?.quizVersion;
     const runDocument = roomRef(), playerDocument = playerRef(), requestKey = key;
@@ -133,16 +107,20 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
         const live = rs.data(), data = ps.data();
         if (live.mode !== 'self_paced' || live.selfPacedStatus !== 'published') throw Error('El instrumento no está abierto.');
         if (live.quizVersion !== expectedVersion) throw Error('La partida cambió. Revisa el instrumento antes de comenzar.');
-        const questions = live.questions || [], view = attemptView(live, data, questions, Date.now());
+        const questions = live.questions || [], view = attemptView(live, data, questions);
         if (!view.order.length) throw Error('No hay preguntas seleccionadas.');
-        if (writeTotalTimeout(transaction, live, data, playerDocument)) return;
         if (view.complete || (view.startedAt && view.activeIndex === view.nextIndex)) return;
-        const progress = {version: live.quizVersion, startedAt: view.progress?.startedAt || serverTimestamp(), totalDuration: view.totalDuration,
-          activeIndex: view.nextIndex, questionStartedAt: serverTimestamp(), completedAt: null};
+        // Include the wait after the previous submission in the next question's score.
+        const previousEnd = milliseconds(view.progress?.lastAnsweredAt)
+          || (view.answer && view.startedAt ? view.startedAt + Number(view.answer.elapsed || 0) * 1000 : 0);
+        const progress = {version: live.quizVersion, startedAt: view.progress?.startedAt || serverTimestamp(),
+          activeIndex: view.nextIndex, questionStartedAt: previousEnd || serverTimestamp(),
+          questionOpenedAt: serverTimestamp(), lastAnsweredAt: view.progress?.lastAnsweredAt || null, completedAt: null};
         transaction.update(playerDocument, {selfPaced: progress, answers: view.answers,
           ...answerTotals(view.answers, view.order), lastSeen: serverTimestamp()});
       });
-    } catch (caught) {error = caught;}
+      failedOperation = null;
+    } catch (caught) {error = caught; failedOperation = beginNext;}
     finally {if (key === requestKey) {busy = false; render(); if (error) failure(error);}}
   }
   async function answer(option, index) {
@@ -158,56 +136,31 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
         const live = rs.data(), data = ps.data(), progress = data.selfPaced;
         if (live.mode !== 'self_paced' || live.selfPacedStatus !== 'published') throw Error('El instrumento está cerrado.');
         if (live.quizVersion !== expectedVersion || progress?.version !== live.quizVersion) throw Error('Esta partida se reinició. Vuelve a comenzar.');
-        if (writeTotalTimeout(transaction, live, data, playerDocument)) return;
         if (progress.activeIndex !== index || data.answers?.[index]) return;
         const started = milliseconds(progress.questionStartedAt), order = questionOrder(live, live.questions || []);
         if (!started || !order.includes(index)) throw Error('Abre la pregunta antes de responder.');
         const correctOption = live.questions[index].correct;
-        const duration = questionSeconds(live), elapsed = Math.max(0, (Date.now() - started) / 1000);
-        const result = evaluateAnswer(option, correctOption, elapsed, duration);
+        const elapsed = Math.max(0, (Date.now() - started) / 1000);
+        const result = evaluateSelfPacedAnswer(option, correctOption, elapsed);
         const answers = {...(data.answers || {}), [index]: result};
         const complete = order.every(i => !!answers[i]);
         transaction.update(playerDocument, {answers, ...answerTotals(answers, order),
-          selfPaced: {...progress, completedAt: complete ? serverTimestamp() : null, completedReason: complete ? 'answered' : null}, lastSeen: serverTimestamp()});
+          selfPaced: {...progress, lastAnsweredAt: serverTimestamp(), completedAt: complete ? serverTimestamp() : null, completedReason: complete ? 'answered' : null}, lastSeen: serverTimestamp()});
       });
-    } catch (caught) {error = caught;}
+      failedOperation = null;
+    } catch (caught) {error = caught; failedOperation = () => answer(option, index);}
     finally {
       if (key !== requestKey) return;
       busy = false; render();
       if (error) {
         failure(error);
-        const view = attemptView(run, player, getQuestions(), Date.now());
-        if (!view.totalExpired && Date.now() - view.startedAt < questionSeconds(run) * 1000) $('pAnswers').querySelectorAll('button').forEach(b => b.disabled = false);
       }
     }
   }
-  function writeTotalTimeout(transaction, live, data, playerDocument) {
-    const patch = totalTimeoutUpdate(live, data, live.questions || [], Date.now());
-    if (!patch) return false;
-    transaction.update(playerDocument, {...patch, selfPaced: {...patch.selfPaced, completedAt: serverTimestamp()}, lastSeen: serverTimestamp()});
-    return true;
-  }
-  async function expireAttempt() {
-    if (busy || !run) return;
-    busy = true;
-    const expectedVersion = run.quizVersion, runDocument = roomRef(), playerDocument = playerRef(), requestKey = key;
-    let error = null;
-    try {
-      await runTransaction(db, async transaction => {
-        const rs = await transaction.get(runDocument), ps = await transaction.get(playerDocument);
-        if (!rs.exists() || !ps.exists()) throw Error('La sala o tu inscripción ya no están disponibles.');
-        const live = rs.data(), data = ps.data();
-        if (live.mode !== 'self_paced' || live.quizVersion !== expectedVersion || data.selfPaced?.version !== expectedVersion) return;
-        writeTotalTimeout(transaction, live, data, playerDocument);
-      });
-    } catch (caught) {error = caught;}
-    finally {if (key === requestKey) {busy = false; render(); if (error) failure(error);}}
-  }
   $('startSelfQuiz').onclick = beginNext;
   $('nextSelfQuestion').onclick = beginNext;
-  const retry = () => {timeoutQueued = totalTimeoutQueued = false; tick();};
+  const retry = () => {if (failedOperation) return failedOperation();};
   $('selfRetry').onclick = retry;
   $('selfIntroRetry').onclick = retry;
-  window.addEventListener('online', retry);
   return {updateRun, stop};
 }

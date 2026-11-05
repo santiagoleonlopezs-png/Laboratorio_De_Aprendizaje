@@ -31,8 +31,9 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <body><div style="position:relative;z-index:100;background:#070b13;border-bottom:1px solid #27334b;padding:14px 22px;font:13px system-ui;display:flex;justify-content:space-between;gap:16px"><a href="index.html#experiencias" style="color:#c2d5ff;text-decoration:none">← Volver al laboratorio</a><span style="color:#91a2bc">Santiago León López</span></div>
 <div class="wrap">
 <section id="home" class="card">
-<h1>Knowledge Challenge</h1><p class="muted">Dos formas de aprender y competir: preguntas dirigidas por el facilitador o un quiz autónomo. Aciertos y rapidez suman puntos.</p>
+<h1>Knowledge Challenge</h1><p class="muted">Elige Participar para responder un quiz o Facilitador para administrar tus salas. La modalidad autónoma no tiene límite de tiempo; aciertos y rapidez suman puntos.</p>
 <div class="grid2"><button id="goPlayer">Participar</button><button id="goHost" class="secondary">Facilitador</button></div>
+<button id="resumeQuiz" class="secondary hidden" style="margin-top:12px" type="button">Continuar mi quiz</button><p id="homeMsg" class="muted" role="status" style="margin-top:12px"></p>
 </section>
 
 <section id="playerJoin" class="card hidden">
@@ -51,27 +52,27 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <section id="roomManager" class="card hidden">
 <h2>Mis salas</h2><p class="muted">El nombre de la clase será el código de acceso de los participantes.</p>
 <label>Nombre de la clase / código de sala</label><input id="className" maxlength="80" placeholder="Ej.: Legislación Laboral">
-<div class="quiz-settings grid2"><div><label for="newQuizMode">Modalidad de la nueva partida</label><select id="newQuizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div><label for="newQuestionDuration">Tiempo máximo por pregunta (segundos)</label><input id="newQuestionDuration" type="number" min="5" max="600" step="1" value="60"></div><div id="newTotalDurationField" class="hidden"><label for="newTotalDuration">Tiempo máximo total del quiz (minutos)</label><input id="newTotalDuration" type="number" min="1" max="1440" step="1" value="20"></div></div>
+<div class="quiz-settings grid2"><div><label for="newQuizMode">Modalidad de la nueva partida</label><select id="newQuizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div id="newQuestionDurationField"><label for="newQuestionDuration">Tiempo máximo por pregunta (segundos)</label><input id="newQuestionDuration" type="number" min="5" max="600" step="1" value="60"></div><p id="newSelfPacedInfo" class="mini hidden">La modalidad autónoma no tiene límite de tiempo. La espera entre preguntas cuenta para los puntos por rapidez.</p></div>
 <div class="row" style="margin-top:12px"><button id="createRoom">Crear sala / nueva partida</button><button id="reopenRoom" class="secondary">Reabrir sala</button><button id="roomBack" class="secondary">Volver</button></div>
 <p id="roomManagerMsg" class="muted"></p><h3>Salas creadas</h3><div id="roomHistory"></div>
 </section>
 <section id="waiting" class="card hidden">
 <h2 id="welcome">¡Listo!</h2><p id="waitText">Espera a que el facilitador abra la pregunta.</p>
 <div class="big" id="waitScore">0 pts</div><div id="connStatus" class="muted">🟢 Conectado</div>
+<button type="button" class="secondary back" style="margin-top:12px">Volver al inicio</button>
 <div id="playerRankingBox" class="card hidden" style="margin-top:18px;text-align:left">
 <h3>🏆 Ranking</h3><div id="playerRanking"></div>
 </div>
 </section>
 
 <section id="playerGame" class="hidden">
-<div id="selfTotalTimerBox" class="row between quiz-settings hidden" style="margin-bottom:16px"><span>Tiempo total restante</span><b id="selfTotalTimer" class="big" role="timer" aria-label="Tiempo total restante">20:00</b></div>
-<div class="row between"><span id="pNum" class="pill"></span><span id="pTimer" class="big">60</span></div>
-<div class="bar"><div id="pTimeBar" style="width:100%"></div></div>
-<div class="card"><div id="pQuestion" class="question"></div><div id="pAnswers" class="grid2" style="margin-top:18px"></div><p id="pMsg" role="status" style="margin-top:15px"></p><button id="selfRetry" class="secondary hidden" type="button">Reintentar guardar el tiempo agotado</button><div id="selfAfterAnswer" class="hidden"><button id="nextSelfQuestion" type="button">Siguiente pregunta</button><details style="margin-top:18px"><summary>Ver ranking en vivo</summary><div id="selfLiveRanking"></div></details></div></div>
+<div class="row between"><span id="pNum" class="pill"></span><span id="pTimer" class="big">60</span><button type="button" class="secondary back">Volver al inicio</button></div>
+<div id="pTimeBarBox" class="bar"><div id="pTimeBar" style="width:100%"></div></div>
+<div class="card"><div id="pQuestion" class="question"></div><div id="pAnswers" class="grid2" style="margin-top:18px"></div><p id="pMsg" role="status" style="margin-top:15px"></p><button id="selfRetry" class="secondary hidden" type="button">Reintentar guardar respuesta</button><div id="selfAfterAnswer" class="hidden"><button id="nextSelfQuestion" type="button">Siguiente pregunta</button><p class="mini" style="margin-top:10px">La espera antes de abrir la siguiente pregunta también cuenta para tu puntaje por rapidez.</p><details style="margin-top:18px"><summary>Ver ranking en vivo</summary><div id="selfLiveRanking"></div></details></div></div>
 </section>
 
 <section id="selfIntro" class="card hidden">
-<span class="pill">Modalidad autónoma</span><h2 id="selfIntroTitle" style="margin-top:18px">Quiz autónomo</h2><p id="selfIntroInfo"></p><p id="selfIntroStatus" class="muted" role="status"></p><p id="selfIntroTimerBox" class="hidden">Tiempo total restante: <b id="selfIntroTimer" role="timer"></b></p><button id="startSelfQuiz" type="button">Comenzar quiz</button><button id="selfIntroRetry" class="secondary hidden" type="button">Reintentar guardar resultado</button>
+<span class="pill">Modalidad autónoma</span><h2 id="selfIntroTitle" style="margin-top:18px">Quiz autónomo</h2><p id="selfIntroInfo"></p><p id="selfIntroStatus" class="muted" role="status"></p><div class="row"><button id="startSelfQuiz" type="button">Comenzar quiz</button><button type="button" class="secondary back">Volver al inicio</button><button id="selfIntroRetry" class="secondary hidden" type="button">Reintentar guardar</button></div>
 </section>
 <section id="selfResults" class="card hidden">
 <h2>Completaste el quiz</h2><div id="selfFinalScore" class="big"></div><p id="selfFinalAccuracy" style="margin-top:10px"></p><p id="selfFinalNote" class="muted" role="status"></p><p id="selfFinalPosition" class="muted" role="status"></p><h3>Ranking en vivo</h3><div id="selfFinalRanking"></div><button class="secondary back" style="margin-top:18px">Volver al inicio</button>
@@ -81,7 +82,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <div class="card">
 <div class="row" style="margin-bottom:14px"><button id="manageQuizRooms" class="secondary" type="button">← Mis salas / nueva partida</button></div>
 <div class="row between"><div><h2 style="margin-bottom:4px">Panel del facilitador</h2><span class="muted">Sala <b id="hostRoom">GC2026</b> · Estado: <b id="phaseLabel">En espera</b></span></div><div><span class="pill">Inscritos: <b id="connected">0</b></span> <span class="pill"><span id="answeredLabel">Respondieron</span>: <b id="answered">0</b></span></div></div>
-<div id="quizSettings" class="quiz-settings"><div class="grid2"><div><label for="quizMode">Modalidad</label><select id="quizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div><label for="questionDuration">Tiempo máximo por pregunta (segundos)</label><input id="questionDuration" type="number" min="5" max="600" step="1" value="60"></div><div id="totalDurationField" class="hidden"><label for="totalDuration">Tiempo máximo total del quiz (minutos)</label><input id="totalDuration" type="number" min="1" max="1440" step="1" value="20"></div></div><button id="saveQuizSettings" class="secondary" type="button" style="margin-top:12px">Guardar configuración</button><p id="quizModeInfo" class="mini" style="margin-top:12px"></p></div>
+<div id="quizSettings" class="quiz-settings"><div class="grid2"><div><label for="quizMode">Modalidad</label><select id="quizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div id="questionDurationField"><label for="questionDuration">Tiempo máximo por pregunta (segundos)</label><input id="questionDuration" type="number" min="5" max="600" step="1" value="60"></div></div><button id="saveQuizSettings" class="secondary" type="button" style="margin-top:12px">Guardar configuración</button><p id="quizModeInfo" class="mini" style="margin-top:12px"></p></div>
 <div id="selfHostControls" class="quiz-settings hidden"><h3>Compartir instrumento</h3><p id="selfHostStatus" class="muted"></p><div class="row"><button id="publishSelfQuiz" type="button">Habilitar instrumento</button><button id="closeSelfQuiz" class="secondary" type="button">Cerrar instrumento</button></div><div class="share-row"><input id="quizShareLink" type="text" readonly aria-label="Enlace del instrumento"><button id="copyQuizLink" class="secondary" type="button">Copiar enlace</button></div><p id="quizShareMsg" class="mini" role="status"></p></div>
 <div id="facilitatedControls" class="row" style="margin-top:16px"><button id="openQ">Abrir pregunta</button><button id="closeQ" class="secondary">Cerrar respuestas</button><button id="revealQ" class="secondary">Mostrar resultados</button><button id="nextQ">Siguiente pregunta</button></div>
 <div id="hostError" role="alert" style="display:none;margin-top:12px;padding:12px;border-radius:10px;background:#fff1f1;color:#9a1b1b"></div><div class="row" style="margin-top:10px"><button id="resetGame" class="danger">Reiniciar partida</button><button id="clearPlayers" class="secondary">Eliminar participantes</button><button id="toggleEditor" class="secondary" type="button">Banco de preguntas ↓</button></div>
@@ -150,7 +151,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {getAuth, signInWithEmailAndPassword, getIdTokenResult} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {isSelfPaced, questionSeconds, questionOrder, evaluateAnswer, selfPacedRanking, totalSeconds, formatClock} from './quiz-engine.mjs';
+import {isSelfPaced, questionSeconds, questionOrder, evaluateAnswer, selfPacedRanking} from './quiz-engine.mjs';
 import {createSelfPacedQuiz} from './quiz-autonomo.js';
 
 const firebaseConfig = {
@@ -187,46 +188,57 @@ let Q=[
 ];
 const $=id=>document.getElementById(id), screens=["home","playerJoin","hostLogin","waiting","playerGame","hostPanel","roomManager","selfIntro","selfResults"];
 function show(id){screens.forEach(x=>$(x).classList.toggle("hidden",x!==id))}
-document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show("home"));
-$("goPlayer").onclick=()=>show("playerJoin"); $("goHost").onclick=()=>show("hostLogin");
-let classAlias="", room=DEFAULT_ROOM, playerId="", playerName="", hostUnsubs=[], playerUnsub=null, tick=null, state=null, players=[];
+function detachPlayer(){navigationEpoch++;if(playerUnsub){playerUnsub();playerUnsub=null;}selfPaced.stop();clearInterval(tick);}
+document.querySelectorAll(".back").forEach(b=>b.onclick=()=>{detachPlayer();show("home");});
+$("goPlayer").onclick=()=>{detachPlayer();show("playerJoin");}; $("goHost").onclick=()=>{detachPlayer();show("hostLogin");};
+let classAlias="", room=DEFAULT_ROOM, playerId="", playerName="", hostUnsubs=[], playerUnsub=null, tick=null, state=null, players=[], navigationEpoch=0;
 const SESSION_KEY="gc_quiz_session_v7";
 const inviteRunId=new URLSearchParams(location.search).get('partida')||'';
 const normalizeRoom=s=>String(s||"").trim().normalize("NFC").replace(/\s+/g," ").toLocaleUpperCase("es");
 const aliasRef=name=>doc(db,ROOT,normalizeRoom(name));
 const normalizeName=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
-const saveSession=()=>localStorage.setItem(SESSION_KEY,JSON.stringify({room,playerId,playerName}));
+const saveSession=()=>{localStorage.setItem(SESSION_KEY,JSON.stringify({room,playerId,playerName}));$("resumeQuiz").classList.remove('hidden');};
 const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{return null}};
+$("resumeQuiz").onclick=async()=>{
+ detachPlayer();const epoch=navigationEpoch;
+ try{const saved=loadSession(),restored=saved&&await restoreSession(saved);if(epoch!==navigationEpoch)return;if(!restored){$("homeMsg").textContent='La sesión anterior ya no está disponible. Puedes ingresar de nuevo o entrar como facilitador.';show('home');}}
+ catch(e){if(epoch!==navigationEpoch)return;$("homeMsg").textContent='No se pudo recuperar la sesión. Puedes ingresar de nuevo o entrar como facilitador.';show('home');}
+};
 async function touchPresence(online=true){if(!room||!playerId)return;try{await updateDoc(pRef(playerId),{online,lastSeen:serverTimestamp()})}catch{}}
 async function restoreSession(s){
+ const epoch=navigationEpoch;
  if(!s?.room||!s?.playerId)return false;
  const old=await getDoc(doc(db,ROOT,s.room));
  if(!old.exists()||old.data().recordType!=="run")return false;
  if(inviteRunId && inviteRunId!==s.room)return false;
  if(!isSelfPaced(old.data())){const a=await getDoc(aliasRef(old.data().className||""));if(!a.exists()||a.data().activeRun!==s.room)return false;}
- room=s.room;playerId=s.playerId;playerName=s.playerName||"";
- const ps=await getDoc(pRef(playerId));if(!ps.exists())return false;playerName=ps.data().name||playerName;saveSession();
- $("welcome").textContent="¡Bienvenido de nuevo, "+playerName+"!";show("waiting");await touchPresence(true);listenPlayer();return true;
+ if(epoch!==navigationEpoch)return true;room=s.room;playerId=s.playerId;playerName=s.playerName||"";
+ const ps=await getDoc(pRef(playerId));if(!ps.exists())return false;if(epoch!==navigationEpoch)return true;playerName=ps.data().name||playerName;saveSession();
+ $("welcome").textContent="¡Bienvenido de nuevo, "+playerName+"!";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return true;
 }
 async function recoverOrJoin(name,code){
+ const epoch=navigationEpoch;
  const codeName=normalizeRoom(code);playerName=String(name||"").trim();
  if(!codeName)return $("joinMsg").textContent="Escribe el nombre de la clase.";
  if(inviteRunId){
   if(!/^partida-[a-zA-Z0-9-]{1,100}$/.test(inviteRunId))throw Error('El enlace del instrumento no es válido.');
   const invitation=await getDoc(doc(db,ROOT,inviteRunId));
+  if(epoch!==navigationEpoch)return;
   if(!invitation.exists()||invitation.data().recordType!=='run')return $("joinMsg").textContent='Este instrumento ya no está disponible.';
   room=inviteRunId;
  }else{
   const alias=await getDoc(aliasRef(codeName));
+  if(epoch!==navigationEpoch)return;
   if(!alias.exists()||!alias.data().activeRun)return $("joinMsg").textContent="No hay una sala activa con ese nombre. Verifica el código con tu facilitador.";
   room=alias.data().activeRun;
  }
  if(!playerName)return $("joinMsg").textContent="Escribe tu nombre.";
  const target=normalizeName(playerName),snap=await getDocs(playersRef());
  const existing=snap.docs.find(d=>normalizeName(d.data().name)===target);
- if(existing){playerId=existing.id;playerName=existing.data().name||playerName;saveSession();$("welcome").textContent="Sesión recuperada: "+playerName+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);listenPlayer();return;}
+ if(epoch!==navigationEpoch)return;
+ if(existing){playerId=existing.id;playerName=existing.data().name||playerName;saveSession();$("welcome").textContent="Sesión recuperada: "+playerName+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return;}
  const ref=doc(playersRef());playerId=ref.id;await setDoc(ref,{name:playerName,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});
- saveSession();$("welcome").textContent="¡Listo, "+playerName+"!";show("waiting");listenPlayer();
+ if(epoch!==navigationEpoch)return;saveSession();$("welcome").textContent="¡Listo, "+playerName+"!";show("waiting");listenPlayer();
 }
 
 const roomRef=()=>doc(db,ROOT,room); const playersRef=()=>collection(db,ROOT,room,"players"); const pRef=id=>doc(db,ROOT,room,"players",id); const scoreboardRef=()=>doc(db,ROOT,room,"public","scoreboard");
@@ -273,20 +285,19 @@ async function reopenClass(){
  }catch(e){$("roomManagerMsg").textContent=e.message;}
 }
 $("reopenRoom").onclick=reopenClass;
-$("newQuizMode").onchange=()=>$("newTotalDurationField").classList.toggle('hidden',$("newQuizMode").value!=='self_paced');
+$("newQuizMode").onchange=()=>{const autonomous=$("newQuizMode").value==='self_paced';$("newQuestionDurationField").classList.toggle('hidden',autonomous);$("newSelfPacedInfo").classList.toggle('hidden',!autonomous);};
 $("createRoom").onclick=async()=>{
  try{
   const name=normalizeRoom($("className").value);if(!name)throw Error("Escribe el nombre de la clase.");
-  const duration=Number($("newQuestionDuration").value);if(!Number.isInteger(duration)||duration<5||duration>600)throw Error('El tiempo por pregunta debe estar entre 5 y 600 segundos.');
   const mode=$("newQuizMode").value==='self_paced'?'self_paced':'facilitated';
-  const totalMinutes=Number($("newTotalDuration").value);if(mode==='self_paced'&&(!Number.isInteger(totalMinutes)||totalMinutes<1||totalMinutes>1440))throw Error('El tiempo total debe ser un número entero entre 1 y 1440 minutos.');
+  const duration=mode==='self_paced'?60:Number($("newQuestionDuration").value);if(!Number.isInteger(duration)||duration<5||duration>600)throw Error('El tiempo por pregunta debe estar entre 5 y 600 segundos.');
   const alias=aliasRef(name),old=await getDoc(alias);const data=old.exists()?old.data():{};
   if(data.activeRun&&!confirm("Ya existe una partida de esta clase. ¿Crear una NUEVA con puntuaciones en cero? La anterior quedará en el historial."))return;
   const id=doc(collection(db,ROOT)).id,runId="partida-"+id;
   const bank=await getDoc(doc(db,BANKS,currentBankId));
   const questions=bank.exists()&&Array.isArray(bank.data().questions)?bank.data().questions:questionsToFirestore(Q);
   const b=writeBatch(db);
-  b.set(doc(db,ROOT,runId),{recordType:"run",className:name,questionIndex:0,status:"lobby",openedAt:0,duration,mode,...(mode==='self_paced'?{totalDuration:totalMinutes*60}:{}),selfPacedStatus:'draft',bankId:currentBankId,questions,updatedAt:serverTimestamp(),createdAt:serverTimestamp()});
+  b.set(doc(db,ROOT,runId),{recordType:"run",className:name,questionIndex:0,status:"lobby",openedAt:0,duration,mode,selfPacedStatus:'draft',bankId:currentBankId,questions,updatedAt:serverTimestamp(),createdAt:serverTimestamp()});
   b.set(alias,{recordType:"class_alias",displayName:$("className").value.trim(),activeRun:runId,runs:[...(data.runs||[]),runId].slice(-100),updatedAt:serverTimestamp()},{merge:true});
   await b.commit();classAlias=$("className").value.trim();await enterHostRun(runId);
  }catch(e){$("roomManagerMsg").textContent="No se pudo crear la sala: "+e.message;}
@@ -307,7 +318,7 @@ function listenPlayer(){
       clearInterval(tick);if(unsubScore){unsubScore();unsubScore=null;}
       selfPaced.updateRun(state);return;
     }
-    selfPaced.stop();$("selfAfterAnswer").classList.add('hidden');$("selfRetry").classList.add('hidden');$("selfTotalTimerBox").classList.add('hidden');
+    selfPaced.stop();$("selfAfterAnswer").classList.add('hidden');$("selfRetry").classList.add('hidden');$("pTimer").classList.remove('hidden');$("pTimeBarBox").classList.remove('hidden');
     if($("connStatus"))$("connStatus").textContent=navigator.onLine?"🟢 Conectado":"🔴 Sin conexión";
     if(state.status==="open"){
       if(unsubScore){unsubScore();unsubScore=null;}
@@ -354,37 +365,36 @@ function instrumentLocked(){return isSelfPaced(state)&&!!state.selfPacedStatus&&
 function assertInstrumentEditable(){if(instrumentLocked())throw Error('El instrumento ya está habilitado. Crea una nueva partida para cambiar preguntas, selección o tiempo sin mezclar los resultados.');}
 function renderModeSettings(){
  const autonomous=isSelfPaced(state),locked=instrumentLocked();
- if($("quizSettings").dataset.editing!=='true'){$("quizMode").value=autonomous?'self_paced':'facilitated';$("questionDuration").value=questionSeconds(state);$("totalDuration").value=Math.ceil(totalSeconds(state,Q)/60);}
- $("totalDurationField").classList.toggle('hidden',$("quizMode").value!=='self_paced');
+ if($("quizSettings").dataset.editing!=='true'){$("quizMode").value=autonomous?'self_paced':'facilitated';$("questionDuration").value=questionSeconds(state);}
+ $("questionDurationField").classList.toggle('hidden',$("quizMode").value==='self_paced');
  $("facilitatedControls").classList.toggle('hidden',autonomous);$("selfHostControls").classList.toggle('hidden',!autonomous);$("hostQuestionCard").classList.toggle('hidden',autonomous);
  $("answeredLabel").textContent=autonomous?'Finalizaron':'Respondieron';$("responseTitle").textContent=autonomous?'Avance del instrumento':'Respuestas en vivo';
- $("quizModeInfo").textContent=autonomous?'El tiempo total corre desde Comenzar quiz, incluso entre preguntas. Al agotarse se cierra el intento y se conservan los puntos. Cada pregunta mantiene su límite; los aciertos suman de 1 a 10 puntos según la rapidez.':'Tú abres, cierras y presentas cada pregunta. El reloj y el ranking son compartidos por la sala.';
+ $("quizModeInfo").textContent=autonomous?'Sin límite de tiempo. Cada acierto suma de 1 a 10 puntos según la rapidez; la espera entre preguntas también cuenta. Los desempates usan aciertos y menor tiempo acumulado.':'Tú abres, cierras y presentas cada pregunta. El reloj y el ranking son compartidos por la sala.';
  const started=players.some(p=>Object.keys(p.answers||{}).length||p.selfPaced?.startedAt)||state.status==='open';
- ['quizMode','questionDuration','totalDuration','saveQuizSettings'].forEach(id=>$(id).disabled=locked||!!started);
+ ['quizMode','questionDuration','saveQuizSettings'].forEach(id=>$(id).disabled=locked||!!started);
  ['pickAll','pickNone','applySelection'].forEach(id=>$(id).disabled=locked);$("questionPicker").querySelectorAll('input').forEach(el=>el.disabled=locked);
  $("questionEditor").querySelectorAll('button,input,select,textarea').forEach(el=>el.disabled=locked&&el.id!=='exportBank');
  if(!autonomous)return;
  const status=state.selfPacedStatus||'draft',count=selectedIndices().length;
  $("phaseLabel").textContent={draft:'En preparación',published:'Autónomo habilitado',closed:'Instrumento cerrado'}[status]||status;
- $("selfHostStatus").textContent=`${count} preguntas · ${questionSeconds(state)} segundos por pregunta · tiempo total: ${formatClock(totalSeconds(state,Q))} (min:seg). `+(status==='draft'?'Selecciona el banco y las preguntas; después habilita el instrumento.':'Las preguntas y los tiempos quedan fijos para esta partida.');
+ $("selfHostStatus").textContent=`${count} preguntas · sin límite de tiempo. `+(status==='draft'?'Selecciona el banco y las preguntas; después habilita el instrumento.':'Las preguntas quedan fijas para esta partida.');
  $("publishSelfQuiz").textContent=status==='closed'?'Reabrir instrumento':'Habilitar instrumento';$("publishSelfQuiz").disabled=status==='published'||!count;
  $("closeSelfQuiz").disabled=status!=='published';
  const link=new URL(location.href);link.search='';link.hash='';link.searchParams.set('partida',room);$("quizShareLink").value=link.href;$("copyQuizLink").disabled=status==='draft';
 }
-$("quizSettings").addEventListener('input',()=>{$("quizSettings").dataset.editing='true';$("totalDurationField").classList.toggle('hidden',$("quizMode").value!=='self_paced');});
+$("quizSettings").addEventListener('input',()=>{$("quizSettings").dataset.editing='true';$("questionDurationField").classList.toggle('hidden',$("quizMode").value==='self_paced');});
 $("saveQuizSettings").onclick=async()=>{try{
  assertInstrumentEditable();if(players.some(p=>Object.keys(p.answers||{}).length||p.selfPaced?.startedAt)||state.status==='open')throw Error('Crea una nueva partida para cambiar la modalidad o el tiempo cuando ya comenzó el quiz.');
- const duration=Number($("questionDuration").value);if(!Number.isInteger(duration)||duration<5||duration>600)throw Error('El tiempo debe ser un número entero entre 5 y 600 segundos.');
  const mode=$("quizMode").value==='self_paced'?'self_paced':'facilitated';
- const totalMinutes=Number($("totalDuration").value);if(mode==='self_paced'&&(!Number.isInteger(totalMinutes)||totalMinutes<1||totalMinutes>1440))throw Error('El tiempo total debe ser un número entero entre 1 y 1440 minutos.');
- await updateDoc(roomRef(),{mode,duration,...(mode==='self_paced'?{totalDuration:totalMinutes*60}:{}),selfPacedStatus:'draft',updatedAt:serverTimestamp()});$("quizSettings").dataset.editing='false';hostClearError();renderHost();
+ const duration=mode==='self_paced'?60:Number($("questionDuration").value);if(!Number.isInteger(duration)||duration<5||duration>600)throw Error('El tiempo debe ser un número entero entre 5 y 600 segundos.');
+ await updateDoc(roomRef(),{mode,duration,selfPacedStatus:'draft',updatedAt:serverTimestamp()});$("quizSettings").dataset.editing='false';hostClearError();renderHost();
  }catch(e){hostFailure(e);}};
 $("publishSelfQuiz").onclick=async()=>{try{
  if(!isSelfPaced(state))throw Error('Guarda primero la modalidad autónoma.');
  if($("quizSettings").dataset.editing==='true')throw Error('Guarda primero la configuración.');
  if($("pickerList").dataset.editing==='true')throw Error('Pulsa Aplicar selección antes de habilitar el instrumento.');
  const indices=selectedIndices();if(!indices.length)throw Error('Selecciona al menos una pregunta.');
- await updateDoc(roomRef(),{mode:'self_paced',selfPacedStatus:'published',quizVersion:state.quizVersion||crypto.randomUUID(),questions:questionsToFirestore(Q),selectedQuestions:indices,totalDuration:totalSeconds(state,Q),updatedAt:serverTimestamp()});
+ await updateDoc(roomRef(),{mode:'self_paced',selfPacedStatus:'published',quizVersion:state.quizVersion||crypto.randomUUID(),questions:questionsToFirestore(Q),selectedQuestions:indices,updatedAt:serverTimestamp()});
  $("quizShareMsg").textContent='Listo. Copia el enlace y compártelo; cada persona podrá comenzar sin esperar al facilitador.';hostClearError();
  }catch(e){hostFailure(e);}};
 $("closeSelfQuiz").onclick=async()=>{if(!confirm('¿Cerrar el instrumento y detener la recepción de respuestas?'))return;try{await updateDoc(roomRef(),{selfPacedStatus:'closed',updatedAt:serverTimestamp()});hostClearError();}catch(e){hostFailure(e);}};
@@ -392,7 +402,7 @@ $("copyQuizLink").onclick=async()=>{try{await navigator.clipboard.writeText($("q
 function renderHost(){
  if(!state)return;renderModeSettings();$("connected").textContent=players.length;
  if(isSelfPaced(state)){
-  clearInterval(tick);const ranked=selfPacedRanking(players,state,Q);$("answered").textContent=ranked.filter(p=>p.totalExpired||p.answeredCount===selectedIndices().length).length;
+  clearInterval(tick);const ranked=selfPacedRanking(players,state,Q);$("answered").textContent=ranked.filter(p=>p.answeredCount===selectedIndices().length).length;
   renderDist(0);renderRank();renderPicker();renderModeSettings();return;
  }
  if(!Q.length){$("answered").textContent='0';$("hNum").textContent='Sin preguntas';$("hQuestion").textContent='Este banco está vacío. Agrega una pregunta o usa la carga masiva.';$("hOptions").innerHTML='';$("distribution").innerHTML='';$("ranking").innerHTML='';['openQ','closeQ','revealQ','nextQ'].forEach(id=>$(id).disabled=true);return;}
@@ -405,8 +415,8 @@ function renderHost(){
 function renderDist(i){
   if(isSelfPaced(state)){
     const rows=selfPacedRanking(players,state,Q),total=selectedIndices().length;
-    $("distribution").innerHTML=`<p class="muted">${rows.length} comenzaron · ${rows.filter(p=>p.totalExpired||p.answeredCount===total).length} finalizaron. El ranking se actualiza con cada respuesta.</p>`;
-    $("responseDetails").innerHTML=rows.length?`<div style="overflow:auto"><table class="resultTable"><thead><tr><th>Participante</th><th>Avance</th><th>Aciertos</th><th>Puntos</th><th>Estado</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${escapeHtml(p.name)}</td><td>${p.answeredCount}/${total}</td><td>${p.correctCount}</td><td>${p.score}</td><td>${p.totalExpired?'Tiempo total agotado':p.answeredCount===total?'Finalizó':'En curso'}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Comparte el enlace para recibir respuestas.</p>';
+    $("distribution").innerHTML=`<p class="muted">${rows.length} comenzaron · ${rows.filter(p=>p.answeredCount===total).length} finalizaron. El ranking se actualiza con cada respuesta.</p>`;
+    $("responseDetails").innerHTML=rows.length?`<div style="overflow:auto"><table class="resultTable"><thead><tr><th>Participante</th><th>Avance</th><th>Aciertos</th><th>Puntos</th><th>Estado</th></tr></thead><tbody>${rows.map(p=>`<tr><td>${escapeHtml(p.name)}</td><td>${p.answeredCount}/${total}</td><td>${p.correctCount}</td><td>${p.score}</td><td>${p.answeredCount===total?'Finalizó':'En curso'}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Comparte el enlace para recibir respuestas.</p>';
     return;
   }
   if(state.status!=="revealed"){
@@ -707,9 +717,11 @@ $("saveQuestions").onclick=async()=>{
 
 function escapeHtml(s){let d=document.createElement("div");d.textContent=s||"";return d.innerHTML}
 setTimeout(async()=>{
- const s=loadSession();if(s){try{if(await restoreSession(s))return;}catch(e){console.warn(e);}}
+ show('home');
+ const s=loadSession();
+ if(s&&(!inviteRunId||s.room===inviteRunId)){$("resumeQuiz").classList.remove('hidden');$("playerName").value=s.playerName||'';}
  if(inviteRunId){
-  show('playerJoin');$("roomCode").value='Instrumento compartido';$("roomCode").readOnly=true;
+  $("homeMsg").textContent='Tienes un instrumento compartido. Elige Participar para responderlo o Facilitador para administrar tus salas.';$("roomCode").value='Instrumento compartido';$("roomCode").readOnly=true;
   try{if(!/^partida-[a-zA-Z0-9-]{1,100}$/.test(inviteRunId))throw Error('El enlace no es válido.');const snap=await getDoc(doc(db,ROOT,inviteRunId));if(!snap.exists())throw Error('Este instrumento ya no está disponible.');$("roomCode").value=snap.data().className||'Instrumento compartido';}
   catch(e){$("joinMsg").textContent=e.message;$("joinBtn").disabled=true;}
  }

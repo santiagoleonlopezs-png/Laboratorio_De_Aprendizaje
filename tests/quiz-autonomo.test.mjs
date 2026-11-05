@@ -32,95 +32,76 @@ function fixture(overrides={}){
  return {run,store,client,advance:ms=>{now+=ms;},flush:async()=>{await serial;await new Promise(resolve=>setImmediate(resolve));},update:patch=>{Object.assign(run,patch);notify();}};
 }
 
-test('correctness and speed: fast 10, slower fewer, wrong and deadline 0',()=>{
+test('directed quiz keeps its time cap and existing scoring',()=>{
  assert.equal(engine.evaluateAnswer(1,1,0.5,10).points,10);
  assert.equal(engine.evaluateAnswer(1,1,8.5,10).points,2);
- assert.equal(engine.evaluateAnswer(0,1,0.1,10).points,0);
  assert.equal(engine.evaluateAnswer(1,1,10,10).points,0);
- assert.equal(engine.evaluateAnswer(1,1,100,10).timedOut,true);
- assert.equal(engine.evaluateAnswer(1,1,17,20).points,2);
-});
-test('legacy rooms remain facilitated with their default 60 seconds',()=>{
  assert.equal(engine.isSelfPaced({}),false);assert.equal(engine.questionSeconds({}),60);
- assert.deepEqual(engine.questionOrder({},questions),[0,1,2]);
 });
-test('participants start independently and only see selected questions in their saved order',async()=>{
- const f=fixture(),ana=f.client('Ana'),luis=f.client('Luis');
- await ana.start();assert.equal(ana.screen(),'playerGame');assert.equal(ana.player().selfPaced.activeIndex,2);
- assert.equal(luis.screen(),'selfIntro');assert.equal(luis.player().selfPaced,undefined);
- f.advance(2000);await ana.answer(2);assert.equal(ana.player().score,8);assert.equal(ana.player().selfPaced.activeIndex,2);
- f.advance(50000);await ana.next();assert.equal(ana.player().selfPaced.activeIndex,0);assert.equal(ana.$('pTimer').textContent,10);
+test('autonomous correct answers never expire and speed remains part of the score',()=>{
+ assert.equal(engine.evaluateSelfPacedAnswer(1,1,1).points,10);
+ assert.equal(engine.evaluateSelfPacedAnswer(1,1,31).points,5);
+ assert.equal(engine.evaluateSelfPacedAnswer(1,1,3600).points,1);
+ assert.equal(engine.evaluateSelfPacedAnswer(1,1,3600).timedOut,false);
+ assert.equal(engine.evaluateSelfPacedAnswer(0,1,1).points,0);
+});
+test('participants advance independently through their selected questions',async()=>{
+ const f=fixture(),ana=f.client('Ana'),luis=f.client('Luis');await ana.start();
+ assert.equal(ana.player().selfPaced.activeIndex,2);assert.equal(luis.screen(),'selfIntro');
+ f.advance(2000);await ana.answer(2);assert.equal(ana.player().score,10);
+ f.advance(50000);await ana.next();assert.equal(ana.player().selfPaced.activeIndex,0);
  await luis.start();assert.equal(luis.player().selfPaced.activeIndex,2);
 });
-test('refresh resumes the saved deadline, and an expired question cannot score',async()=>{
+test('waiting before Next actually lowers speed points and ranking',async()=>{
+ const f=fixture(),ana=f.client('Ana');await ana.start();f.advance(1000);await ana.answer(2);
+ f.advance(30000);await ana.next();f.advance(1000);await ana.answer(0);
+ const luis=f.client('Luis');await luis.start();f.advance(1000);await luis.answer(2);await luis.next();f.advance(1000);await luis.answer(0);
+ assert.equal(ana.player().answers[0].elapsed,31);assert.equal(ana.player().score,15);assert.equal(luis.player().score,20);
+ const rows=engine.selfPacedRanking([{id:'Ana',...ana.player()},{id:'Luis',...luis.player()}],f.run,questions);
+ assert.equal(rows[0].id,'Luis');
+});
+test('refresh before Next does not erase the wait since the last submission',async()=>{
+ const f=fixture(),ana=f.client('Ana');await ana.start();f.advance(1000);await ana.answer(2);
+ const last=ana.player().selfPaced.lastAnsweredAt;ana.controller.stop();f.advance(12000);
+ const resumed=f.client('Ana');await resumed.next();assert.equal(resumed.player().selfPaced.questionStartedAt,last);
+ f.advance(1000);await resumed.answer(0);assert.equal(resumed.player().answers[0].elapsed,13);assert.equal(resumed.player().answers[0].points,8);
+});
+test('refresh during a question preserves elapsed time without closing it',async()=>{
  const f=fixture(),ana=f.client('Ana');await ana.start();const started=ana.player().selfPaced.questionStartedAt;
- f.advance(6000);ana.controller.stop();const resumed=f.client('Ana');
- assert.equal(resumed.player().selfPaced.questionStartedAt,started);assert.equal(resumed.$('pTimer').textContent,4);
- f.advance(5000);resumed.tick();await f.flush();
- assert.equal(resumed.player().answers[2].points,0);assert.equal(resumed.player().answers[2].timedOut,true);
+ f.advance(6000);ana.controller.stop();const resumed=f.client('Ana');assert.equal(resumed.player().selfPaced.questionStartedAt,started);
+ f.advance(5000);await resumed.answer(2);assert.equal(resumed.player().answers[2].elapsed,11);assert.equal(resumed.player().score,9);
+});
+test('old total and question limits no longer close autonomous attempts',async()=>{
+ const f=fixture({duration:10,totalDuration:60}),ana=f.client('Ana');await ana.start();
+ f.advance(3_600_000);ana.tick();await f.flush();assert.equal(ana.screen(),'playerGame');assert.equal(Object.keys(ana.player().answers).length,0);
+ await ana.answer(2);assert.equal(ana.player().score,1);assert.equal(ana.player().answers[2].correct,true);
+ await ana.next();f.advance(3_600_000);await ana.answer(0);assert.equal(ana.screen(),'selfResults');assert.equal(ana.player().score,2);
 });
 test('two tabs cannot submit or score the same question twice',async()=>{
  const f=fixture(),first=f.client('Ana');await first.start();const second=f.client('Ana');f.advance(1000);
  await Promise.all([first.answer(2),second.answer(1)]);
- assert.equal(Object.keys(first.player().answers).length,1);assert.equal(first.player().score,9);assert.equal(first.player().answers[2].option,2);
- await first.next();assert.equal(first.player().selfPaced.activeIndex,0);
+ assert.equal(Object.keys(first.player().answers).length,1);assert.equal(first.player().score,10);assert.equal(first.player().answers[2].option,2);
 });
-test('late answers become a timeout even if the timer callback has not run',async()=>{
- const f=fixture(),ana=f.client('Ana');await ana.start();f.advance(10001);await ana.answer(2);
- assert.equal(ana.player().answers[2].points,0);assert.equal(ana.player().answers[2].option,-1);
-});
-test('all selected questions complete once and reopen at results instead of a new attempt',async()=>{
+test('a completed quiz reopens at results instead of creating a new attempt',async()=>{
  const f=fixture(),ana=f.client('Ana');await ana.start();f.advance(500);await ana.answer(2);await ana.next();f.advance(500);await ana.answer(0);
  assert.equal(ana.screen(),'selfResults');assert.equal(ana.player().score,20);assert.equal(ana.player().correctCount,2);
- ana.controller.stop();const resumed=f.client('Ana');assert.equal(resumed.screen(),'selfResults');assert.equal(Object.keys(resumed.player().answers).length,2);
+ ana.controller.stop();assert.equal(f.client('Ana').screen(),'selfResults');
 });
-test('closing an instrument blocks starting and answering; reopening keeps deadlines',async()=>{
+test('facilitator can still close and reopen the instrument without resetting elapsed time',async()=>{
  const f=fixture(),ana=f.client('Ana'),luis=f.client('Luis');await ana.start();const original=ana.player().selfPaced.questionStartedAt;
- f.update({selfPacedStatus:'closed'});ana.controller.updateRun(f.run);luis.controller.updateRun(f.run);
- await luis.start();assert.equal(luis.player().selfPaced,undefined);
- f.advance(12000);f.update({selfPacedStatus:'published'});ana.controller.updateRun(f.run);await f.flush();
- assert.equal(ana.player().selfPaced.questionStartedAt,original);assert.equal(ana.player().answers[2].points,0);
+ f.update({selfPacedStatus:'closed'});ana.controller.updateRun(f.run);luis.controller.updateRun(f.run);await luis.start();
+ assert.equal(luis.player().selfPaced,undefined);f.advance(12000);f.update({selfPacedStatus:'published'});ana.controller.updateRun(f.run);
+ await ana.answer(2);assert.equal(ana.player().selfPaced.questionStartedAt,original);assert.equal(ana.player().score,8);
 });
-test('a restarted version discards prior answers on start and cannot reuse its score',async()=>{
- const f=fixture(),ana=f.client('Ana');await ana.start();await ana.answer(2);assert.equal(ana.player().score,10);
- f.update({quizVersion:'v2'});ana.controller.updateRun(f.run);assert.equal(ana.screen(),'selfIntro');await ana.start();
+test('restarting invalidates old scores and begins a fresh attempt',async()=>{
+ const f=fixture(),ana=f.client('Ana');await ana.start();await ana.answer(2);f.update({quizVersion:'v2'});ana.controller.updateRun(f.run);await ana.start();
  assert.equal(ana.player().selfPaced.version,'v2');assert.equal(ana.player().score,0);assert.deepEqual(ana.player().answers,{});
 });
-test('live ranking scores answer data and breaks ties by aciertos, then time',()=>{
+test('ranking breaks point ties by accuracy and accumulated time, including wrong answers',()=>{
  const make=(id,answers)=>({id,name:id,score:999999,selfPaced:{version:'v1',startedAt:100},answers});
  const run={quizVersion:'v1',selectedQuestions:[0,1]};
- const players=[make('Lento',{0:{points:5,correct:true,elapsed:5}}),make('Rapido',{0:{points:5,correct:true,elapsed:2}}),make('Dos aciertos',{0:{points:3,correct:true,elapsed:8},1:{points:2,correct:true,elapsed:9}})];
- assert.deepEqual(engine.selfPacedRanking(players,run,questions).map(p=>p.name),['Dos aciertos','Rapido','Lento']);
-});
-test('general countdown keeps running between questions and closes all pending questions',async()=>{
- const f=fixture({totalDuration:60}),ana=f.client('Ana');await ana.start();f.advance(1000);await ana.answer(2);const score=ana.player().score;
- f.advance(59000);ana.tick();await f.flush();
- assert.equal(ana.screen(),'selfResults');assert.equal(ana.player().score,score);assert.equal(ana.player().correctCount,1);
- assert.equal(ana.player().selfPaced.completedReason,'total_timeout');assert.equal(ana.player().answers[0].timeoutReason,'total');assert.equal(ana.player().answers[0].points,0);
- assert.match(ana.$('selfFinalNote').textContent,/Se agotó el tiempo total/);
-});
-test('the total deadline beats a question with time left, including a late click',async()=>{
- const f=fixture({duration:600,totalDuration:60}),ana=f.client('Ana');await ana.start();f.advance(61000);await ana.answer(2);
- assert.equal(ana.player().score,0);assert.equal(ana.player().answers[2].option,-1);assert.equal(ana.player().answers[2].elapsed,60);
- assert.equal(ana.screen(),'selfResults');assert.equal(ana.player().answers[0].timeoutReason,'total');
-});
-test('refresh and next-question navigation preserve the original total deadline',async()=>{
- const f=fixture({duration:600,totalDuration:60}),ana=f.client('Ana');await ana.start();const started=ana.player().selfPaced.startedAt;
- f.advance(45000);ana.controller.stop();const resumed=f.client('Ana');assert.equal(resumed.$('selfTotalTimer').textContent,'00:15');
- await resumed.answer(2);await resumed.next();assert.equal(resumed.player().selfPaced.startedAt,started);assert.equal(resumed.$('selfTotalTimer').textContent,'00:15');
- f.advance(15000);resumed.tick();await f.flush();assert.equal(resumed.screen(),'selfResults');
-});
-test('returning after the whole quiz expired saves the score instead of reopening a question',async()=>{
- const f=fixture({duration:600,totalDuration:60}),ana=f.client('Ana');await ana.start();ana.controller.stop();f.advance(70000);
- const resumed=f.client('Ana');await f.flush();assert.equal(resumed.screen(),'selfResults');assert.equal(resumed.player().score,0);
- const last=f.client('Ana');assert.equal(last.screen(),'selfResults');assert.equal(last.player().selfPaced.startedAt,1_000_000);
-});
-test('an attempt captures its total limit once and a later run update does not extend it',async()=>{
- const f=fixture({duration:600,totalDuration:60}),ana=f.client('Ana');await ana.start();f.update({totalDuration:120});ana.controller.updateRun(f.run);
- f.advance(60000);ana.tick();await f.flush();assert.equal(ana.screen(),'selfResults');assert.equal(ana.player().selfPaced.totalDuration,60);
-});
-test('legacy quizzes derive a finite total limit and timeout only their selected questions',()=>{
- const run={quizVersion:'v1',duration:60,selectedQuestions:[2,0]},player={answers:{2:{points:7,correct:true,elapsed:20}},selfPaced:{version:'v1',startedAt:1000,activeIndex:0,questionStartedAt:100000}};
- assert.equal(engine.totalSeconds(run,questions),120);assert.equal(engine.formatClock(120),'02:00');
- const expired=engine.totalTimeoutUpdate(run,player,questions,122000);assert.equal(expired.score,7);assert.equal(expired.answers[1],undefined);assert.equal(expired.answers[0].points,0);
+ const rows=[make('Slow',{0:{points:5,correct:true,elapsed:2},1:{points:0,correct:false,elapsed:30}}),
+ make('Fast',{0:{points:5,correct:true,elapsed:2},1:{points:0,correct:false,elapsed:1}}),
+ make('More correct',{0:{points:3,correct:true,elapsed:8},1:{points:2,correct:true,elapsed:9}})];
+ assert.deepEqual(engine.selfPacedRanking(rows,run,questions).map(p=>p.id),['More correct','Fast','Slow']);
 });

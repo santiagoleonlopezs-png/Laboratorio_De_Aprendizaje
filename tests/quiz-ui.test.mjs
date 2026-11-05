@@ -6,38 +6,47 @@ import * as engine from '../quiz-engine.mjs';
 
 const html=fs.readFileSync(new URL('../knowledge.html',import.meta.url),'utf8');
 const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import .*;\n/gm,'');
-function page(search=''){
- const elements=new Map(),store=new Map(),observers=[];let autoId=0;
- function element(id){return {id,value:'',textContent:'',dataset:{},style:{},disabled:false,classList:{toggle(){},add(){},remove(){}},addEventListener(){},querySelectorAll:()=>[],scrollIntoView(){},appendChild(){},set innerHTML(s){this._html=s;this.textContent=s;},get innerHTML(){return this._html||'';}};}
+function page(search='', saved=null){
+ const elements=new Map(),store=new Map(),observers=[],startup=[],savedValues=new Map(),errors=[];let autoId=0;
+ if(saved)savedValues.set('gc_quiz_session_v7',JSON.stringify(saved));
+ function element(id){
+  const classes=new Set();
+  return {id,value:'',textContent:'',dataset:{},style:{},disabled:false,
+   classList:{toggle(name,force){const on=force===undefined?!classes.has(name):force;if(on)classes.add(name);else classes.delete(name);},add:name=>classes.add(name),remove:name=>classes.delete(name),contains:name=>classes.has(name)},
+   addEventListener(){},querySelectorAll:()=>[],scrollIntoView(){},appendChild(){},
+   set innerHTML(s){this._html=s;this.textContent=s;},get innerHTML(){return this._html||'';}};
+ }
  const $=id=>{if(!elements.has(id))elements.set(id,element(id));return elements.get(id);};
+ const backButtons=Array.from({length:[...html.matchAll(/class="[^"]*\bback\b[^"]*"/g)].length},(_,i)=>element('back-'+i));
  const ref=(...parts)=>{const path=parts.slice(parts[0]?.kind==='db'?1:0).map(p=>p?.path||p).join('/');return {path,id:path.split('/').at(-1)};};
  const getDoc=async r=>({exists:()=>store.has(r.path),data:()=>structuredClone(store.get(r.path))});
  const put=async(r,data,options)=>{store.set(r.path,options?.merge?{...store.get(r.path),...structuredClone(data)}:structuredClone(data));};
- const context={...engine,console,URL,URLSearchParams,crypto:{randomUUID:()=>`version-${++autoId}`},location:{href:'https://example.test/knowledge.html'+search,search},navigator:{onLine:true,clipboard:{writeText:async()=>{}}},
-  document:{getElementById:$,querySelectorAll:()=>[],createElement:()=>element('generated'),activeElement:null},window:{addEventListener(){}},localStorage:{getItem:()=>null,setItem(){}},
-  setTimeout:()=>{},setInterval:()=>0,clearInterval(){},confirm:()=>true,alert(){},prompt:()=>null,
+ const context={...engine,console:{...console,error:error=>errors.push(error)},URL,URLSearchParams,crypto:{randomUUID:()=>`version-${++autoId}`},location:{href:'https://example.test/knowledge.html'+search,search},navigator:{onLine:true,clipboard:{writeText:async()=>{}}},
+  document:{getElementById:$,querySelectorAll:selector=>selector==='.back'?backButtons:[],createElement:()=>element('generated'),activeElement:null},window:{addEventListener(){}},
+  localStorage:{getItem:key=>savedValues.get(key)||null,setItem:(key,value)=>savedValues.set(key,value)},
+  setTimeout:fn=>{startup.push(fn);},setInterval:()=>0,clearInterval(){},confirm:()=>true,alert(){},prompt:()=>null,
   initializeApp:()=>({}),getFirestore:()=>({kind:'db'}),getAuth:()=>({}),signInWithEmailAndPassword:async()=>({user:{}}),getIdTokenResult:async()=>({claims:{facilitator:true}}),
   doc:(...parts)=>parts.length===1?ref(parts[0],`id${++autoId}`):ref(...parts),collection:ref,getDoc,
   setDoc:put,updateDoc:(r,data)=>put(r,data,{merge:true}),deleteDoc:async r=>store.delete(r.path),serverTimestamp:()=>1000,
   getDocs:async r=>({docs:[...store].filter(([path])=>path.startsWith(r.path+'/')&&path.split('/').length===r.path.split('/').length+1).map(([path,data])=>({id:path.split('/').at(-1),ref:{path},data:()=>structuredClone(data)})),forEach(fn){this.docs.forEach(fn);}}),
-  onSnapshot:(r,cb)=>{observers.push({r,cb});return()=>{};},
+  onSnapshot:(r,cb)=>{const entry={r,cb,active:true};observers.push(entry);return()=>{entry.active=false;};},
   writeBatch:()=>{const writes=[];return {set:(...a)=>writes.push(()=>put(...a)),update:(r,data)=>writes.push(()=>put(r,data,{merge:true})),delete:r=>writes.push(()=>store.delete(r.path)),commit:async()=>{for(const write of writes)await write();}};},
   createSelfPacedQuiz:()=>({updateRun(){},stop(){}})
  };
  vm.createContext(context);vm.runInContext(script,context);
- $('newTotalDuration').value='20';$('totalDuration').value='20';
- return {$,store,context,run:code=>vm.runInContext(code,context),observers};
+ return {$,store,context,run:code=>vm.runInContext(code,context),observers,backButtons,errors,
+  boot:async()=>{for(const fn of startup)await fn();},isShown:id=>!$(id).classList.contains('hidden')};
 }
 test('page has unique ids and all direct DOM lookups exist',()=>{
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);
  for(const [,id]of html.matchAll(/\$\("([^"]+)"\)/g))assert.ok(ids.includes(id),id);
 });
-test('facilitator creates autonomous run with the selected time, then publishes a bound link',async()=>{
+test('facilitator creates an untimed autonomous run and publishes a bound link',async()=>{
  const p=page();p.$('className').value='Estrategia';p.$('newQuizMode').value='self_paced';p.$('newQuestionDuration').value='30';
  await p.$('createRoom').onclick();const runEntry=[...p.store].find(([,d])=>d.recordType==='run');assert.ok(runEntry,p.$('roomManagerMsg').textContent);
- const [path,data]=runEntry;assert.equal(data.mode,'self_paced');assert.equal(data.duration,30);assert.equal(data.totalDuration,1200);assert.equal(data.selfPacedStatus,'draft');
+ const [path,data]=runEntry;assert.equal(data.mode,'self_paced');assert.equal(data.duration,60);assert.equal(data.totalDuration,undefined);assert.equal(data.selfPacedStatus,'draft');
  await p.$('publishSelfQuiz').onclick();const published=p.store.get(path);assert.equal(published.selfPacedStatus,'published');assert.ok(published.quizVersion);assert.equal(published.questions.length,20);
- p.run('state='+JSON.stringify(published)+';renderHost();');assert.ok(p.$('quizShareLink').value.includes('partida='+path.split('/')[1]));assert.equal(p.$('questionDuration').disabled,true);assert.equal(p.$('totalDuration').disabled,true);
+ p.run('state='+JSON.stringify(published)+';renderHost();');assert.ok(p.$('quizShareLink').value.includes('partida='+path.split('/')[1]));assert.equal(p.$('questionDuration').disabled,true);
 });
 test('a new run defaults to directed and maximum time validation rejects invalid setup',async()=>{
  const p=page();p.$('className').value='Clase';p.$('newQuestionDuration').value='0';await p.$('createRoom').onclick();assert.equal(p.store.size,0);
@@ -63,9 +72,44 @@ test('invitation joins the exact instrument even when the class alias points to 
  const p=page('?partida=partida-original');p.store.set('gc_quiz_live/partida-original',{recordType:'run',mode:'self_paced'});p.store.set('gc_quiz_live/CLASE',{activeRun:'partida-new'});
  await p.run("recoverOrJoin('Ana','CLASE')");assert.equal(p.run('room'),'partida-original');assert.ok([...p.store.keys()].some(path=>path.startsWith('gc_quiz_live/partida-original/players/')));
 });
-test('facilitator saves an independent total in minutes and rejects an empty total',async()=>{
- const p=page();p.run("room='partida-test';state={mode:'self_paced',selfPacedStatus:'draft',status:'lobby',duration:60}");
- p.$('quizMode').value='self_paced';p.$('questionDuration').value='45';p.$('totalDuration').value='8';
- await p.$('saveQuizSettings').onclick();let data=p.store.get('gc_quiz_live/partida-test');assert.equal(data.duration,45);assert.equal(data.totalDuration,480);
- p.$('questionDuration').value='45';p.$('totalDuration').value='';await p.$('saveQuizSettings').onclick();data=p.store.get('gc_quiz_live/partida-test');assert.equal(data.totalDuration,480);assert.match(p.$('hostError').textContent,/tiempo total/);
+test('autonomous settings do not require a question limit or a total limit',async()=>{
+ const p=page();p.run("room='partida-test';state={mode:'self_paced',selfPacedStatus:'draft',status:'lobby'}");
+ p.$('quizMode').value='self_paced';p.$('questionDuration').value='';await p.$('saveQuizSettings').onclick();
+ const data=p.store.get('gc_quiz_live/partida-test');assert.equal(data.mode,'self_paced');assert.equal(data.totalDuration,undefined);
+ assert.ok(!html.includes('id="totalDuration"'));assert.ok(!html.includes('id="selfTotalTimer"'));
+});
+test('opening the quiz with a saved session keeps Home and facilitator access available',async()=>{
+ const saved={room:'partida-old',playerId:'ana',playerName:'Ana'},p=page('',saved);
+ p.store.set('gc_quiz_live/partida-old',{recordType:'run',mode:'self_paced'});p.store.set('gc_quiz_live/partida-old/players/ana',{name:'Ana'});
+ await p.boot();assert.equal(p.isShown('home'),true);assert.equal(p.isShown('playerJoin'),false);assert.equal(p.observers.length,0);
+ assert.equal(p.$('resumeQuiz').classList.contains('hidden'),false);p.$('goHost').onclick();assert.equal(p.isShown('hostLogin'),true);assert.equal(p.observers.length,0);
+});
+test('an invitation also lands at Home, with both role choices',async()=>{
+ const saved={room:'partida-original',playerId:'ana',playerName:'Ana'},p=page('?partida=partida-original',saved);
+ p.store.set('gc_quiz_live/partida-original',{recordType:'run',mode:'self_paced',className:'CLASE'});await p.boot();
+ assert.equal(p.isShown('home'),true);assert.equal(p.isShown('playerJoin'),false);assert.equal(p.observers.length,0);
+ p.$('goPlayer').onclick();assert.equal(p.isShown('playerJoin'),true);assert.equal(p.$('roomCode').value,'CLASE');
+ p.$('goHost').onclick();assert.equal(p.isShown('hostLogin'),true);
+});
+test('resuming requires a click and choosing facilitator detaches the participant listener',async()=>{
+ const saved={room:'partida-old',playerId:'ana',playerName:'Ana'},p=page('',saved);
+ p.store.set('gc_quiz_live/partida-old',{recordType:'run',mode:'self_paced'});p.store.set('gc_quiz_live/partida-old/players/ana',{name:'Ana'});
+ await p.boot();assert.equal(p.observers.length,0);await p.$('resumeQuiz').onclick();assert.equal(p.isShown('waiting'),true);assert.ok(p.observers.some(o=>o.active));
+ p.$('goHost').onclick();assert.equal(p.isShown('hostLogin'),true);assert.equal(p.observers.some(o=>o.active),false);
+});
+test('Volver al inicio cancels participant listeners and exposes the facilitator button',async()=>{
+ const p=page('',{room:'partida-old',playerId:'ana',playerName:'Ana'});p.store.set('gc_quiz_live/partida-old',{recordType:'run',mode:'self_paced'});p.store.set('gc_quiz_live/partida-old/players/ana',{name:'Ana'});
+ await p.boot();await p.$('resumeQuiz').onclick();p.backButtons[0].onclick();assert.equal(p.isShown('home'),true);assert.equal(p.observers.some(o=>o.active),false);
+ p.$('goHost').onclick();assert.equal(p.isShown('hostLogin'),true);
+});
+test('a delayed resume cannot steal the screen after switching to facilitator',async()=>{
+ const p=page('',{room:'partida-old',playerId:'ana',playerName:'Ana'});p.store.set('gc_quiz_live/partida-old',{recordType:'run',mode:'self_paced'});p.store.set('gc_quiz_live/partida-old/players/ana',{name:'Ana'});
+ await p.boot();const original=p.context.getDoc;let release;
+ p.context.getDoc=ref=>new Promise(resolve=>{release=async()=>resolve(await original(ref));});
+ const pending=p.$('resumeQuiz').onclick();p.$('goHost').onclick();await release();await pending;
+ assert.equal(p.isShown('hostLogin'),true);assert.equal(p.observers.some(o=>o.active),false);
+});
+test('an invalid shared link never blocks facilitator access',async()=>{
+ const p=page('?partida=partida-missing');await p.boot();assert.equal(p.isShown('home'),true);assert.equal(p.$('joinBtn').disabled,true);
+ p.$('goHost').onclick();assert.equal(p.isShown('hostLogin'),true);
 });
