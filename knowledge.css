@@ -1,4 +1,4 @@
-/* Reto de Conocimiento: participant experience. Facilitator tools keep their workspace theme. */
+/* SaberON: participant experience. Facilitator tools keep their workspace theme. */
 button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #7db8ff;outline-offset:4px}
 input:focus,select:focus{outline:2px solid #7db8ff;outline-offset:2px}
 body.play-view{--bg:#080f20;--card:#111e34;--ink:#edf4ff;--muted:#a5b6d0;--line:#293c58;--accent:#4775ff;background:radial-gradient(ellipse at 85% 18%,#19366b66,transparent 48%),radial-gradient(ellipse at 0% 80%,#123f5a44,transparent 45%),#080f20;min-height:100vh}
@@ -31,8 +31,9 @@ body.play-view{--bg:#080f20;--card:#111e34;--ink:#edf4ff;--muted:#a5b6d0;--line:
 #home::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.22;background-image:radial-gradient(#7197d2 1px,transparent 1px);background-size:26px 26px;mask-image:linear-gradient(90deg,transparent 30%,#000)}
 .home-top,.home-layout,.home-steps{position:relative}
 .home-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.quiz-brand{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:750;letter-spacing:.16em;text-transform:uppercase;color:#b6c9e8}
-.brand-mark{display:grid;place-items:center;background:#315fec;color:white;width:34px;height:34px;border-radius:10px;font-size:20px;letter-spacing:0}
+.quiz-brand{display:inline-flex;align-items:center;gap:0;font-size:30px;font-weight:850;letter-spacing:-.055em;text-transform:none;color:#f4f7ff;line-height:1}
+.brand-power{width:.95em;height:.95em;margin:0 .01em 0 .03em;color:#42ed19;filter:drop-shadow(0 0 7px #42ed1925);flex-shrink:0}
+.brand-n{color:#fa263d;letter-spacing:-.035em}
 #goHost{display:flex;align-items:center;gap:7px;background:transparent;color:#a8bad3;padding:8px 10px;min-height:40px;font-size:12px;font-weight:550}
 #goHost:hover{background:#ffffff09;color:#fff}#goHost svg{width:14px;height:14px}
 .home-layout{display:grid;grid-template-columns:1.15fr .85fr;align-items:center;gap:30px;margin:46px 0 38px}
@@ -57,5 +58,5 @@ body.play-view{--bg:#080f20;--card:#111e34;--ink:#edf4ff;--muted:#a5b6d0;--line:
 .art-badge strong{display:block;font-size:13px;margin-bottom:2px}.art-badge small{font-size:10px;color:#95adcf}.art-badge i{font-style:normal;color:#83e6c8;font-size:22px}
 .art-badge.first{top:27px;right:0;transform:rotate(5deg)}.art-badge.second{bottom:22px;left:0;transform:rotate(-4deg)}
 .art-caption{position:absolute;bottom:-8px;color:#7396c3;font-size:10px;letter-spacing:.22em;text-transform:uppercase}
-@media(max-width:760px){#home{padding:24px;min-height:auto}.home-layout{grid-template-columns:1fr;margin:38px 0 28px;gap:10px}.challenge-art{display:none}.home-steps{gap:16px}.home-step{display:block}.home-step>span{display:inline-block;margin-bottom:8px}#home h1{font-size:46px}.home-copy{font-size:14px}.home-top{gap:6px}.quiz-brand{font-size:9px;letter-spacing:.08em}.brand-mark{width:29px;height:29px}.play-view .wrap{padding:16px}.play-view #playerJoin{padding:24px;margin:18px 0}.share-row{flex-wrap:wrap}.share-row input{flex-basis:100%}.play-view .answer{min-height:78px}.home-cta{flex-wrap:wrap}#goHost{font-size:11px;padding:8px 4px}.home-step p{font-size:11px}}
+@media(max-width:760px){#home{padding:24px;min-height:auto}.home-layout{grid-template-columns:1fr;margin:38px 0 28px;gap:10px}.challenge-art{display:none}.home-steps{gap:16px}.home-step{display:block}.home-step>span{display:inline-block;margin-bottom:8px}#home h1{font-size:46px}.home-copy{font-size:14px}.home-top{gap:6px}.quiz-brand{font-size:25px}.play-view .wrap{padding:16px}.play-view #playerJoin{padding:24px;margin:18px 0}.share-row{flex-wrap:wrap}.share-row input{flex-basis:100%}.play-view .answer{min-height:78px}.home-cta{flex-wrap:wrap}#goHost{font-size:11px;padding:8px 4px}.home-step p{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}

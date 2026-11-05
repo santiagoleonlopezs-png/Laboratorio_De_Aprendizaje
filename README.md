@@ -8,7 +8,7 @@ Abre `index.html` con servidor HTTP o publícalo con GitHub Pages desde la rama 
 
 ## Quiz: modalidad dirigida y autónoma
 
-Reto de Conocimiento (`knowledge.html`) conserva las partidas dirigidas: el facilitador abre y cierra preguntas y revela resultados. Las salas anteriores mantienen esa modalidad y sus 60 segundos por pregunta.
+SaberON (`knowledge.html`) conserva las partidas dirigidas: el facilitador abre y cierra preguntas y revela resultados. Las salas anteriores mantienen esa modalidad y sus 60 segundos por pregunta.
 
 Para enviar un instrumento que cada persona responda a su ritmo:
 
@@ -36,11 +36,11 @@ La implementación usa las colecciones existentes `gc_quiz_live` y `gc_quiz_bank
 
 Validación local sin credenciales ni escrituras a producción: `node --test tests/quiz-*.test.mjs`. La comprobación automática **Validar modalidades del quiz** ejecuta esos casos en GitHub Actions.
 
-Experiencias: **Talento & Riesgo**, **Reto de Conocimiento**, **Las reglas del juego** (Ultimátum y Empresa en crisis), **Proyecto NEXUS**, **El Flaco** y **SATURNO**.
+Experiencias: **Talento & Riesgo**, **SaberON**, **Las reglas del juego** (Ultimátum y Empresa en crisis), **Proyecto NEXUS**, **El Flaco** y **SATURNO**.
 
 - Talento & Riesgo Lab v2 es una **competencia por equipos en una misma sala**: 8 escenarios (legislación y formación, ascensos, movilidad laboral y dilemas de desarrollo), presupuesto y métricas acumuladas, consecuencias diferidas, ranking en tiempo real y descarga CSV para el facilitador. Incluye modo práctica individual sin servidor.
 - SATURNO funciona en el navegador y guarda el progreso localmente.
-- Reto de Conocimiento, Las reglas del juego, El Flaco y **Proyecto NEXUS** utilizan Firebase Authentication y Firestore. NEXUS ya no depende de Supabase.
+- SaberON, Las reglas del juego, El Flaco y **Proyecto NEXUS** utilizan Firebase Authentication y Firestore. NEXUS ya no depende de Supabase.
 - Estudiantes ingresan mediante nombre y código de sala según cada experiencia.
 - El acceso de facilitadores utiliza Firebase Authentication con correo y contraseña y el rol `facilitator: true`. No se guardan contraseñas en el código público.
 
