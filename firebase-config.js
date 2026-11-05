@@ -4,3 +4,4 @@ window.FIREBASE_CONFIG = {
   projectId: "simuladores-juegos",
   storageBucket: "simuladores-juegos.appspot.com"
 };
+

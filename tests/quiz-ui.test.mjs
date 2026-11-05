@@ -8,7 +8,7 @@ import * as engine from '../quiz-engine.mjs';
 const html=fs.readFileSync(new URL('../knowledge.html',import.meta.url),'utf8');
 const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import .*;\n/gm,'');
 function page(search='', saved=null){
- const elements=new Map(),store=new Map(),observers=[],startup=[],savedValues=new Map(),errors=[];let autoId=0;
+ const elements=new Map(),store=new Map(),observers=[],startup=[],savedValues=new Map(),errors=[],batchSizes=[];let autoId=0;
  if(saved)savedValues.set('gc_quiz_session_v7',JSON.stringify(saved));
  function element(id){
   const tag=html.match(new RegExp('<[^>]+\\bid="'+id+'"[^>]*>'))?.[0]||'';
@@ -25,18 +25,19 @@ function page(search='', saved=null){
  const put=async(r,data,options)=>{store.set(r.path,options?.merge?{...store.get(r.path),...structuredClone(data)}:structuredClone(data));};
  const context={...engine,console:{...console,error:error=>errors.push(error)},URL,URLSearchParams,TextEncoder,crypto:{randomUUID:()=>`version-${++autoId}`,subtle:webcrypto.subtle},location:{href:'https://example.test/knowledge.html'+search,search},navigator:{onLine:true,clipboard:{writeText:async()=>{}}},
   document:{getElementById:$,querySelectorAll:selector=>selector==='.back'?backButtons:[],createElement:()=>element('generated'),activeElement:null},window:{addEventListener(){}},
-  localStorage:{getItem:key=>savedValues.get(key)||null,setItem:(key,value)=>savedValues.set(key,value)},
+  localStorage:{getItem:key=>savedValues.get(key)||null,setItem:(key,value)=>savedValues.set(key,value),removeItem:key=>savedValues.delete(key)},
   setTimeout:fn=>{startup.push(fn);},setInterval:()=>0,clearInterval(){},confirm:()=>true,alert(){},prompt:()=>null,
-  initializeApp:()=>({}),getFirestore:()=>({kind:'db'}),getAuth:()=>({}),signInWithEmailAndPassword:async()=>({user:{}}),getIdTokenResult:async()=>({claims:{facilitator:true}}),
+  initializeApp:()=>({}),getFirestore:()=>({kind:'db'}),getAuth:()=>({currentUser:{uid:'host'}}),signInWithEmailAndPassword:async()=>({user:{}}),getIdTokenResult:async()=>({claims:{facilitator:true}}),
   doc:(...parts)=>parts.length===1?ref(parts[0],`id${++autoId}`):ref(...parts),collection:ref,getDoc,
   setDoc:put,updateDoc:(r,data)=>put(r,data,{merge:true}),deleteDoc:async r=>store.delete(r.path),serverTimestamp:()=>1000,
   getDocs:async r=>({docs:[...store].filter(([path])=>path.startsWith(r.path+'/')&&path.split('/').length===r.path.split('/').length+1).map(([path,data])=>({id:path.split('/').at(-1),ref:{path},data:()=>structuredClone(data)})),forEach(fn){this.docs.forEach(fn);}}),
   onSnapshot:(r,cb)=>{const entry={r,cb,active:true};observers.push(entry);return()=>{entry.active=false;};},
-  writeBatch:()=>{const writes=[];return {set:(...a)=>writes.push(()=>put(...a)),update:(r,data)=>writes.push(()=>put(r,data,{merge:true})),delete:r=>writes.push(()=>store.delete(r.path)),commit:async()=>{for(const write of writes)await write();}};},
+  writeBatch:()=>{const writes=[];return {set:(...a)=>writes.push(()=>put(...a)),update:(r,data)=>writes.push(()=>put(r,data,{merge:true})),delete:r=>writes.push(()=>store.delete(r.path)),commit:async()=>{assert.ok(writes.length<=400);batchSizes.push(writes.length);for(const write of writes)await write();}};},
+  runTransaction:async(_db,fn)=>{const writes=[];await fn({get:r=>context.getDoc(r),set:(...args)=>writes.push(()=>put(...args)),update:(r,data)=>writes.push(()=>put(r,data,{merge:true}))});for(const write of writes)await write();},
   createSelfPacedQuiz:()=>({updateRun(){},stop(){}})
  };
  vm.createContext(context);vm.runInContext(script,context);
- return {$,store,context,run:code=>vm.runInContext(code,context),observers,backButtons,errors,
+ return {$,store,context,run:code=>vm.runInContext(code,context),observers,backButtons,errors,batchSizes,
   emit:async(path,data)=>{store.set(path,data);for(const o of [...observers])if(o.active&&o.r.path===path)await o.cb({exists:()=>true,data:()=>structuredClone(data)});},
   boot:async()=>{for(const fn of startup)await fn();},isShown:id=>!$(id).classList.contains('hidden')};
 }
@@ -182,4 +183,68 @@ test('directed final ranking waits for the last selected question and respects l
 test('public participant labels mask cedulas while names remain intact',()=>{
  assert.equal(engine.participantLabel({name:'1020304050',identityType:'cedula'}),'Cédula ••••4050');
  assert.equal(engine.participantLabel({name:'Ana María'}),'Ana María');
+});
+
+function seedRoomForDeletion(p){
+ p.store.set('gc_quiz_live/CLASE',{recordType:'class_alias',displayName:'Clase',activeRun:'partida-current',runs:['partida-current']});
+ p.store.set('gc_quiz_live/partida-current',{recordType:'run',className:'CLASE',mode:'self_paced',selfPacedStatus:'published'});
+ p.store.set('gc_quiz_live/partida-current/players/ana',{name:'Ana',answers:{0:{points:10}},score:10});
+}
+test('deleting a room removes all its runs, responses and public results while preserving other rooms and banks',async()=>{
+ const p=page('',{room:'partida-current',playerId:'ana',playerName:'Ana'});seedRoomForDeletion(p);
+ // This historical run fell outside the alias history, which is capped at 100.
+ p.store.set('gc_quiz_live/partida-historic',{recordType:'run',className:'clase',mode:'facilitated'});
+ p.store.set('gc_quiz_live/partida-historic/players/luis',{name:'Luis'});p.store.set('gc_quiz_live/partida-historic/public/scoreboard',{top:[{name:'Luis'}]});
+ p.store.set('gc_quiz_live/OTHER',{recordType:'class_alias',activeRun:'partida-other'});p.store.set('gc_quiz_live/partida-other',{recordType:'run',className:'OTHER'});p.store.set('gc_quiz_live/partida-other/players/bob',{name:'Bob'});
+ p.store.set('gc_quiz_banks/compartido',{name:'Compartido',questions:[{text:'Conservar'}]});
+ await p.run("window.deleteClassRoom('CLASE')");
+ assert.deepEqual([...p.store.keys()].sort(),['gc_quiz_banks/compartido','gc_quiz_live/OTHER','gc_quiz_live/partida-other','gc_quiz_live/partida-other/players/bob'].sort());
+ assert.match(p.$('roomManagerMsg').textContent,/Sala «Clase» eliminada/);assert.equal(p.run('loadSession()'),null);assert.equal(p.run('roomDeletionBusy'),false);
+});
+test('canceling room deletion leaves every document intact',async()=>{
+ const p=page();seedRoomForDeletion(p);const before=JSON.stringify([...p.store]);let prompt='';p.context.confirm=message=>{prompt=message;return false;};
+ await p.run("window.deleteClassRoom('CLASE')");assert.equal(JSON.stringify([...p.store]),before);assert.match(prompt,/1 partida/);assert.match(prompt,/bancos de preguntas se conservan/);assert.equal(p.batchSizes.length,0);
+});
+test('room deletion requires a signed-in facilitator with the appropriate role',async()=>{
+ for(const signedIn of [false,true]){
+  const p=page();seedRoomForDeletion(p);const before=JSON.stringify([...p.store]);
+  if(!signedIn)p.run('facilitatorAuth.currentUser=null');else p.context.getIdTokenResult=async()=>({claims:{facilitator:false}});
+  await p.run("window.deleteClassRoom('CLASE')");assert.equal(JSON.stringify([...p.store]),before);assert.match(p.$('roomManagerMsg').textContent,/facilitador/);
+ }
+});
+test('deleting a room chunks large classrooms into supported batches',async()=>{
+ const p=page();seedRoomForDeletion(p);for(let i=0;i<850;i++)p.store.set('gc_quiz_live/partida-current/players/p'+i,{name:'Persona '+i});
+ await p.run("window.deleteClassRoom('CLASE')");assert.equal(p.store.size,0);assert.ok(p.batchSizes.every(n=>n<=400));assert.ok(p.batchSizes.filter(n=>n===400).length>=2);
+});
+test('an inconsistent history entry never deletes a run belonging to a different room',async()=>{
+ const p=page();seedRoomForDeletion(p);p.store.get('gc_quiz_live/CLASE').runs.push('partida-other');p.store.set('gc_quiz_live/partida-other',{recordType:'run',className:'OTHER'});p.store.set('gc_quiz_live/partida-other/players/bob',{name:'Bob'});
+ await p.run("window.deleteClassRoom('CLASE')");assert.equal(p.store.get('gc_quiz_live/partida-other').className,'OTHER');assert.ok(p.store.has('gc_quiz_live/partida-other/players/bob'));
+});
+test('interrupted room deletion can be resumed and the room cannot be reopened or overwritten meanwhile',async()=>{
+ const p=page();seedRoomForDeletion(p);const read=p.context.getDocs;
+ p.context.getDocs=async ref=>{if(ref.path.endsWith('/players'))throw Error('Conexión interrumpida');return read(ref);};
+ await p.run("window.deleteClassRoom('CLASE')");assert.equal(p.store.get('gc_quiz_live/CLASE').deleting,true);assert.equal(p.store.get('gc_quiz_live/partida-current').deleting,true);
+ assert.match(p.$('roomHistory').innerHTML,/Reintentar eliminación/);assert.match(p.$('roomManagerMsg').textContent,/no se completó/);
+ p.$('className').value='Clase';p.$('newQuestionDuration').value='60';await p.$('createRoom').onclick();assert.match(p.$('roomManagerMsg').textContent,/eliminación pendiente/);
+ p.context.getDocs=read;await p.run("window.deleteClassRoom('CLASE')");assert.equal(p.store.size,0);
+});
+test('restricted public results are reported instead of preventing deletion of the accessible room data',async()=>{
+ const p=page();seedRoomForDeletion(p);const read=p.context.getDocs;
+ p.context.getDocs=async ref=>{if(ref.path.endsWith('/public'))throw Object.assign(Error('Restricted'),{code:'permission-denied'});return read(ref);};
+ await p.run("window.deleteClassRoom('CLASE')");assert.equal(p.store.size,0);assert.match(p.$('roomManagerMsg').textContent,/No se pudieron comprobar o borrar/);
+});
+test('a room changed during confirmation is preserved for a fresh review',async()=>{
+ const p=page();seedRoomForDeletion(p);p.context.confirm=()=>{p.store.get('gc_quiz_live/CLASE').activeRun='partida-new';return true;};
+ await p.run("window.deleteClassRoom('CLASE')");assert.ok(p.store.has('gc_quiz_live/partida-current/players/ana'));assert.equal(p.store.get('gc_quiz_live/CLASE').activeRun,'partida-new');assert.match(p.$('roomManagerMsg').textContent,/cambió mientras confirmabas/);
+});
+test('a pending deletion blocks direct-link enrollment even if the room was read before it closed',async()=>{
+ const p=page('?partida=partida-current');seedRoomForDeletion(p);const transaction=p.context.runTransaction;
+ p.context.runTransaction=async(db,fn)=>{p.store.get('gc_quiz_live/partida-current').deleting=true;return transaction(db,fn);};
+ await assert.rejects(p.run('recoverOrJoin("Nueva persona","")'),/ya no está disponible/);
+ assert.equal([...p.store.keys()].filter(k=>k.includes('/players/')).length,1);
+});
+test('deleting an active participant room returns to Home and cancels its listeners',async()=>{
+ const p=page('',{room:'partida-current',playerId:'ana',playerName:'Ana'});seedRoomForDeletion(p);await p.boot();await p.$('resumeQuiz').onclick();
+ await p.emit('gc_quiz_live/partida-current',{recordType:'run',mode:'self_paced',deleting:true});
+ assert.equal(p.isShown('home'),true);assert.equal(p.observers.some(o=>o.active),false);assert.equal(p.run('loadSession()'),null);assert.match(p.$('homeMsg').textContent,/ya no está disponible/);
 });

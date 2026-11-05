@@ -34,3 +34,4 @@ footer{font-size:13px}
 .note{font-size:14px}
 @media(max-width:950px){.stats{gap:0}.stat{padding-left:16px;gap:12px}.stat-icon{width:46px;height:46px;flex-basis:46px}.stat span{font-size:14px}}
 @media(max-width:620px){.brand{font-size:13px}.top nav{font-size:13px}.hero p{font-size:16px}.sat{font-size:10px}.stats{grid-template-columns:1fr;gap:0;padding:8px 0;margin-bottom:35px}.stat,.stat:first-child{padding:15px 0;border:0;border-bottom:1px solid var(--line);display:flex;flex-direction:row;align-items:center;gap:15px}.stat:last-child{border-bottom:0}.stat-icon{width:46px;height:46px;flex-basis:46px}.stat span{font-size:15px}.section-head h2{font-size:28px}.section-head p{font-size:15px}.filter{font-size:12px;padding:10px 13px}.card p{font-size:15px;min-height:0}.about p,.step{font-size:15px}footer{font-size:12px}}
+

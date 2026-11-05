@@ -30,7 +30,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 @media(max-width:650px){.adminGrid{grid-template-columns:1fr}.qrowhead{display:block}.qactions{margin-top:10px}}
 </style>
 </head>
-<body class="play-view"><div style="position:relative;z-index:100;background:#070b13;border-bottom:1px solid #27334b;padding:14px 22px;font:13px system-ui;display:flex;justify-content:space-between;gap:16px"><a href="index.html#experiencias" style="color:#c2d5ff;text-decoration:none">← Volver al laboratorio</a><span style="color:#91a2bc">Santiago León López</span></div>
+<body class="play-view"><div style="position:relative;z-index:100;background:#070b13;border-bottom:1px solid #27334b;padding:14px 22px;font:13px system-ui;display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px"><a href="index.html#experiencias" style="color:#c2d5ff;text-decoration:none">← Volver al laboratorio</a><span style="color:#91a2bc">Laboratorio de Aprendizaje y Decisión</span></div>
 <div class="wrap">
 <section id="home" class="card">
 <div class="home-top"><div class="quiz-brand" role="img" aria-label="SaberON"><span aria-hidden="true">Saber</span><svg class="brand-power" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.8" stroke-linecap="round"><path d="M12 2v9"/><path d="M6.3 5.7a8.8 8.8 0 1 0 11.4 0"/></svg><span class="brand-n" aria-hidden="true">N</span></div><button id="goHost" type="button"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>Facilitador</button></div>
@@ -59,7 +59,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <div class="quiz-settings grid2"><div><label for="newQuizMode">Modalidad de la nueva partida</label><select id="newQuizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div id="newQuestionDurationField"><label for="newQuestionDuration">Tiempo máximo por pregunta (segundos)</label><input id="newQuestionDuration" type="number" min="5" max="600" step="1" value="60"></div><p id="newSelfPacedInfo" class="mini hidden">La modalidad autónoma no tiene límite de tiempo. La espera entre preguntas cuenta para los puntos por rapidez.</p></div>
 <div class="quiz-settings grid2"><div><label for="newRankingVisibility">Ranking para participantes</label><select id="newRankingVisibility"><option value="live">Durante el quiz y al finalizar</option><option value="final">Solo al finalizar</option><option value="hidden">No mostrar</option></select></div><div><label for="newParticipantIdentity">Dato para ingresar</label><select id="newParticipantIdentity"><option value="name">Nombre</option><option value="cedula">Cédula: solo números</option></select></div></div>
 <div class="row" style="margin-top:12px"><button id="createRoom">Crear sala / nueva partida</button><button id="reopenRoom" class="secondary">Reabrir sala</button><button id="roomBack" class="secondary">Volver</button></div>
-<p id="roomManagerMsg" class="muted"></p><h3>Salas creadas</h3><div id="roomHistory"></div>
+<p id="roomManagerMsg" class="muted" role="status" aria-live="polite"></p><h3>Salas creadas</h3><div id="roomHistory"></div>
 </section>
 <section id="waiting" class="card hidden">
 <h2 id="welcome">¡Listo!</h2><p id="waitText">Espera a que el facilitador abra la pregunta.</p>
@@ -157,7 +157,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {getAuth, signInWithEmailAndPassword, getIdTokenResult} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {isSelfPaced, questionSeconds, questionOrder, evaluateAnswer, selfPacedRanking, rankingVisibility, participantIdentity, identityError, participantLabel, canShowParticipantRanking} from './quiz-engine.mjs';
 import {createSelfPacedQuiz} from './quiz-autonomo.js';
@@ -197,12 +197,13 @@ let Q=[
 const $=id=>document.getElementById(id), screens=["home","playerJoin","hostLogin","waiting","playerGame","hostPanel","roomManager","selfIntro","selfResults"];
 function show(id){screens.forEach(x=>$(x).classList.toggle("hidden",x!==id));document.body?.classList.toggle('play-view',!['hostLogin','hostPanel','roomManager'].includes(id));}
 function detachPlayer(){navigationEpoch++;if(playerUnsub){playerUnsub();playerUnsub=null;}selfPaced.stop();clearInterval(tick);}
+function leaveRemovedRoom(){const previous=room;detachPlayer();if(loadSession()?.room===previous){localStorage.removeItem(SESSION_KEY);$("resumeQuiz").classList.add('hidden');}$("homeMsg").textContent='Esta sala ya no está disponible. Puedes ingresar a otra sala o entrar como facilitador.';show('home');}
 document.querySelectorAll(".back").forEach(b=>b.onclick=()=>{detachPlayer();show("home");});
 $("goPlayer").onclick=()=>{detachPlayer();show("playerJoin");if(inviteRunId||$("roomCode").value)loadJoinRoom();}; $("goHost").onclick=()=>{detachPlayer();show("hostLogin");};
 let classAlias="", room=DEFAULT_ROOM, playerId="", playerName="", hostUnsubs=[], playerUnsub=null, tick=null, state=null, players=[], navigationEpoch=0;
 const SESSION_KEY="gc_quiz_session_v7";
 const inviteRunId=new URLSearchParams(location.search).get('partida')||'';
-let joinRun=null,joinLookup=0,joinBusy=false;
+let joinRun=null,joinLookup=0,joinBusy=false,roomDeletionBusy=false;
 const normalizeRoom=s=>String(s||"").trim().normalize("NFC").replace(/\s+/g," ").toLocaleUpperCase("es");
 const aliasRef=name=>doc(db,ROOT,normalizeRoom(name));
 const normalizeName=s=>String(s||"").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ");
@@ -225,6 +226,7 @@ async function loadJoinRoom(){
   if(!id){const code=normalizeRoom($("roomCode").value);if(!code)throw Error('Escribe el código de tu sala.');const alias=await getDoc(aliasRef(code));if(!alias.exists()||!alias.data().activeRun)throw Error('No hay una sala activa con ese código.');id=alias.data().activeRun;}
   const snap=await getDoc(doc(db,ROOT,id));if(request!==joinLookup)return;
   if(!snap.exists()||snap.data().recordType!=='run')throw Error('Esta sala ya no está disponible.');
+  if(snap.data().deleting)throw Error('Esta sala se está eliminando y ya no recibe participantes.');
   configureIdentity(snap.data());$("roomLookupMsg").textContent='Sala encontrada.';
   $("joinRoomSummary").textContent='Sala · '+(joinRun.className||'Quiz');$("joinRoomSummary").classList.remove('hidden');
   if(inviteRunId){$("roomCode").value=joinRun.className||'Quiz';$("roomCodeField").classList.add('hidden');$("homeMsg").textContent='Tu sala está lista: '+(joinRun.className||'Quiz')+'.';}
@@ -246,7 +248,7 @@ async function restoreSession(s){
  const epoch=navigationEpoch;
  if(!s?.room||!s?.playerId)return false;
  const old=await getDoc(doc(db,ROOT,s.room));
- if(!old.exists()||old.data().recordType!=="run")return false;
+ if(!old.exists()||old.data().recordType!=="run"||old.data().deleting)return false;
  if(inviteRunId && inviteRunId!==s.room)return false;
  if(!inviteRunId&&!isSelfPaced(old.data())){const a=await getDoc(aliasRef(old.data().className||""));if(!a.exists()||a.data().activeRun!==s.room)return false;}
  if(epoch!==navigationEpoch)return true;room=s.room;playerId=s.playerId;playerName=s.playerName||"";
@@ -272,6 +274,7 @@ async function recoverOrJoin(name,code){
  }
  if(!runSnapshot.exists()||runSnapshot.data().recordType!=='run')throw Error('Esta sala ya no está disponible.');
  const live=runSnapshot.data(),identityType=participantIdentity(live);configureIdentity(live);
+ if(live.deleting)throw Error('Esta sala se está eliminando y ya no recibe participantes.');
  const error=identityError(name,identityType);if(error){$("playerName").setAttribute('aria-invalid','true');$("joinBtn").disabled=true;return $("joinMsg").textContent=error;}
  playerName=identityType==='cedula'?participantLabel({name:String(name),identityType}):String(name).trim();
  // Store a room-specific digest for recovery; never persist the full document number.
@@ -279,7 +282,8 @@ async function recoverOrJoin(name,code){
  const existing=snap.docs.find(d=>(d.data().identityType||'name')===identityType&&(identityType==='cedula'?d.data().normalizedName===target:normalizeName(d.data().name)===target));
  if(epoch!==navigationEpoch)return;
  if(existing){playerId=existing.id;playerName=existing.data().name||playerName;saveSession();$("welcome").textContent="Sesión recuperada: "+participantLabel(existing.data())+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return;}
- const ref=doc(playersRef());playerId=ref.id;await setDoc(ref,{name:playerName,identityType,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});
+ const ref=doc(playersRef()),runDocument=roomRef();playerId=ref.id;
+ await runTransaction(db,async transaction=>{const current=await transaction.get(runDocument);if(!current.exists()||current.data().deleting)throw Error('Esta sala ya no está disponible.');transaction.set(ref,{name:playerName,identityType,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});});
  if(epoch!==navigationEpoch)return;saveSession();$("welcome").textContent="¡Listo, "+participantLabel({name:playerName,identityType})+"!";show("waiting");listenPlayer();
 }
 
@@ -306,42 +310,90 @@ async function renderRooms(){
   const all=await getDocs(collection(db,ROOT));
   const aliases=all.docs.filter(d=>d.data().recordType==="class_alias").sort((a,b)=>a.id.localeCompare(b.id,"es"));
   $("roomHistory").innerHTML=aliases.length?aliases.map(d=>{
-   const a=d.data();return `<div class="qrow"><b>${escapeHtml(a.displayName||d.id)}</b><div class="mini">${(a.runs||[]).length} partida(s) · ${a.activeRun?"Sala disponible":"Sin partida"}</div><button class="secondary" onclick="window.openClassRoom('${encodeURIComponent(d.id)}')">Abrir</button></div>`
+   const a=d.data(),encoded=encodeURIComponent(d.id).replaceAll("'",'%27');return `<div class="qrow room-row"><div class="room-info"><b>${escapeHtml(a.displayName||d.id)}</b><div class="mini">${(a.runs||[]).length} partida(s) · ${a.deleting?'Eliminación pendiente':a.activeRun?"Sala disponible":"Sin partida"}</div></div><div class="room-actions"><button class="secondary" type="button" onclick="window.openClassRoom('${encoded}')" ${a.deleting||roomDeletionBusy?'disabled':''}>Abrir</button><button class="room-delete" type="button" onclick="window.deleteClassRoom('${encoded}')" ${roomDeletionBusy?'disabled':''}>${a.deleting?'Reintentar eliminación':'Eliminar sala'}</button></div></div>`
   }).join(""):'<p class="muted">Todavía no has creado salas.</p>';
  }catch(e){$("roomManagerMsg").textContent="No se pudieron cargar las salas: "+e.message;}
 }
 window.openClassRoom=async encoded=>{$("className").value=decodeURIComponent(encoded);await reopenClass()};
+function setRoomDeletionBusy(busy){roomDeletionBusy=busy;$("roomManager").querySelectorAll('button,input,select').forEach(el=>el.disabled=busy);}
+window.deleteClassRoom=async encoded=>{
+ if(roomDeletionBusy)return;
+ let marked=false;
+ setRoomDeletionBusy(true);$("roomManagerMsg").textContent='';
+ try{
+  if(!facilitatorAuth.currentUser)throw Error('Ingresa como facilitador para eliminar salas.');
+  const token=await getIdTokenResult(facilitatorAuth.currentUser,true);if(token.claims.facilitator!==true)throw Error('Tu cuenta no tiene el rol de facilitador.');
+  const key=decodeURIComponent(encoded),alias=doc(db,ROOT,key),snapshot=await getDoc(alias);
+  if(!snapshot.exists()||snapshot.data().recordType!=='class_alias')throw Error('Esta sala ya no está disponible.');
+  const data=snapshot.data(),name=data.displayName||key,all=await getDocs(collection(db,ROOT)),byId=new Map(all.docs.map(d=>[d.id,d]));
+  const ids=new Set([...(Array.isArray(data.runs)?data.runs:[]),...(Array.isArray(data.pendingDeletionRuns)?data.pendingDeletionRuns:[]),data.activeRun].filter(id=>typeof id==='string'&&/^partida-[a-zA-Z0-9-]{1,100}$/.test(id)));
+  for(const d of all.docs)if(d.data().recordType==='run'&&normalizeRoom(d.data().className)===key)ids.add(d.id);
+  // Never follow an inconsistent history entry into a different classroom.
+  for(const id of ids){const d=byId.get(id);if(d&&(d.data().recordType!=='run'||d.data().className&&normalizeRoom(d.data().className)!==key))ids.delete(id);}
+  const runIds=[...ids];
+  if(!confirm(`¿Eliminar la sala «${name}»?\n\nSe borrarán ${runIds.length} partida(s), sus participantes, respuestas y resultados. Los bancos de preguntas se conservan.\n\nEsta acción no se puede deshacer.`))return;
+  await runTransaction(db,async transaction=>{
+   const latest=await transaction.get(alias);if(!latest.exists())throw Error('La sala ya se eliminó.');
+   const value=latest.data();if(value.activeRun!==data.activeRun||JSON.stringify(value.runs||[])!==JSON.stringify(data.runs||[]))throw Error('La sala cambió mientras confirmabas. Vuelve a intentar la eliminación.');
+   transaction.update(alias,{deleting:true,pendingDeletionRuns:runIds,activeRun:'',updatedAt:serverTimestamp()});
+  });marked=true;
+  $("roomManagerMsg").textContent=`Eliminando «${name}»…`;
+  await commitInChunks(runIds.filter(id=>byId.has(id)).map(id=>batch=>batch.update(doc(db,ROOT,id),{deleting:true,status:'closed',selfPacedStatus:'closed',updatedAt:serverTimestamp()})));
+  let restrictedBoards=0;
+  for(const id of runIds){
+   const participants=await getDocs(collection(db,ROOT,id,'players'));
+   let publicDocs=[];
+   try{publicDocs=(await getDocs(collection(db,ROOT,id,'public'))).docs;}
+   catch(error){if(error.code==='permission-denied')restrictedBoards++;else throw error;}
+   const docs=[...participants.docs,...publicDocs];
+   await commitInChunks([...docs.map(d=>batch=>batch.delete(d.ref)),batch=>batch.delete(doc(db,ROOT,id))]);
+  }
+  const latest=await getDoc(alias);if(latest.exists()&&latest.data().activeRun)throw Error('Se creó una nueva partida mientras se eliminaba la sala. Reintenta para incluirla.');
+  await deleteDoc(alias);
+  const saved=loadSession();if(saved&&ids.has(saved.room)){localStorage.removeItem(SESSION_KEY);$("resumeQuiz").classList.add('hidden');}
+  if(ids.has(room)){detachPlayer();hostUnsubs.forEach(u=>u());hostUnsubs=[];room=DEFAULT_ROOM;state=null;players=[];playerId='';playerName='';classAlias='';}
+  if(normalizeRoom($("className").value)===key)$("className").value='';
+  $("roomManagerMsg").textContent=`Sala «${name}» eliminada.`+(restrictedBoards?' No se pudieron comprobar o borrar algunos tableros públicos de ranking por sus permisos de Firebase.':'');
+ }catch(error){$("roomManagerMsg").textContent=(marked?'La eliminación no se completó. Puedes pulsar «Reintentar eliminación». ':'No se pudo eliminar la sala. ')+(error.message||error);}
+ finally{setRoomDeletionBusy(false);await renderRooms();}
+};
 async function enterHostRun(runId){
  hostUnsubs.forEach(u=>u());hostUnsubs=[];if(playerUnsub)playerUnsub();selfPaced.stop();clearInterval(tick);room=runId;state=null;players=[];selectedQuestions=null;$("pickerList").dataset.editing='false';$("quizSettings").dataset.editing='false';$("participantSettings").dataset.editing='false';$("participantSettingsMsg").textContent='';
  const rs=await getDoc(roomRef());if(!rs.exists())throw Error("No existe la partida seleccionada.");
- const rd=rs.data();state=rd;selectedQuestions=Array.isArray(rd.selectedQuestions)?rd.selectedQuestions:null;currentBankId=rd.bankId||"agilismo";
+ const rd=rs.data();if(rd.deleting)throw Error('Esta sala se está eliminando. Vuelve a Mis salas para reintentar.');state=rd;selectedQuestions=Array.isArray(rd.selectedQuestions)?rd.selectedQuestions:null;currentBankId=rd.bankId||"agilismo";
  if(Array.isArray(rd.questions))Q=questionsFromFirestore(rd.questions);
  $("hostRoom").textContent=classAlias||room;show("hostPanel");listenHost();await loadBanks();
  // loadBanks only loads the editor; restore the run's own question snapshot.
  if(Array.isArray(rd.questions)){Q=questionsFromFirestore(rd.questions);renderQuestionAdmin();renderHost();}
 }
 async function reopenClass(){
+ if(roomDeletionBusy)return;
  try{const name=normalizeRoom($("className").value);if(!name)throw Error("Escribe el nombre de la clase.");
  const a=await getDoc(aliasRef(name));if(!a.exists()||!a.data().activeRun)throw Error("No existe una partida para esa clase.");
+ if(a.data().deleting)throw Error('Esta sala tiene una eliminación pendiente.');
  classAlias=a.data().displayName||name;await enterHostRun(a.data().activeRun);
  }catch(e){$("roomManagerMsg").textContent=e.message;}
 }
 $("reopenRoom").onclick=reopenClass;
 $("newQuizMode").onchange=()=>{const autonomous=$("newQuizMode").value==='self_paced';$("newQuestionDurationField").classList.toggle('hidden',autonomous);$("newSelfPacedInfo").classList.toggle('hidden',!autonomous);};
 $("createRoom").onclick=async()=>{
+ if(roomDeletionBusy)return;
  try{
   const name=normalizeRoom($("className").value);if(!name)throw Error("Escribe el nombre de la clase.");
   const mode=$("newQuizMode").value==='self_paced'?'self_paced':'facilitated';
   const duration=mode==='self_paced'?60:Number($("newQuestionDuration").value);if(!Number.isInteger(duration)||duration<5||duration>600)throw Error('El tiempo por pregunta debe estar entre 5 y 600 segundos.');
   const alias=aliasRef(name),old=await getDoc(alias);const data=old.exists()?old.data():{};
+  if(data.deleting)throw Error('Esta sala tiene una eliminación pendiente. Reintenta su eliminación antes de crearla otra vez.');
   if(data.activeRun&&!confirm("Ya existe una partida de esta clase. ¿Crear una NUEVA con puntuaciones en cero? La anterior quedará en el historial."))return;
   const id=doc(collection(db,ROOT)).id,runId="partida-"+id;
   const bank=await getDoc(doc(db,BANKS,currentBankId));
   const questions=bank.exists()&&Array.isArray(bank.data().questions)?bank.data().questions:questionsToFirestore(Q);
-  const b=writeBatch(db);
-  b.set(doc(db,ROOT,runId),{recordType:"run",className:name,questionIndex:0,status:"lobby",openedAt:0,duration,mode,rankingVisibility:rankingVisibility({rankingVisibility:$("newRankingVisibility").value}),participantIdentity:participantIdentity({participantIdentity:$("newParticipantIdentity").value}),selfPacedStatus:'draft',bankId:currentBankId,questions,updatedAt:serverTimestamp(),createdAt:serverTimestamp()});
-  b.set(alias,{recordType:"class_alias",displayName:$("className").value.trim(),activeRun:runId,runs:[...(data.runs||[]),runId].slice(-100),updatedAt:serverTimestamp()},{merge:true});
-  await b.commit();classAlias=$("className").value.trim();await enterHostRun(runId);
+  await runTransaction(db,async transaction=>{
+   const latest=await transaction.get(alias),value=latest.exists()?latest.data():{};
+   if(value.deleting||value.activeRun!==data.activeRun)throw Error('La sala cambió. Vuelve a intentar crear la partida.');
+   transaction.set(doc(db,ROOT,runId),{recordType:"run",className:name,questionIndex:0,status:"lobby",openedAt:0,duration,mode,rankingVisibility:rankingVisibility({rankingVisibility:$("newRankingVisibility").value}),participantIdentity:participantIdentity({participantIdentity:$("newParticipantIdentity").value}),selfPacedStatus:'draft',bankId:currentBankId,questions,updatedAt:serverTimestamp(),createdAt:serverTimestamp()});
+   transaction.set(alias,{recordType:"class_alias",displayName:$("className").value.trim(),activeRun:runId,runs:[...(value.runs||[]),runId].slice(-100),updatedAt:serverTimestamp()},{merge:true});
+  });classAlias=$("className").value.trim();await enterHostRun(runId);
  }catch(e){$("roomManagerMsg").textContent="No se pudo crear la sala: "+e.message;}
 };
 function points(elapsed){return evaluateAnswer(0,0,elapsed,questionSeconds(state)).points;}
@@ -379,7 +431,7 @@ function listenPlayer(){
   }
   unsubRoom=onSnapshot(roomRef(),snap=>{
     if(epoch!==navigationEpoch)return;
-    if(!snap.exists()){clearRanking();return;}
+    if(!snap.exists()||snap.data().deleting){leaveRemovedRoom();return;}
     state=snap.data();
     if(Array.isArray(state.questions))Q=questionsFromFirestore(state.questions);
     if(isSelfPaced(state)){
@@ -798,4 +850,4 @@ setTimeout(async()=>{
  }
 },0);
 </script>
-<div style="padding:25px;text-align:center;font:12px system-ui;color:#8c9ab0">© 2026 Santiago León López. Todos los derechos reservados.</div></body></html>
+<div style="padding:25px;text-align:center;font:12px system-ui;color:#8c9ab0">© 2026 Laboratorio de Aprendizaje y Decisión. Todos los derechos reservados.</div></body></html>

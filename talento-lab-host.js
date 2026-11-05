@@ -33,3 +33,4 @@ async function resetRoom(){
   await batch.commit();chosen=null;legalChosen=null;lastRenderedRound=-1;autoSettlingFor=-1;clockWasExpired=false;toast('Partida reiniciada. Equipos conservados, marcadores a cero.');
  }catch(e){fail(e)}finally{settling=false;}
 }
+

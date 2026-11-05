@@ -112,3 +112,4 @@ footer{padding:25px 4%;border-top:1px solid #293F5E;color:#879DBA;font-size:12px
 .result-pending .btn{width:100%;max-width:410px;margin:9px 0 3px}
 .result-pending .tiny{font-size:12px;color:#D7BCA8}
 @media print{.result-pending{border:1px solid #8B5E34;background:#FFF7EC!important;box-shadow:none}.result-pending strong,.result-pending p{color:#7B3B21!important}.result-pending button,.result-pending .tiny{display:none!important}}
+

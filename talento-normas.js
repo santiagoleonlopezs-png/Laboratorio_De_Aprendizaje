@@ -169,3 +169,4 @@ window.TALENTO_NORMAS = [
     "source": "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=49981"
   }
 ];
+

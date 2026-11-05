@@ -129,3 +129,4 @@
 .journal-history-item p{font-size:13px;line-height:1.6;color:#b1c8e5;margin:5px 0 0}
 @media(max-width:900px){.journal-columns{grid-template-columns:1fr}.journal-team summary{grid-template-columns:1fr auto;gap:7px}.journal-team-brief{grid-column:1}.journal-points{grid-column:2;grid-row:1}}
 @media(max-width:620px){.journal-head{padding:23px 19px}.journal-head h2{font-size:27px}.journal-content{padding:22px 17px}.journal-actions,.journal-actions .btn{width:100%}.journal-select{width:100%;min-width:0}.journal-filter{align-items:stretch;flex-direction:column;gap:8px}.journal-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.journal-metric{padding:12px}.journal-columns{gap:11px}.journal-dist,.journal-insights{padding:18px}.journal-debrief{padding:18px}.journal-team summary{padding:14px}.journal-team-detail{padding:15px}.journal-two-col{grid-template-columns:1fr;gap:12px}.journal-case-story{font-size:14px}}
+

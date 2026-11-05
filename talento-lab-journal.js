@@ -142,3 +142,4 @@ function exportDecisionJournal(){
  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),anchor=document.createElement('a');
  anchor.href=url;anchor.download='bitacora-talento-riesgo-'+code+'.csv';document.body.appendChild(anchor);anchor.click();anchor.remove();URL.revokeObjectURL(url);
 }
+

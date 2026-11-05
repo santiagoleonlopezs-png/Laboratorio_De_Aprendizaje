@@ -88,3 +88,4 @@ function renderPlaying(){
  st.querySelectorAll('[data-law]').forEach(b=>b.onclick=()=>{legalChosen=Number(b.dataset.law);renderPlaying()});
  bind('submitChoice',submitChoice);}
 }
+

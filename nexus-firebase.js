@@ -156,3 +156,4 @@
   }
   window.NEXUS_FIREBASE={init,join,save,ranking,login,createRoom,subscribeRoom,stopRanking,error:err};
 })();
+

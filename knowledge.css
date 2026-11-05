@@ -10,6 +10,13 @@ body.play-view{--bg:#080f20;--card:#111e34;--ink:#edf4ff;--muted:#a5b6d0;--line:
 .play-view .answer:hover:not(:disabled){background:#1b3260;border-color:#6e9fff;transform:translateY(-2px)}
 .answer-letter{display:grid;place-items:center;width:32px;height:32px;background:#ffffff0c;border:1px solid #ffffff20;border-radius:9px;font-size:13px;font-weight:800}
 .play-view .answer.chosen{background:#213f76;border-color:#8ebaff}
+.play-view .question{font-weight:600;line-height:1.45;letter-spacing:0}
+.play-view .answer{font-weight:450;line-height:1.55;text-decoration:none}
+.play-view .answer-letter{font-weight:600}
+.room-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.room-info{min-width:0;overflow-wrap:anywhere}.room-actions{display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0}
+button.room-delete{background:#fff1f2;color:#b42318;border:1px solid #fecaca}
+@media(max-width:650px){.room-row{align-items:flex-start;flex-direction:column}}
 .play-view .bar{background:#1b2c48}
 .play-view .pill{background:#17315c44}
 .play-view .big{color:#9bc2ff}

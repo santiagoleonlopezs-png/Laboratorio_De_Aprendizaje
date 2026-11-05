@@ -1,10 +1,12 @@
 # Laboratorio de Aprendizaje y Decisión
 
-Hub de simuladores de **Santiago León López**. Diseño oscuro y azul eléctrico.
+Hub de simuladores del **Laboratorio de Aprendizaje y Decisión**. Diseño oscuro y azul eléctrico.
 
 ## Ejecutar
 
 Abre `index.html` con servidor HTTP o publícalo con GitHub Pages desde la rama `main`, raíz `/`.
+
+La publicación bajo HACERLO está en **https://www.hacerlofc.com/laboratorio/**. Los archivos públicos de este repositorio (`.html`, `.css`, `.js` y `.mjs`, sin tests) también se publican en la carpeta `laboratorio/` del repositorio `PaginaHacerlo`. Al actualizar un simulador, sincroniza allí exactamente los mismos archivos para mantener ambas publicaciones. La página comercial y el dominio principal conservan su configuración. Los enlaces de sala se generan con el dominio desde el que se abre SaberON.
 
 ## Quiz: modalidad dirigida y autónoma
 
@@ -31,6 +33,10 @@ El inicio del intento y la última respuesta se guardan con marcas de tiempo de 
 - **Copiar enlace** está disponible para ambas modalidades; fija la partida concreta y oculta el campo de código en el ingreso. El acceso general conserva la alternativa de escribir el código. El enlace autónomo se habilita después de publicar el instrumento.
 - **Dato para ingresar** permite elegir **Nombre** o **Cédula: solo números**. Se determina a partir de la sala y se conserva al reabrirla. La cédula rechaza espacios, puntos, signos, letras y saltos de línea; los nombres admiten espacios. El tipo queda fijo desde la primera inscripción para conservar la recuperación de sesiones.
 - La cédula completa se usa solo en memoria para validar y calcular con Web Crypto una huella SHA-256 específica de la partida. En Firestore y en la sesión local se guardan la huella y una etiqueta con los últimos cuatro dígitos; no el número completo. Volver a ingresar la misma cédula recupera el mismo participante. Es un identificador pedagógico, sin verificación de identidad ni garantía de autenticación.
+
+**Eliminar salas:** en **Facilitador → Mis salas**, cada sala tiene **Eliminar sala**. La confirmación identifica la sala y la cantidad de partidas que se borrarán. Requiere una sesión con rol de facilitador; elimina también partidas históricas que ya no figuren en el historial limitado a 100 entradas, sus participantes, respuestas y tableros públicos accesibles. Los bancos de preguntas y otras salas se conservan. Primero se bloquea el ingreso y la creación de partidas en esa sala; las inscripciones usan una transacción para impedir registros durante el borrado. Las operaciones se dividen en lotes de hasta 400. Si la conexión se interrumpe, la sala queda con **Reintentar eliminación**, sin perder las referencias necesarias para continuar. Cuando Firebase no permite consultar o borrar la subcolección pública de ranking, se elimina la información accesible y se informa expresamente de esa limitación. La app no afirma haber borrado esos tableros restringidos.
+
+Las pantallas y los créditos de todos los simuladores usan **Laboratorio de Aprendizaje y Decisión**. Las preguntas y respuestas de SaberON emplean una tipografía más ligera, conservando contraste y legibilidad.
 
 La implementación usa las colecciones existentes `gc_quiz_live` y `gc_quiz_banks`, sin agregar colecciones, índices ni cambios a `firestore.rules`. Conserva el modelo de confianza del quiz pedagógico: no convierte los puntajes calculados en el navegador en una evaluación protegida contra manipulación.
 
@@ -129,5 +135,5 @@ Se preserva el juego anterior: ocho rondas, presupuesto, cinco indicadores, efec
 
 Las claves web de Firebase son claves *públicas de cliente*, no credenciales administrativas. Nunca colocar claves privadas, credenciales de administrador ni secretos en este repositorio.
 
-© 2026 Santiago León López. Todos los derechos reservados.
+© 2026 Laboratorio de Aprendizaje y Decisión. Todos los derechos reservados.
 
