@@ -144,12 +144,40 @@ function renderDashboard(){if(role!=='host'||!session)return;const data=selected
  if(m)html+=profiles(m)+advice(m)+`<div class="dash-card"><h2>Lectura por dimensión</h2>${dimensionTable(m)}</div>`;else html+='<div class="notice">Para presentar un perfil consolidado se requieren al menos tres respuestas en este filtro. Comparte el código y espera a que los equipos respondan.</div>';html+=groupTable();$('dashboardContent').innerHTML=html;}
 async function toggleRoom(){try{if(role!=='host')return;const status=session.status==='open'?'closed':'open';await ref().update({status,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});toast(status==='closed'?'Recolección cerrada.':'Recolección reabierta.');}catch(e){fail(e);}}
 async function publishSummary(){try{if(role!=='host')return;const all=validResponses();if(all.length<3)throw Error('Son necesarias tres respuestas antes de publicar.');const groups=teamGroups().filter(g=>g.records.length>=3).map(g=>{const m=aggregate(g.records);return {name:g.name,n:m.n,current:m.current,preferred:m.preferred};});const total=aggregate(all);await ref().collection('summary').doc('public').set({version:1,groups,overall:{n:total.n,current:total.current,preferred:total.preferred},publishedAt:firebase.firestore.FieldValue.serverTimestamp()});toast('Perfil colectivo publicado. Los participantes podrán consultarlo.');}catch(e){fail(e);}}
+/* Contrato agregado v1 para HACERLO; sin respuestas individuales ni identificadores Firebase. */
+function exportHacerloAggregate(){
+ if(role!=='host'||!session||!code)return toast('Acceso reservado al facilitador.',true);
+ const records=validResponses();
+ if(records.length<3)return toast('Se requieren al menos tres valoraciones válidas para exportar.',true);
+ const m=aggregate(records);
+ if(!m||m.n<3)return toast('Aún no hay un consolidado válido.',true);
+ const report={
+  schema:'hacerlo.lab-result/1',
+  simulator_id:'cultura-cvf',
+  session_id:code,
+  captured_at:new Date().toISOString(),
+  sample_size:m.n,
+  scope:'aggregate',
+  methodology:'Adaptación educativa CVF; no equivale al OCAI oficial',
+  data:{
+   orientations:TYPES.map(t=>t.label),
+   current:m.current.map(Number),
+   preferred:m.preferred.map(Number),
+   dimensions:m.dimensions.map(d=>({name:d.title,current:d.current.map(Number),preferred:d.preferred.map(Number)}))
+  }
+ };
+ const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='laboratorio-hacerlo-cultura-'+code+'.json';
+ document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ toast('Consolidado agregado listo para importar en HACERLO. No incluye respuestas personales.');
+}
 function exportCsv(){if(role!=='host')return;const quote=v=>'"'+String(v??'').replace(/"/g,'""')+'"',rows=[['sala','equipo','n','dimension','orientacion','actual','deseada','brecha']];for(const g of teamGroups()){if(g.records.length<3)continue;const m=aggregate(g.records);for(const d of m.dimensions)for(let i=0;i<4;i++)rows.push([code,g.name,m.n,d.title,TYPES[i].name,d.current[i],d.preferred[i],num(d.preferred[i]-d.current[i])]);}const all=validResponses();if(all.length>=3){const m=aggregate(all);for(const d of m.dimensions)for(let i=0;i<4;i++)rows.push([code,'TOTAL',m.n,d.title,TYPES[i].name,d.current[i],d.preferred[i],num(d.preferred[i]-d.current[i])]);}if(rows.length===1)return toast('Aún no hay resultados agregados para exportar.',true);const blob=new Blob(['\uFEFF'+rows.map(r=>r.map(quote).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='radar-cultura-'+code+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
 $('hostLogin').onclick=hostLogin;$('createRoomBtn').onclick=createRoom;$('resumeRoomBtn').onclick=resumeRoom;$('joinBtn').onclick=joinRoom;$('practiceBtn').onclick=enterPractice;
 $('logoutHost').onclick=async()=>{cleanup();if(auth)await auth.signOut();role='';session=null;code='';show('home');};
 $('beginSurvey').onclick=startSurvey;$('prevStep').onclick=()=>{if(step>0){step--;renderStep();}else{$('surveyIntro').classList.remove('hidden');$('surveyStep').classList.add('hidden');progress();}};$('nextStep').onclick=nextStep;
 $('backHome').onclick=()=>{cleanup();role='';session=null;code='';show('home');};$('downloadMyResult').onclick=()=>window.print();
-$('dashTeam').onchange=()=>{filter=$('dashTeam').value;renderDashboard();};$('closeRoom').onclick=toggleRoom;$('publishSummary').onclick=publishSummary;$('exportCsv').onclick=exportCsv;
+$('dashTeam').onchange=()=>{filter=$('dashTeam').value;renderDashboard();};$('closeRoom').onclick=toggleRoom;$('publishSummary').onclick=publishSummary;$('exportCsv').onclick=exportCsv;$('exportHacerlo').onclick=exportHacerloAggregate;
 $('copyCode').onclick=async()=>{try{await navigator.clipboard.writeText(code);toast('Código copiado: '+code);}catch{toast('Código: '+code);}};$('dashExit').onclick=()=>{cleanup();show('hostSetup');};
 for(const id of ['joinCode','resumeCode'])$(id).addEventListener('input',e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g,''));
 if(TYPES.length!==4||DIMS.length!==6)console.error('Configuración de dimensiones incompleta.');
