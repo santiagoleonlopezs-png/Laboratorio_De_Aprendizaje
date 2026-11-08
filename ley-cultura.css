@@ -18,3 +18,11 @@
 .roster-status[data-state="offline"],.roster-status[data-state="error"]{color:#a34c5b}
 .roster-status[data-state="offline"]:before,.roster-status[data-state="error"]:before{background:#c15b6a}
 @media(max-width:760px){.roster-line{align-items:flex-start;flex-direction:column}}
+
+/* Diagnóstico de condiciones A/B, visible solo para el facilitador. */
+.assignment-audit{margin:12px 0 18px;border:1px solid #dce7f6;border-radius:12px;background:#f6f9fe;padding:0 14px}
+.assignment-audit summary{font-weight:570;color:#345f9b;cursor:pointer;font-size:13px;padding:13px 2px}
+.assignment-audit[open]{padding-bottom:14px}
+.assignment-audit .compare-card{background:#fff}
+.assignment-audit .compare-card p{overflow-wrap:anywhere;line-height:1.5}
+.assignment-warning{margin:10px 0 0;border-left:3px solid #c47b47;padding:9px 12px;background:#fff7eb;color:#8e572d;font-size:12px}
