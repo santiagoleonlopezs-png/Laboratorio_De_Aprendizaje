@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1527">
+<meta name="description" content="Simulación conductual La ley y la cultura: cuatro rondas para experimentar decisiones y mensajes culturales en el trabajo.">
+<title>La ley y la cultura · Laboratorio de Aprendizaje y Decisión</title>
+<link rel="stylesheet" href="ley-cultura.css">
+</head>
+<body>
+<header class="site-head">
+  <a class="brand" href="index.html#experiencias"><span class="symbol">LAB</span><span>LABORATORIO DE<br>APRENDIZAJE Y DECISIÓN</span></a>
+  <div class="head-right"><span class="head-tag">SIMULACIÓN CONDUCTUAL</span><button class="text-button" id="hostEntry" type="button">Facilitador</button></div>
+</header>
+<main class="shell">
+  <section id="landing" class="view">
+    <div class="intro"><span class="eyebrow">EXPERIENCIA / 04 RONDAS</span><h1>La ley y <em>la cultura.</em></h1><p>Dos mensajes, una misma norma. Explora cómo el entorno de trabajo puede influir en lo que decides, comunicas y haces.</p><div class="pill-row"><span>Decisiones individuales</span><span>Experimento en vivo</span><span>Reflexión colectiva</span></div></div>
+    <div class="entry-wrap">
+      <article class="panel join-panel"><span class="eyebrow">PARTICIPA EN LA EXPERIENCIA</span><h2>Ingresa a tu sala</h2><p>Tu facilitador te compartirá un código. Responderás desde tu dispositivo, sin crear una cuenta.</p>
+        <form id="joinForm"><label for="joinCode">Código de sala</label><input id="joinCode" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="Ej. B7C9PL" required>
+        <label for="joinName">¿Cómo te llamas?</label><input id="joinName" maxlength="55" autocomplete="name" placeholder="Nombre y apellido" required>
+        <button class="btn primary full" type="submit">Entrar a la sala <span>↗</span></button></form>
+      </article>
+      <aside class="side-note"><div class="shape" aria-hidden="true">A <span>↔</span> B</div><h3>No hay respuestas perfectas.</h3><p>Lo importante es observar cómo decides cuando cambian las señales del entorno. Sigue el ritmo de tu facilitador.</p></aside>
+    </div>
+  </section>
+  <section id="hostLoginView" class="view hidden">
+    <button class="quiet" data-back="landing">← Volver</button><div class="narrow panel"><span class="eyebrow">ACCESO RESTRINGIDO</span><h1>Espacio del facilitador</h1><p>Accede con tu cuenta autorizada del Laboratorio.</p>
+      <form id="loginForm"><label for="hostEmail">Correo electrónico</label><input id="hostEmail" type="email" autocomplete="username" required><label for="hostPassword">Contraseña</label><input id="hostPassword" type="password" autocomplete="current-password" required><button class="btn primary full" type="submit">Ingresar al panel</button></form>
+    </div>
+  </section>
+  <section id="hostView" class="view hidden">
+    <div class="host-heading"><div><span class="eyebrow">TU ESPACIO DE FACILITACIÓN</span><h1>La cultura se <em>experimenta.</em></h1><p id="roomSubtitle">Prepara una sala para comenzar.</p></div><button type="button" class="quiet" id="hostLogout">Salir de mi cuenta</button></div>
+    <nav class="tabs" aria-label="Espacios del facilitador">
+      <button type="button" class="tab active" data-tab="prepare">Preparar experiencia</button>
+      <button type="button" class="tab" data-tab="live">Dirigir experiencia</button>
+      <button type="button" class="tab" data-tab="report">Informe de la experiencia</button>
+    </nav>
+    <div id="prepareTab" class="tab-view">
+      <div class="setup-grid">
+        <article class="panel"><span class="eyebrow">NUEVA EXPERIENCIA</span><h2>Crear una sala</h2><p>Define el grupo y comparte el acceso con tus estudiantes.</p><form id="createForm"><label for="roomTitle">Nombre de la sesión</label><input id="roomTitle" maxlength="75" required placeholder="Ej. Legislación laboral · Grupo A"><button class="btn primary" type="submit">Crear sala ↗</button></form></article>
+        <article class="panel"><span class="eyebrow">RETOMAR UNA SALA</span><h2>Continuar experiencia</h2><p>Consulta sesiones anteriores sin perder su informe.</p><form id="resumeForm"><label for="resumeCode">Código existente</label><input id="resumeCode" maxlength="6" placeholder="Código de seis caracteres" required><button class="btn outline" type="submit">Abrir sala</button></form></article>
+      </div>
+      <div class="panel spaced"><div class="section-line"><div><span class="eyebrow">HISTORIAL</span><h2>Tus sesiones</h2></div><button class="quiet" id="refreshHistory" type="button">Actualizar</button></div><div id="historyList" class="history-list"><p class="muted">Ingresa para consultar tus salas.</p></div></div>
+    </div>
+    <div id="liveTab" class="tab-view hidden">
+      <div id="noLive" class="panel empty-state">Selecciona o crea una sala desde «Preparar experiencia».</div>
+      <div id="liveContent" class="hidden">
+        <div class="room-bar panel"><div><span class="eyebrow">SALA ACTIVA</span><h2 id="liveTitle">Sesión</h2><div class="room-code">Código <strong id="liveCode">------</strong> <button class="quiet" id="copyCode">Copiar enlace</button></div></div><div class="qr-block"><div id="qrCode" aria-label="Código QR de acceso"></div><small>Escanea para participar</small></div></div>
+        <div class="metric-grid" id="liveMetrics"></div>
+        <div class="panel actions-panel"><div class="section-line"><div><h2>Control de la experiencia</h2><p id="livePhase" class="muted"></p></div><span class="state-pill" id="statusBadge">En espera</span></div>
+          <div class="actions" id="liveActions"></div>
+          <div class="reopen-row"><label for="reopenRound">Volver a una ronda</label><select id="reopenRound"><option value="1">Ronda 1</option><option value="2">Ronda 2</option><option value="3">Ronda 3</option><option value="4">Ronda 4</option></select><button id="reopenBtn" class="btn outline" type="button">Reabrir</button></div>
+        </div>
+        <div class="panel spaced"><div class="section-line"><div><span class="eyebrow">LECTURA EN VIVO</span><h2>Lo que está pasando</h2></div><button class="quiet" id="openReport" type="button">Ver informe completo →</button></div><div id="liveSummary"></div></div>
+        <div class="panel spaced"><div class="section-line"><h2>Respuestas individuales</h2><span class="muted">Solo visible para el facilitador</span></div><div id="individualTable"></div></div>
+      </div>
+    </div>
+    <div id="reportTab" class="tab-view hidden">
+      <div id="noReport" class="panel empty-state">Selecciona una sala para consultar el informe.</div>
+      <div id="reportContent" class="hidden">
+        <div class="section-line report-title"><div><span class="eyebrow">INFORME DE LA EXPERIENCIA</span><h2 id="reportName">La ley y la cultura</h2><p id="reportDate" class="muted"></p></div><button class="btn outline" id="projectButton" type="button">Proyectar sin nombres</button></div>
+        <div class="metric-grid" id="reportMetrics"></div>
+        <div class="panel spaced"><h2>Lo que estamos descubriendo</h2><div id="findings" class="finding-list"></div></div>
+        <div class="panel spaced"><h2>Resultados por ronda</h2><p class="muted">Abre cada ronda para consultar las decisiones, las diferencias entre mensajes y la lectura jurídica.</p><div id="roundReports" class="round-reports"></div></div>
+        <div class="panel spaced"><h2>Mensajes y percepciones</h2><div id="textAnalysis"></div></div>
+        <p class="disclaimer">Experimento pedagógico: las decisiones simuladas no prueban incumplimientos legales ni permiten atribuir causalidad por sí mismas.</p>
+      </div>
+    </div>
+  </section>
+  <section id="studentView" class="view hidden">
+    <div class="student-header"><div><span class="eyebrow">SIMULACIÓN CONDUCTUAL</span><h1 id="studentTitle">Bienvenido</h1><p id="studentSubtitle">Tu facilitador dirige la experiencia.</p></div><span class="room-label" id="studentCode"></span></div>
+    <div class="progress-steps"><span class="step-dot" data-step="1">1</span><span class="step-dot" data-step="2">2</span><span class="step-dot" data-step="3">3</span><span class="step-dot" data-step="4">4</span></div>
+    <div class="panel activity" id="studentActivity"><div class="waiting"><div class="wait-icon" aria-hidden="true">◌</div><h2>La experiencia comienza pronto</h2><p>Ya estás dentro. Conserva esta pantalla abierta.</p></div></div>
+    <p class="footer-note">Tus decisiones se guardan en tu sala. Los demás participantes no ven tus respuestas individuales.</p>
+  </section>
+</main>
+<footer class="site-footer">© 2026 Laboratorio de Aprendizaje y Decisión · Una experiencia para aprender haciendo.</footer>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="firebase-config.js"></script>
+<script src="ley-cultura.js?v=20261107-1"></script>
+</body>
+</html>
