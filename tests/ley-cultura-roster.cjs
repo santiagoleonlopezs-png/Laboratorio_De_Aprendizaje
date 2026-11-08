@@ -22,7 +22,7 @@ const context=vm.createContext({
 vm.runInContext(script,context,{filename:'ley-cultura.js'});
 const S=vm.runInContext('S',context);
 let renderCalls=0;
-context.renderHost=()=>{renderCalls++;};
+context.renderHost=()=>{renderCalls++;context.showRosterSync();context.renderRosterPreview();};
 context.renderLive=()=>{};
 const snapshots=[];
 let records=[{id:'p1',name:'Ana'}];
