@@ -465,6 +465,213 @@ match /ocai_rooms/{roomCode} {
       }
     }
 
+
+    // =====================================================
+    // LA LEY Y LA CULTURA — SIMULACIÓN CONDUCTUAL INDEPENDIENTE
+    // =====================================================
+    function lcSigned() {
+      return request.auth != null;
+    }
+    function lcFacilitator() {
+      return lcSigned() && request.auth.token.facilitator == true;
+    }
+    function lcRoom(code) {
+      return get(/databases/$(database)/documents/ley_cultura_rooms/$(code)).data;
+    }
+    function lcHost(code) {
+      return lcFacilitator()
+        && exists(/databases/$(database)/documents/ley_cultura_rooms/$(code))
+        && lcRoom(code).hostUid == request.auth.uid
+        && lcRoom(code).organizationId ==
+          (request.auth.token.get('organizationId', request.auth.uid));
+    }
+    function lcLiveWrite(code, round) {
+      return lcSigned()
+        && exists(/databases/$(database)/documents/ley_cultura_rooms/$(code))
+        && lcRoom(code).status == 'active'
+        && lcRoom(code).phase == 'write'
+        && lcRoom(code).round == round;
+    }
+    function lcAnswerId(id, participantUid, round) {
+      return (round == 1 && id == participantUid + '_1')
+        || (round == 2 && id == participantUid + '_2')
+        || (round == 3 && id == participantUid + '_3')
+        || (round == 4 && id == participantUid + '_4');
+    }
+    function lcValidAnswer(round, answer) {
+      return answer is map
+        && ((round == 1
+          && answer.keys().hasOnly(['choice', 'microtask'])
+          && answer.choice in ['continue', 'later']
+          && answer.microtask is string
+          && answer.microtask.size() <= 280
+          && (answer.choice == 'later' || answer.microtask.size() >= 10))
+        || (round == 2
+          && answer.keys().hasOnly(['choice', 'microtask'])
+          && answer.choice in ['inform', 'resolve', 'hold']
+          && answer.microtask == '')
+        || (round in [3, 4]
+          && answer.keys().hasOnly(['words', 'text', 'initial'])
+          && answer.words is list && answer.words.size() == 4
+          && answer.words[0] is string && answer.words[1] is string
+          && answer.words[2] is string && answer.words[3] is string
+          && answer.text is string && answer.text.size() >= 12
+          && answer.text.size() <= 200
+          && answer.initial is string && answer.initial.size() <= 200));
+    }
+    function lcParticipantAnswer(code, answerId) {
+      return lcSigned()
+        && request.resource.data.keys().hasOnly([
+          'uid','round','answer','durationMs','revision',
+          'reopenToken','createdAt','submittedAt'
+        ])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.round is int
+        && lcAnswerId(answerId, request.auth.uid, request.resource.data.round)
+        && lcLiveWrite(code, request.resource.data.round)
+        && exists(/databases/$(database)/documents/ley_cultura_rooms/$(code)/assignments/$(request.auth.uid))
+        && request.resource.data.durationMs is number
+        && request.resource.data.durationMs >= 0
+        && request.resource.data.durationMs <= 7200000
+        && request.resource.data.reopenToken ==
+          (lcRoom(code).reopenRound == request.resource.data.round
+            ? lcRoom(code).reopenToken : 0)
+        && lcValidAnswer(request.resource.data.round, request.resource.data.answer)
+        && request.resource.data.submittedAt == request.time;
+    }
+    match /ley_cultura_rooms/{roomCode} {
+      // Al conocer el código de la sala se puede consultar el estado, no los resultados.
+      allow get: if lcSigned();
+      // Las consultas de historial deben limitarse por hostUid.
+      allow list: if lcFacilitator() && resource.data.hostUid == request.auth.uid;
+      allow create: if lcFacilitator()
+        && request.resource.data.keys().hasOnly([
+          'gameId','hostUid','organizationId','title','status','round','phase',
+          'createdAt','updatedAt','reopenRound','reopenToken'
+        ])
+        && request.resource.data.gameId == 'ley-cultura-v1'
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.organizationId == request.auth.token.get('organizationId', request.auth.uid)
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 4
+        && request.resource.data.title.size() <= 75
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.round == 1
+        && request.resource.data.phase == 'write'
+        && request.resource.data.reopenRound == 0
+        && request.resource.data.reopenToken == 0
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if lcHost(roomCode)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status','round','phase','updatedAt','reopenRound','reopenToken'
+        ])
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.organizationId == resource.data.organizationId
+        && request.resource.data.gameId == resource.data.gameId
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.status in ['waiting','active','paused','completed']
+        && request.resource.data.round in [1,2,3,4]
+        && request.resource.data.phase in ['write','review']
+        && request.resource.data.reopenRound in [0,1,2,3,4]
+        && request.resource.data.reopenToken is int
+        && request.resource.data.reopenToken >= resource.data.reopenToken
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+      match /participants/{participantId} {
+        allow get: if lcHost(roomCode) || (lcSigned() && participantId == request.auth.uid);
+        allow list: if lcHost(roomCode);
+        allow create: if lcSigned() && participantId == request.auth.uid
+          && lcRoom(roomCode).status != 'completed'
+          && request.resource.data.keys().hasOnly(['uid','name','joinedAt','lastSeenAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 2
+          && request.resource.data.name.size() <= 55
+          && request.resource.data.joinedAt == request.time
+          && request.resource.data.lastSeenAt == request.time;
+        allow update: if lcSigned() && participantId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt'])
+          && request.resource.data.lastSeenAt == request.time;
+        allow delete: if false;
+      }
+      match /assignments/{participantId} {
+        allow get: if lcHost(roomCode) || (lcSigned() && participantId == request.auth.uid);
+        allow list: if lcHost(roomCode);
+        allow create: if lcHost(roomCode)
+          && exists(/databases/$(database)/documents/ley_cultura_rooms/$(roomCode)/participants/$(participantId))
+          && request.resource.data.keys().hasOnly(['uid','condition','assignedAt'])
+          && request.resource.data.uid == participantId
+          && request.resource.data.condition in ['A','B']
+          && request.resource.data.assignedAt == request.time;
+        allow update, delete: if false;
+      }
+      match /responses/{answerId} {
+        allow get: if lcHost(roomCode)
+          || (lcSigned() && lcAnswerId(answerId, request.auth.uid, 1))
+          || (lcSigned() && lcAnswerId(answerId, request.auth.uid, 2))
+          || (lcSigned() && lcAnswerId(answerId, request.auth.uid, 3))
+          || (lcSigned() && lcAnswerId(answerId, request.auth.uid, 4));
+        allow list: if lcHost(roomCode);
+        allow create: if lcParticipantAnswer(roomCode,answerId)
+          && request.resource.data.revision == 1
+          && request.resource.data.createdAt == request.time;
+        allow update: if lcParticipantAnswer(roomCode,answerId)
+          && resource.data.uid == request.auth.uid
+          && resource.data.round == request.resource.data.round
+          && request.resource.data.revision == resource.data.revision + 1
+          && lcRoom(roomCode).reopenRound == resource.data.round
+          && resource.data.reopenToken < lcRoom(roomCode).reopenToken
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if false;
+      }
+      match /response_events/{eventId} {
+        allow get, list: if lcHost(roomCode);
+        allow create: if lcSigned()
+          && request.resource.data.keys().hasOnly([
+            'uid','answerId','round','answer','durationMs','revision','recordedAt'
+          ])
+          && eventId.matches('^' + request.auth.uid + '_[1-4]_[0-9]+_[0-9]+$')
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.answerId is string
+          && lcAnswerId(request.resource.data.answerId, request.auth.uid, request.resource.data.round)
+          && lcLiveWrite(roomCode, request.resource.data.round)
+          && request.resource.data.recordedAt == request.time
+          && getAfter(/databases/$(database)/documents/ley_cultura_rooms/$(roomCode)/responses/$(request.resource.data.answerId)).data.answer == request.resource.data.answer;
+        allow update, delete: if false;
+      }
+      match /peer_assignments/{participantId} {
+        allow get: if lcHost(roomCode) || (lcSigned() && participantId == request.auth.uid);
+        allow list: if lcHost(roomCode);
+        allow create, update: if lcHost(roomCode)
+          && request.resource.data.keys().hasOnly(['recipientUid','sourceUid','message','assignedAt'])
+          && request.resource.data.recipientUid == participantId
+          && request.resource.data.sourceUid != participantId
+          && request.resource.data.message is string
+          && request.resource.data.message.size() >= 12
+          && request.resource.data.message.size() <= 200
+          && request.resource.data.assignedAt == request.time;
+        allow delete: if false;
+      }
+      match /perceptions/{participantId} {
+        allow get: if lcHost(roomCode) || (lcSigned() && participantId == request.auth.uid);
+        allow list: if lcHost(roomCode);
+        allow create: if lcSigned() && participantId == request.auth.uid
+          && lcRoom(roomCode).status == 'active'
+          && lcRoom(roomCode).round == 4
+          && lcRoom(roomCode).phase == 'review'
+          && exists(/databases/$(database)/documents/ley_cultura_rooms/$(roomCode)/peer_assignments/$(participantId))
+          && request.resource.data.keys().hasOnly(['uid','sourceUid','perception','durationMs','submittedAt'])
+          && request.resource.data.uid == participantId
+          && request.resource.data.sourceUid == get(/databases/$(database)/documents/ley_cultura_rooms/$(roomCode)/peer_assignments/$(participantId)).data.sourceUid
+          && request.resource.data.perception in ['trust','uncertainty','pressure']
+          && request.resource.data.durationMs is number
+          && request.resource.data.durationMs >= 0
+          && request.resource.data.submittedAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
     // =====================================================
     // TODO LO DEMÁS CONTINÚA CERRADO
     // =====================================================
