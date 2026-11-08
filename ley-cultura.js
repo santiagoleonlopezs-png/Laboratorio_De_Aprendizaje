@@ -31,14 +31,105 @@ const pct=(a,b)=>b?Math.round(a*1000/b)/10+' %':'—';
 const codeOk=v=>/^[A-HJ-NP-Z2-9]{6}$/.test(v);
 const uid=()=>S.auth&&S.auth.currentUser?S.auth.currentUser.uid:'';
 const serverTime=()=>firebase.firestore.FieldValue.serverTimestamp();
-const S={auth:null,db:null,code:'',room:null,mode:'',tab:'prepare',participants:[],assignments:{},responses:[],events:[],perceptions:[],peer:null,myAssignment:null,myResponses:{},myPerception:null,unsubs:[],startedAt:0,seenStep:'',projecting:false,historyUnsub:null,heartbeat:null,roomCodeForEvents:''};
+const S={auth:null,db:null,code:'',room:null,mode:'',tab:'prepare',participants:[],assignments:{},responses:[],events:[],perceptions:[],peer:null,myAssignment:null,myResponses:{},myPerception:null,unsubs:[],rosterUnsub:null,rosterWatch:null,rosterGeneration:0,roster:{state:'idle',verifiedAt:0,updatedAt:0,hasServer:false,error:'',syncing:false},startedAt:0,seenStep:'',projecting:false,historyUnsub:null,heartbeat:null,roomCodeForEvents:''};
 function toast(message,error){const el=$('toast');el.textContent=message;el.classList.remove('hidden');el.classList.toggle('error',!!error);clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.add('hidden'),5400);}
 function failure(error){console.error('La ley y la cultura:',error);let message=error&&error.message?error.message:String(error);if(/permission-denied|insufficient permissions/i.test(message))message='Firebase no autorizó esta operación. La simulación identificará el paso que falló; ninguna respuesta se marca como guardada sin confirmación.';if(/auth\/unauthorized-domain/.test(message))message='Este dominio debe estar autorizado en Firebase Authentication.';toast(message,true);}
 function show(view){['landing','hostLoginView','hostView','studentView'].forEach(id=>$(id).classList.toggle('hidden',id!==view));window.scrollTo({top:0,behavior:'instant'});}
 function setTab(tab){S.tab=tab;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));['prepare','live','report'].forEach(t=>$(t+'Tab').classList.toggle('hidden',t!==tab));if(tab==='prepare'&&S.mode==='host')refreshHistory();if(tab==='live')renderLive();if(tab==='report')renderReport();}
-function clearListeners(){S.unsubs.forEach(f=>{try{f();}catch(_){}});S.unsubs=[];S.participants=[];S.assignments={};S.responses=[];S.events=[];S.perceptions=[];S.myResponses={};S.myPerception=null;S.myAssignment=null;S.peer=null;S.seenStep='';clearInterval(S.heartbeat);S.heartbeat=null;}
+function clearListeners(){stopRosterSync();S.unsubs.forEach(f=>{try{f();}catch(_){}});S.unsubs=[];S.participants=[];S.assignments={};S.responses=[];S.events=[];S.perceptions=[];S.myResponses={};S.myPerception=null;S.myAssignment=null;S.peer=null;S.seenStep='';clearInterval(S.heartbeat);S.heartbeat=null;}
 function roomRef(code){return S.db.collection(LC_ROOT).doc(code||S.code);}
 function subscribe(q,success){S.unsubs.push(q.onSnapshot(success,failure));}
+
+function rosterLabel(){
+ const r=S.roster;
+ if(r.state==='error')return 'Problema de sincronización · reintentando';
+ if(r.state==='offline')return 'Sin conexión · mostrando el último listado';
+ if(r.state==='cache'||r.state==='connecting')return 'Conectando con Firebase…';
+ if(r.syncing)return 'Comprobando participantes…';
+ return 'Participantes sincronizados';
+}
+function showRosterSync(){
+ const el=$('rosterSyncStatus');if(!el)return;
+ const r=S.roster;
+ el.textContent=rosterLabel();
+ el.dataset.state=r.state;
+}
+function stopRosterSync(){
+ S.rosterGeneration++;
+ if(S.rosterUnsub){try{S.rosterUnsub();}catch(_){}S.rosterUnsub=null;}
+ if(S.rosterWatch){clearInterval(S.rosterWatch);S.rosterWatch=null;}
+ S.roster={state:'idle',verifiedAt:0,updatedAt:0,hasServer:false,error:'',syncing:false};
+}
+function applyRosterSnapshot(snap,code,generation,source){
+ if(S.mode!=='host'||S.code!==code||S.rosterGeneration!==generation)return;
+ const cache=source==='listener'&&!!snap.metadata?.fromCache;
+ // Una copia antigua en caché no debe reemplazar una lista más reciente
+ // que ya comprobamos directamente con el servidor.
+ if(cache&&S.roster.hasServer)return;
+ S.participants=snap.docs.map(doc=>({...doc.data(),uid:doc.id}));
+ S.roster.updatedAt=Date.now();
+ S.roster.state=cache?'cache':'live';
+ S.roster.error='';
+ if(!cache){S.roster.verifiedAt=Date.now();S.roster.hasServer=true;}
+ renderHost();
+}
+function listenRoster(code,generation){
+ if(S.mode!=='host'||S.code!==code||S.rosterGeneration!==generation)return;
+ if(S.rosterUnsub){try{S.rosterUnsub();}catch(_){}S.rosterUnsub=null;}
+ S.roster.state='connecting';showRosterSync();
+ S.rosterUnsub=roomRef(code).collection('participants').onSnapshot(
+   {includeMetadataChanges:true},
+   snap=>applyRosterSnapshot(snap,code,generation,'listener'),
+   error=>{
+     if(S.mode!=='host'||S.code!==code||S.rosterGeneration!==generation)return;
+     S.roster.error=error?.code||'unknown';
+     S.roster.state=error?.code==='unavailable'?'offline':'error';
+     S.rosterUnsub=null;
+     showRosterSync();
+     console.warn('La ley y la cultura: suscripción a participantes interrumpida',error);
+   }
+ );
+}
+async function verifyRoster(force=false){
+ if(S.mode!=='host'||!S.room||!S.code||S.roster.syncing)return;
+ const code=S.code,generation=S.rosterGeneration;
+ // Firestore mantiene el listado casi instantáneamente con onSnapshot.
+ // Si la escucha queda silenciosa, una lectura del servidor lo reconcilia.
+ if(!force&&S.roster.hasServer&&Date.now()-S.roster.verifiedAt<12000)return;
+ S.roster.syncing=true;showRosterSync();
+ try{
+   const snap=await roomRef(code).collection('participants').get({source:'server'});
+   applyRosterSnapshot(snap,code,generation,'server');
+   // Un listener que terminó por error no se reanuda por sí solo.
+   if(S.mode==='host'&&S.code===code&&S.rosterGeneration===generation&&!S.rosterUnsub)
+     listenRoster(code,generation);
+ }catch(error){
+   if(S.mode!=='host'||S.code!==code||S.rosterGeneration!==generation)return;
+   const codeError=error?.code||'unknown';
+   S.roster.error=codeError;
+   S.roster.state=codeError==='unavailable'?'offline':'error';
+   console.warn('La ley y la cultura: error al verificar participantes',error);
+   // Tras una interrupción transitoria también recuperamos la escucha en vivo.
+   if(codeError!=='permission-denied'&&!S.rosterUnsub)listenRoster(code,generation);
+ }finally{
+   if(S.mode==='host'&&S.code===code&&S.rosterGeneration===generation){
+     S.roster.syncing=false;showRosterSync();renderLive();
+   }
+ }
+}
+function startRosterSync(code){
+ stopRosterSync();
+ const generation=S.rosterGeneration;
+ S.roster.state='connecting';S.roster.verifiedAt=0;
+ listenRoster(code,generation);
+ // Lectura inicial forzada: el conteo no queda congelado en caché.
+ void verifyRoster(true);
+ S.rosterWatch=setInterval(()=>{
+   if(document.visibilityState!=='hidden'&&S.mode==='host'&&S.code===code)
+     void verifyRoster();
+ },12000);
+}
+
 function renderStepDots(round){document.querySelectorAll('.step-dot').forEach(el=>{const n=Number(el.dataset.step);el.classList.toggle('past',n<round);el.classList.toggle('current',n===round);});}
 function roundTitle(r){return 'Ronda '+r+' · '+LC_ROUNDS[r-1].title;}
 function getAnswer(round,participantId){return S.responses.find(d=>d.uid===participantId&&d.round===round);}
@@ -53,7 +144,7 @@ async function logout(){clearListeners();if(S.historyUnsub){S.historyUnsub();S.h
 function randomCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',bytes=crypto.getRandomValues(new Uint8Array(6));return Array.from(bytes,b=>chars[b%chars.length]).join('');}
 async function createRoom(event){event.preventDefault();try{if(S.mode!=='host')throw Error('Acceso reservado al facilitador.');const title=$('roomTitle').value.trim();if(title.length<4||title.length>75)throw Error('Escribe un nombre de 4 a 75 caracteres.');let code='',ref;for(let i=0;i<6;i++){const c=randomCode(),r=roomRef(c);if(!(await r.get()).exists){code=c;ref=r;break;}}if(!ref)throw Error('No fue posible crear un código único.');const token=await S.auth.currentUser.getIdTokenResult(),org=typeof token.claims.organizationId==='string'?token.claims.organizationId:uid();await ref.set({gameId:'ley-cultura-v1',hostUid:uid(),organizationId:org,title,status:'waiting',round:1,phase:'write',reopenRound:0,reopenToken:0,createdAt:serverTime(),updatedAt:serverTime()});await openHostRoom(code);setTab('live');toast('Sala creada. Comparte el enlace o el código QR.');}catch(e){failure(e);}}
 async function resumeRoom(event){event.preventDefault();try{const code=$('resumeCode').value.trim().toUpperCase();if(!codeOk(code))throw Error('Escribe un código válido de seis caracteres.');await openHostRoom(code);setTab('live');}catch(e){failure(e);}}
-async function openHostRoom(code){const snap=await roomRef(code).get();if(!snap.exists)throw Error('No encontramos esa sala.');if(snap.data().hostUid!==uid())throw Error('La sala pertenece a otro facilitador.');clearListeners();S.mode='host';S.code=code;S.room=snap.data();subscribe(roomRef(),doc=>{if(!doc.exists){toast('La sala ya no existe.',true);return;}S.room=doc.data();renderHost();});subscribe(roomRef().collection('participants'),snaps=>{S.participants=snaps.docs.map(d=>d.data());renderHost();});subscribe(roomRef().collection('assignments'),snaps=>{S.assignments={};snaps.docs.forEach(d=>S.assignments[d.id]=d.data());renderHost();});subscribe(roomRef().collection('responses'),snaps=>{S.responses=snaps.docs.map(d=>d.data());renderHost();});subscribe(roomRef().collection('perceptions'),snaps=>{S.perceptions=snaps.docs.map(d=>d.data());renderHost();});subscribe(roomRef().collection('response_events'),snaps=>{S.events=snaps.docs.map(d=>d.data());renderHost();});renderHost();}
+async function openHostRoom(code){const snap=await roomRef(code).get();if(!snap.exists)throw Error('No encontramos esa sala.');if(snap.data().hostUid!==uid())throw Error('La sala pertenece a otro facilitador.');clearListeners();S.mode='host';S.code=code;S.room=snap.data();subscribe(roomRef(),doc=>{if(!doc.exists){toast('La sala ya no existe.',true);return;}S.room=doc.data();renderHost();});startRosterSync(code);subscribe(roomRef().collection('assignments'),snaps=>{S.assignments={};snaps.docs.forEach(d=>S.assignments[d.id]=d.data());renderHost();});subscribe(roomRef().collection('responses'),snaps=>{S.responses=snaps.docs.map(d=>d.data());renderHost();});subscribe(roomRef().collection('perceptions'),snaps=>{S.perceptions=snaps.docs.map(d=>d.data());renderHost();});subscribe(roomRef().collection('response_events'),snaps=>{S.events=snaps.docs.map(d=>d.data());renderHost();});renderHost();}
 async function refreshHistory(){if(S.mode!=='host')return;const hostUid=uid();try{const snaps=await S.db.collection(LC_ROOT).where('hostUid','==',hostUid).get();const rooms=snaps.docs.map(d=>({code:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));$('historyList').innerHTML=rooms.length?rooms.map(r=>'<div class="history-item"><div><strong>'+escapeHtml(r.title)+'</strong><small>'+escapeHtml(r.code)+' · '+escapeHtml(timeLabel(r.createdAt))+' · '+escapeHtml(r.status==='completed'?'Finalizada':r.status==='waiting'?'En espera':'En curso')+'</small></div><button class="btn outline" type="button" data-room="'+escapeHtml(r.code)+'">Abrir informe ↗</button></div>').join(''):'<p class="muted">Todavía no hay sesiones. Crea tu primera sala.</p>';}catch(e){failure(e);}}
 function renderHost(){if(S.mode!=='host')return;const title=S.room?S.room.title:'Prepara una sala para comenzar';$('roomSubtitle').textContent=S.room?'Sala '+S.code+' · '+title:'Prepara una sala para comenzar.';renderLive();renderReport();}
 function joinUrl(){const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('sala',S.code);return url.toString();}
@@ -61,7 +152,7 @@ function renderQRCode(){if(!S.room)return;const el=$('qrCode'),u=joinUrl();if(el
 function roundSubmitted(round){return S.responses.filter(x=>x.round===round&&!!getAssignment(x.uid));}
 function phaseTotals(){const eligible=participantsAssigned(),r=S.room?.round||1,review=r===4&&S.room?.phase==='review';const count=review?S.perceptions.filter(p=>eligible.some(x=>x.uid===p.uid)).length:roundSubmitted(r).length;return {eligible:eligible.length,received:count,pending:Math.max(0,eligible.length-count),review};}
 function presence(){const now=Date.now(),connected=S.participants.filter(p=>p.lastSeenAt&&p.lastSeenAt.toMillis&&now-p.lastSeenAt.toMillis()<75000).length;return {connected,disconnected:S.participants.length-connected};}
-function renderLive(){const has=!!S.room;$('noLive').classList.toggle('hidden',has);$('liveContent').classList.toggle('hidden',!has);if(!has)return;const r=S.room.round,p=phaseTotals(),pr=presence();$('liveTitle').textContent=S.room.title;$('liveCode').textContent=S.code;renderQRCode();const stage=S.room.status==='waiting'?'En espera':S.room.status==='paused'?'Pausada':S.room.status==='completed'?'Finalizada':'En curso';$('statusBadge').textContent=stage;$('livePhase').textContent=roundTitle(r)+(r===4&&S.room.phase==='review'?' · Valoración entre compañeros':' · Decisión individual');$('liveMetrics').innerHTML=addMetric('Participantes',S.participants.length,pr.connected+' con actividad reciente · '+pr.disconnected+' sin actividad reciente')+addMetric('Ronda',r+' de 4',stage)+addMetric('Respondieron',p.received,'De '+p.eligible+' asignados')+addMetric('Pendientes',p.pending,'Condiciones asignadas: '+Object.keys(S.assignments).length);
+function renderLive(){showRosterSync();const has=!!S.room;$('noLive').classList.toggle('hidden',has);$('liveContent').classList.toggle('hidden',!has);if(!has)return;const r=S.room.round,p=phaseTotals(),pr=presence();$('liveTitle').textContent=S.room.title;$('liveCode').textContent=S.code;renderQRCode();const stage=S.room.status==='waiting'?'En espera':S.room.status==='paused'?'Pausada':S.room.status==='completed'?'Finalizada':'En curso';$('statusBadge').textContent=stage;$('livePhase').textContent=roundTitle(r)+(r===4&&S.room.phase==='review'?' · Valoración entre compañeros':' · Decisión individual');$('liveMetrics').innerHTML=addMetric('Participantes',S.roster.updatedAt?S.participants.length:'…',pr.connected+' con actividad reciente · '+pr.disconnected+' sin actividad reciente')+addMetric('Ronda',r+' de 4',stage)+addMetric('Respondieron',p.received,'De '+p.eligible+' asignados')+addMetric('Pendientes',p.pending,'Condiciones asignadas: '+Object.keys(S.assignments).length);
  const actions=[];if(S.room.status==='waiting')actions.push({action:'start',label:'Iniciar experiencia',variant:'primary'});if(S.room.status==='active'){actions.push({action:'pause',label:'Pausar',variant:'outline'});actions.push({action:'advance',label:r===4?(S.room.phase==='review'?'Finalizar':'Pasar a valoración anónima'):'Avanzar a la siguiente ronda',variant:'primary'});}if(S.room.status==='paused')actions.push({action:'resume',label:'Reanudar',variant:'primary'});if(S.room.status!=='completed'&&S.participants.length>Object.keys(S.assignments).length&&S.room.status!=='waiting')actions.push({action:'assign',label:'Asignar participantes nuevos',variant:'secondary'});$('liveActions').innerHTML=buttons(actions);$('reopenRound').value=String(r);$('reopenRound').disabled=S.room.status==='waiting';$('reopenBtn').disabled=S.room.status==='waiting';
  $('liveSummary').innerHTML=liveRoundHtml(r);$('individualTable').innerHTML=individualsHtml(r);
 }
@@ -168,7 +259,7 @@ function renderReport(){const has=!!S.room;$('noReport').classList.toggle('hidde
  const list=findings();$('findings').innerHTML=list.length?list.map(f=>'<div class="finding">'+escapeHtml(f)+'</div>').join(''):'<p class="muted">Los hallazgos aparecerán a partir de las respuestas reales de la sesión. No se generan conclusiones sin datos.</p>';
  const open=[...document.querySelectorAll('#roundReports details[open]')].map(d=>d.dataset.roundReport);$('roundReports').innerHTML=LC_ROUNDS.map((_,i)=>reportRoundHtml(i+1)).join('');open.forEach(r=>{const el=document.querySelector('[data-round-report="'+r+'"]');if(el)el.open=true;});$('textAnalysis').innerHTML=textAnalysisHtml();document.body.classList.toggle('projecting',S.projecting);$('projectButton').textContent=S.projecting?'Salir de proyección':'Proyectar sin nombres';
 }
-function bind(){document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.back)));$('hostEntry').addEventListener('click',()=>show('hostLoginView'));$('loginForm').addEventListener('submit',hostLogin);$('joinForm').addEventListener('submit',joinRoom);$('hostLogout').addEventListener('click',()=>logout().catch(failure));$('createForm').addEventListener('submit',createRoom);$('resumeForm').addEventListener('submit',resumeRoom);$('refreshHistory').addEventListener('click',refreshHistory);document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));$('historyList').addEventListener('click',async e=>{const button=e.target.closest('[data-room]');if(button)try{await openHostRoom(button.dataset.room);setTab('report');}catch(error){failure(error);}});$('liveActions').addEventListener('click',e=>{const button=e.target.closest('[data-action]');if(button)handleLiveAction(button.dataset.action);});$('reopenBtn').addEventListener('click',()=>reopen().catch(failure));$('openReport').addEventListener('click',()=>setTab('report'));$('projectButton').addEventListener('click',()=>{S.projecting=!S.projecting;renderReport();});$('copyCode').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(joinUrl());toast('Enlace copiado.');}catch{toast(joinUrl());}});$('studentActivity').addEventListener('submit',event=>{if(event.target.id==='decisionForm')submitDecision(event);if(event.target.id==='peerForm')submitPeer(event);});$('joinCode').value=(new URLSearchParams(location.search).get('sala')||'').toUpperCase();}
+function bind(){document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.back)));$('hostEntry').addEventListener('click',()=>show('hostLoginView'));$('loginForm').addEventListener('submit',hostLogin);$('joinForm').addEventListener('submit',joinRoom);$('hostLogout').addEventListener('click',()=>logout().catch(failure));$('createForm').addEventListener('submit',createRoom);$('resumeForm').addEventListener('submit',resumeRoom);$('refreshHistory').addEventListener('click',refreshHistory);document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));$('historyList').addEventListener('click',async e=>{const button=e.target.closest('[data-room]');if(button)try{await openHostRoom(button.dataset.room);setTab('report');}catch(error){failure(error);}});$('liveActions').addEventListener('click',e=>{const button=e.target.closest('[data-action]');if(button)handleLiveAction(button.dataset.action);});$('reopenBtn').addEventListener('click',()=>reopen().catch(failure));$('openReport').addEventListener('click',()=>setTab('report'));$('projectButton').addEventListener('click',()=>{S.projecting=!S.projecting;renderReport();});$('copyCode').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(joinUrl());toast('Enlace copiado.');}catch{toast(joinUrl());}});$('studentActivity').addEventListener('submit',event=>{if(event.target.id==='decisionForm')submitDecision(event);if(event.target.id==='peerForm')submitPeer(event);});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.mode==='host'&&S.room)void verifyRoster(true);});window.addEventListener('focus',()=>{if(S.mode==='host'&&S.room&&Date.now()-S.roster.verifiedAt>3500)void verifyRoster(true);});$('joinCode').value=(new URLSearchParams(location.search).get('sala')||'').toUpperCase();}
 function init(){try{
   if(!window.FIREBASE_CONFIG?.projectId)throw Error('No se encontró la configuración Firebase del Laboratorio.');
   // Cada experiencia usa una instancia con su propia clave de autenticación.
