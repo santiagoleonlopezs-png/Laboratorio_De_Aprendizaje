@@ -3,7 +3,7 @@
 const LC_ROOT='ley_cultura_rooms';
 const LC_ROUNDS=[
  {title:'Desconexión laboral',legal:'Ley 2191 de 2022',brief:'La ley regula la desconexión laboral y la protección del tiempo de descanso, con las excepciones legales aplicables.',reflection:'¿Cómo cambió tu decisión cuando el equipo expresó expectativas distintas sobre la disponibilidad?',
-  question:'Terminó tu jornada simulada. Llega una solicitud para realizar una tarea que puede esperar hasta mañana.',
+  question:'Terminó tu jornada de trabajo. Llega una solicitud para realizar una tarea que puede esperar hasta mañana.',
   A:'En este equipo reconocemos a quienes siempre están disponibles y hacen un esfuerzo adicional.',
   B:'En este equipo valoramos los resultados y respetamos el tiempo de descanso de las personas.',
   choices:[['continue','Realizar una actividad adicional ahora'],['later','Posponerla hasta la siguiente jornada']]},
