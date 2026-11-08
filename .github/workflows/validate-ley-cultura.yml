@@ -7,6 +7,8 @@ on:
       - 'ley-cultura.css'
       - 'firestore.rules'
       - 'tests/ley-cultura-rules.cjs'
+      - 'tests/ley-cultura-roster.cjs'
+      - 'tests/ley-cultura-mensajes.cjs'
       - '.github/workflows/validate-ley-cultura.yml'
   pull_request:
     paths:
@@ -34,8 +36,11 @@ jobs:
           node --check hub.js
           node --check tests/ley-cultura-rules.cjs
           node --check tests/ley-cultura-roster.cjs
+          node --check tests/ley-cultura-mensajes.cjs
       - name: Comprobar sincronización en vivo y recuperación de sala
         run: node tests/ley-cultura-roster.cjs
+      - name: Confirmar asignación y mensajes culturales A/B
+        run: node tests/ley-cultura-mensajes.cjs
       - name: Instalar herramientas de pruebas
         run: npm install --no-save --no-package-lock firebase-tools@latest @firebase/rules-unit-testing@latest firebase@latest
       - name: Validar permisos en Firestore Emulator
