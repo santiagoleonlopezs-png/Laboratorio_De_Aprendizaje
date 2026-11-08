@@ -42,7 +42,7 @@ async function run(){
  batch.set(ownAnswer,answer(studentId,1,step1));
  batch.set(path(student,'response_events',studentId+'_1_123456_100'),{uid:studentId,answerId:studentId+'_1',round:1,answer:step1,durationMs:2350,revision:1,recordedAt:serverTimestamp()});
  await assertSucceeds(batch.commit());
- await assertFails(getDoc(ownAnswer.withConverter?path(other,'responses',studentId+'_1'):ownAnswer));
+ await assertFails(getDoc(path(other,'responses',studentId+'_1')));
  await assertFails(getDocs(collection(student.firestore(),'ley_cultura_rooms',roomCode,'responses')));
  await assertSucceeds(getDocs(collection(host.firestore(),'ley_cultura_rooms',roomCode,'responses')));
  await assertFails(setDoc(otherAnswer,answer('different-user',1,step1)));
