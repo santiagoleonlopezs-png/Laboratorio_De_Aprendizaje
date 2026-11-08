@@ -10,7 +10,7 @@ const base={gameId:'ley-cultura-v1',hostUid:hostId,organizationId:hostId,title:'
 const candidate=uid=>({uid,name:'Participante '+uid,joinedAt:serverTimestamp(),lastSeenAt:serverTimestamp()});
 const assignment=(uid,condition)=>({uid,condition,assignedAt:serverTimestamp()});
 const answer=(uid,round,values,revision=1,createdAt=serverTimestamp(),reopenToken=0)=>({uid,round,answer:values,durationMs:2350,revision,reopenToken,createdAt,submittedAt:serverTimestamp()});
-const step1={choice:'later',microtask:''};
+const step1={choice:'later',microtask:'Agendaré la solicitud para retomarla mañana.'};
 const step4={words:['Claridad','Acompañamiento','Continuidad','Información'],text:'Los contratos continúan de acuerdo con la legislación aplicable.',initial:'Con el cambio, los contratos de trabajo continúan vigentes.'};
 async function run(){
  env=await initializeTestEnvironment({projectId,firestore:{rules:fs.readFileSync('firestore.rules','utf8'),host:'127.0.0.1',port:8080}});
@@ -37,6 +37,11 @@ async function run(){
  await assertSucceeds(getDoc(path(student,'assignments',studentId)));
  await assertSucceeds(updateDoc(room(host),{status:'active',updatedAt:serverTimestamp()}));
  console.log('PASS: las condiciones son asignadas únicamente por facilitador');
+ const invalidLater=answer(studentId,1,{choice:'later',microtask:''});
+ await assertFails(setDoc(path(student,'responses',studentId+'_1'),invalidLater));
+ const invalidContinue=answer(studentId,1,{choice:'continue',microtask:'La microtarea no corresponde a esta decisión.'});
+ await assertFails(setDoc(path(student,'responses',studentId+'_1'),invalidContinue));
+ console.log('PASS: la planificación solo corresponde a la decisión de posponer');
  const ownAnswer=path(student,'responses',studentId+'_1'),otherAnswer=path(other,'responses',otherId+'_1');
  const batch=writeBatch(student.firestore());
  batch.set(ownAnswer,answer(studentId,1,step1));
@@ -50,8 +55,8 @@ async function run(){
  const previous=await getDoc(ownAnswer);
  await assertSucceeds(updateDoc(room(host),{reopenRound:1,reopenToken:1,updatedAt:serverTimestamp()}));
  const batch2=writeBatch(student.firestore());
- batch2.set(ownAnswer,answer(studentId,1,{choice:'continue',microtask:'Organizar las prioridades de mañana'},2,previous.data().createdAt,1));
- batch2.set(path(student,'response_events',studentId+'_1_123457_100'),{uid:studentId,answerId:studentId+'_1',round:1,answer:{choice:'continue',microtask:'Organizar las prioridades de mañana'},durationMs:2350,revision:2,recordedAt:serverTimestamp()});
+ batch2.set(ownAnswer,answer(studentId,1,{choice:'continue',microtask:''},2,previous.data().createdAt,1));
+ batch2.set(path(student,'response_events',studentId+'_1_123457_100'),{uid:studentId,answerId:studentId+'_1',round:1,answer:{choice:'continue',microtask:''},durationMs:2350,revision:2,recordedAt:serverTimestamp()});
  await assertSucceeds(batch2.commit());
  await assertFails(getDoc(path(student,'response_events',studentId+'_1_123456_100')));
  console.log('PASS: revisiones guardadas como eventos inmutables');
