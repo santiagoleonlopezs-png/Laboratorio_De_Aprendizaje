@@ -83,7 +83,7 @@ function applyRosterSnapshot(snap,code,generation,source){
 function listenRoster(code,generation){
  if(S.mode!=='host'||S.code!==code||S.rosterGeneration!==generation)return;
  if(S.rosterUnsub){try{S.rosterUnsub();}catch(_){}S.rosterUnsub=null;}
- S.roster.state='connecting';showRosterSync();
+ if(!S.roster.hasServer)S.roster.state='connecting';showRosterSync();
  S.rosterUnsub=roomRef(code).collection('participants').onSnapshot(
    {includeMetadataChanges:true},
    snap=>applyRosterSnapshot(snap,code,generation,'listener'),
