@@ -505,7 +505,7 @@ match /ocai_rooms/{roomCode} {
           && answer.choice in ['continue', 'later']
           && answer.microtask is string
           && answer.microtask.size() <= 280
-          && (answer.choice == 'later' || answer.microtask.size() >= 10))
+          && ((answer.choice == 'continue' && answer.microtask == '') || (answer.choice == 'later' && answer.microtask.size() >= 10)))
         || (round == 2
           && answer.keys().hasOnly(['choice', 'microtask'])
           && answer.choice in ['inform', 'resolve', 'hold']
