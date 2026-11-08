@@ -48,6 +48,7 @@
       <div id="liveContent" class="hidden">
         <div class="room-bar panel"><div><span class="eyebrow">SALA ACTIVA</span><h2 id="liveTitle">Sesión</h2><div class="room-code">Código <strong id="liveCode">------</strong> <button class="quiet" id="copyCode">Copiar enlace</button></div></div><div class="qr-block"><div id="qrCode" aria-label="Código QR de acceso"></div><small>Escanea para participar</small></div></div>
         <div class="metric-grid" id="liveMetrics"></div>
+        <div class="roster-line"><div id="rosterPreview" class="roster-preview" aria-label="Participantes que ingresaron" aria-live="polite"><span class="muted">Consultando participantes…</span></div><span id="rosterSyncStatus" class="roster-status" data-state="connecting" role="status">Conectando con Firebase…</span></div>
         <div class="panel actions-panel"><div class="section-line"><div><h2>Control de la experiencia</h2><p id="livePhase" class="muted"></p></div><span class="state-pill" id="statusBadge">En espera</span></div>
           <div class="actions" id="liveActions"></div>
           <div class="reopen-row"><label for="reopenRound">Volver a una ronda</label><select id="reopenRound"><option value="1">Ronda 1</option><option value="2">Ronda 2</option><option value="3">Ronda 3</option><option value="4">Ronda 4</option></select><button id="reopenBtn" class="btn outline" type="button">Reabrir</button></div>
@@ -82,6 +83,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="firebase-config.js"></script>
-<script src="ley-cultura.js?v=20261108-3"></script>
+<script src="ley-cultura.js?v=20261108-4"></script>
 </body>
 </html>
