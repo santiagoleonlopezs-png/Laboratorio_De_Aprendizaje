@@ -543,8 +543,7 @@ match /ocai_rooms/{roomCode} {
       // Al conocer el código de la sala se puede consultar el estado, no los resultados.
       allow get: if lcSigned();
       // Las consultas de historial deben limitarse por hostUid.
-      allow list: if lcFacilitator() && resource.data.hostUid == request.auth.uid
-        && resource.data.organizationId == request.auth.token.get('organizationId', request.auth.uid);
+      allow list: if lcFacilitator() && resource.data.hostUid == request.auth.uid;
       allow create: if lcFacilitator()
         && request.resource.data.keys().hasOnly([
           'gameId','hostUid','organizationId','title','status','round','phase',
@@ -609,7 +608,10 @@ match /ocai_rooms/{roomCode} {
       }
       match /responses/{answerId} {
         allow get: if lcHost(roomCode)
-          || (lcSigned() && resource.data.uid == request.auth.uid);
+          || (lcSigned() && lcAnswerId(answerId, request.auth.uid, 1))
+          || (lcSigned() && lcAnswerId(answerId, request.auth.uid, 2))
+          || (lcSigned() && lcAnswerId(answerId, request.auth.uid, 3))
+          || (lcSigned() && lcAnswerId(answerId, request.auth.uid, 4));
         allow list: if lcHost(roomCode);
         allow create: if lcParticipantAnswer(roomCode,answerId)
           && request.resource.data.revision == 1
@@ -618,6 +620,8 @@ match /ocai_rooms/{roomCode} {
           && resource.data.uid == request.auth.uid
           && resource.data.round == request.resource.data.round
           && request.resource.data.revision == resource.data.revision + 1
+          && lcRoom(roomCode).reopenRound == resource.data.round
+          && resource.data.reopenToken < lcRoom(roomCode).reopenToken
           && request.resource.data.createdAt == resource.data.createdAt;
         allow delete: if false;
       }
