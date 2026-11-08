@@ -627,15 +627,7 @@ match /ocai_rooms/{roomCode} {
           && request.resource.data.keys().hasOnly([
             'uid','answerId','round','answer','durationMs','revision','recordedAt'
           ])
-          && eventId.matches('^' + request.auth.uid + '_[1-4]_[0-9]+_[0-9]+
-    // =====================================================
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-)
+          && eventId.matches('^' + request.auth.uid + '_[1-4]_[0-9]+_[0-9]+$')
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.answerId is string
           && lcAnswerId(request.resource.data.answerId, request.auth.uid, request.resource.data.round)
