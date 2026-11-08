@@ -48,8 +48,9 @@ async function run(){
  await assertFails(setDoc(otherAnswer,answer('different-user',1,step1)));
  console.log('PASS: respuestas nominales privadas y escritura vinculada al UID');
  const previous=await getDoc(ownAnswer);
+ await assertSucceeds(updateDoc(room(host),{reopenRound:1,reopenToken:1,updatedAt:serverTimestamp()}));
  const batch2=writeBatch(student.firestore());
- batch2.set(ownAnswer,answer(studentId,1,{choice:'continue',microtask:'Organizar las prioridades de mañana'},2,previous.data().createdAt));
+ batch2.set(ownAnswer,answer(studentId,1,{choice:'continue',microtask:'Organizar las prioridades de mañana'},2,previous.data().createdAt,1));
  batch2.set(path(student,'response_events',studentId+'_1_123457_100'),{uid:studentId,answerId:studentId+'_1',round:1,answer:{choice:'continue',microtask:'Organizar las prioridades de mañana'},durationMs:2350,revision:2,recordedAt:serverTimestamp()});
  await assertSucceeds(batch2.commit());
  await assertFails(getDoc(path(student,'response_events',studentId+'_1_123456_100')));
