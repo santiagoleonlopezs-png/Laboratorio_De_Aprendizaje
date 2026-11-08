@@ -625,7 +625,7 @@ match /ocai_rooms/{roomCode} {
         allow get, list: if lcHost(roomCode);
         allow create: if lcSigned()
           && request.resource.data.keys().hasOnly([
-            'uid','round','answer','durationMs','revision','recordedAt'
+            'uid','answerId','round','answer','durationMs','revision','recordedAt'
           ])
           && eventId.matches('^' + request.auth.uid + '_[1-4]_[0-9]+_[0-9]+
     // =====================================================
@@ -637,9 +637,11 @@ match /ocai_rooms/{roomCode} {
 }
 )
           && request.resource.data.uid == request.auth.uid
+          && request.resource.data.answerId is string
+          && lcAnswerId(request.resource.data.answerId, request.auth.uid, request.resource.data.round)
           && lcLiveWrite(roomCode, request.resource.data.round)
           && request.resource.data.recordedAt == request.time
-          && getAfter(/databases/$(database)/documents/ley_cultura_rooms/$(roomCode)/responses/$(request.auth.uid + '_' + request.resource.data.round)).data.answer == request.resource.data.answer;
+          && getAfter(/databases/$(database)/documents/ley_cultura_rooms/$(roomCode)/responses/$(request.resource.data.answerId)).data.answer == request.resource.data.answer;
         allow update, delete: if false;
       }
       match /peer_assignments/{participantId} {
