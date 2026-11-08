@@ -1,0 +1,39 @@
+name: Validar experiencia La ley y la cultura
+on:
+  push:
+    paths:
+      - 'ley-cultura.html'
+      - 'ley-cultura.js'
+      - 'ley-cultura.css'
+      - 'firestore.rules'
+      - 'tests/ley-cultura-rules.cjs'
+      - '.github/workflows/validate-ley-cultura.yml'
+  pull_request:
+    paths:
+      - 'ley-cultura.html'
+      - 'ley-cultura.js'
+      - 'firestore.rules'
+      - 'tests/ley-cultura-rules.cjs'
+  workflow_dispatch:
+jobs:
+  simulation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Validar sintaxis
+        run: |
+          node --check ley-cultura.js
+          node --check hub.js
+          node --check tests/ley-cultura-rules.cjs
+      - name: Instalar herramientas de pruebas
+        run: npm install --no-save --no-package-lock firebase-tools@latest @firebase/rules-unit-testing@latest firebase@latest
+      - name: Validar permisos en Firestore Emulator
+        run: npx firebase emulators:exec --only firestore --project demo-ley-cultura-local "node tests/ley-cultura-rules.cjs"
