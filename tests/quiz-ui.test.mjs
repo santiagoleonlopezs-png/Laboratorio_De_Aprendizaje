@@ -4,11 +4,12 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 import * as engine from '../quiz-engine.mjs';
+import {buildQuizResponseExport} from '../quiz-export.mjs';
 
 const html=fs.readFileSync(new URL('../knowledge.html',import.meta.url),'utf8');
 const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import .*;\n/gm,'');
 function page(search='', saved=null, url='https://example.test/knowledge.html'){
- const elements=new Map(),store=new Map(),observers=[],startup=[],savedValues=new Map(),errors=[],batchSizes=[],qrCodes=[],clipboard=[];let autoId=0;
+ const elements=new Map(),store=new Map(),observers=[],startup=[],savedValues=new Map(),errors=[],batchSizes=[],qrCodes=[],clipboard=[],downloads=[],blobs=new Map();let autoId=0;
  if(saved)savedValues.set('gc_quiz_session_v7',JSON.stringify(saved));
  function element(id){
   const tag=html.match(new RegExp('<[^>]+\\bid="'+id+'"[^>]*>'))?.[0]||'';
@@ -23,13 +24,13 @@ function page(search='', saved=null, url='https://example.test/knowledge.html'){
  const ref=(...parts)=>{const path=parts.slice(parts[0]?.kind==='db'?1:0).map(p=>p?.path||p).join('/');return {path,id:path.split('/').at(-1)};};
  const getDoc=async r=>({exists:()=>store.has(r.path),data:()=>structuredClone(store.get(r.path))});
  const put=async(r,data,options)=>{store.set(r.path,options?.merge?{...store.get(r.path),...structuredClone(data)}:structuredClone(data));};
- const context={...engine,console:{...console,error:error=>errors.push(error)},URL,URLSearchParams,TextEncoder,crypto:{randomUUID:()=>`version-${++autoId}`,subtle:webcrypto.subtle},location:{href:url+search,search},navigator:{onLine:true,clipboard:{writeText:async text=>{clipboard.push(text);}}},
+ const context={...engine,buildQuizResponseExport,Blob,console:{...console,error:error=>errors.push(error)},URL:class extends URL {static createObjectURL(blob){const url='blob:quiz-'+(++autoId);blobs.set(url,blob);return url;}static revokeObjectURL(url){blobs.delete(url);}},URLSearchParams,TextEncoder,crypto:{randomUUID:()=>`version-${++autoId}`,subtle:webcrypto.subtle},location:{href:url+search,search},navigator:{onLine:true,clipboard:{writeText:async text=>{clipboard.push(text);}}},
   QRCode:Object.assign(function(el,options){qrCodes.push({id:el.id,...options});el.textContent='QR';},{CorrectLevel:{M:0}}),
-  document:{getElementById:$,querySelectorAll:selector=>selector==='.back'?backButtons:[],createElement:()=>element('generated'),activeElement:null},window:{addEventListener(){}},
+  document:{getElementById:$,querySelectorAll:selector=>selector==='.back'?backButtons:[],createElement:tag=>{const el=element('generated');if(tag==='a')el.click=()=>downloads.push({filename:el.download,blob:blobs.get(el.href)});return el;},activeElement:null},window:{addEventListener(){}},
   localStorage:{getItem:key=>savedValues.get(key)||null,setItem:(key,value)=>savedValues.set(key,value),removeItem:key=>savedValues.delete(key)},
   setTimeout:fn=>{startup.push(fn);},setInterval:()=>0,clearInterval(){},confirm:()=>true,alert(){},prompt:()=>null,
   initializeApp:()=>({}),getFirestore:()=>({kind:'db'}),getAuth:()=>({currentUser:{uid:'host'}}),signInWithEmailAndPassword:async()=>({user:{}}),getIdTokenResult:async()=>({claims:{facilitator:true}}),
-  doc:(...parts)=>parts.length===1?ref(parts[0],`id${++autoId}`):ref(...parts),collection:ref,getDoc,
+  doc:(...parts)=>parts.length===1?ref(parts[0],`id${++autoId}`):ref(...parts),collection:ref,getDoc,getDocFromServer:r=>context.getDoc(r),getDocsFromServer:r=>context.getDocs(r),
   setDoc:put,updateDoc:(r,data)=>put(r,data,{merge:true}),deleteDoc:async r=>store.delete(r.path),serverTimestamp:()=>1000,
   getDocs:async r=>({docs:[...store].filter(([path])=>path.startsWith(r.path+'/')&&path.split('/').length===r.path.split('/').length+1).map(([path,data])=>({id:path.split('/').at(-1),ref:{path},data:()=>structuredClone(data)})),forEach(fn){this.docs.forEach(fn);}}),
   onSnapshot:(r,cb)=>{const entry={r,cb,active:true};observers.push(entry);return()=>{entry.active=false;};},
@@ -38,13 +39,69 @@ function page(search='', saved=null, url='https://example.test/knowledge.html'){
   createSelfPacedQuiz:()=>({updateRun(){},stop(){}})
  };
  vm.createContext(context);vm.runInContext(script,context);
- return {$,store,context,run:code=>vm.runInContext(code,context),observers,backButtons,errors,batchSizes,qrCodes,clipboard,
+ return {$,store,context,run:code=>vm.runInContext(code,context),observers,backButtons,errors,batchSizes,qrCodes,clipboard,downloads,
   emit:async(path,data)=>{store.set(path,data);for(const o of [...observers])if(o.active&&o.r.path===path)await o.cb({exists:()=>true,data:()=>structuredClone(data)});},
   boot:async()=>{for(const fn of startup)await fn();},isShown:id=>!$(id).classList.contains('hidden')};
 }
 test('page has unique ids and all direct DOM lookups exist',()=>{
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);
  for(const [,id]of html.matchAll(/\$\("([^"]+)"\)/g))assert.ok(ids.includes(id),id);
+});
+function exportPage(mode='facilitated'){
+ const p=page(),path='gc_quiz_live/partida-export';
+ p.store.set(path,{recordType:'run',className:'Clase de exportación',mode,status:'revealed',quizVersion:'v1',selectedQuestions:[0],questions:[{title:'P1',text:'Pregunta del servidor',options:['Sí','No','Otra','Ninguna'],correct:0}]});
+ for(const [id,name,cedula]of [['ana','Ana María','000123456'],['luis','Luis','000987654']]){
+  p.store.set(path+'/players/'+id,{name,identityType:'both',score:8,answers:{0:{option:0,correct:true,elapsed:2,points:8}},selfPaced:{version:'v1'}});
+  p.store.set(path+'/identities/'+id,{name,cedula,identityType:'both'});
+ }
+ p.run("room='partida-export';state={mode:"+JSON.stringify(mode)+"};players=[{name:'Lista parcial'}];show('hostPanel')");
+ return p;
+}
+test('facilitator downloads all server responses and private identities in both modes without writing data',async()=>{
+ for(const mode of ['facilitated','self_paced']){
+  const p=exportPage(mode);p.store.set('gc_quiz_live/partida-other/players/other',{name:'Otra sala'});p.store.set('gc_quiz_live/partida-other/identities/other',{name:'Otra sala',cedula:'999999'});
+  const before=JSON.stringify([...p.store]);await p.$('downloadQuizResponses').onclick();
+  assert.equal(p.downloads.length,1,p.$('downloadQuizResponsesMsg').textContent);const file=p.downloads[0],csv=await file.blob.text();
+  assert.match(file.filename,/^SaberON_respuestas_Clase de exportación\.csv$/);assert.match(csv,/Ana María/);assert.match(csv,/000123456/);assert.match(csv,/Luis/);assert.match(csv,/000987654/);
+  assert.match(csv,/Pregunta del servidor/);assert.doesNotMatch(csv,/Lista parcial|Otra sala/);assert.match(p.$('downloadQuizResponsesMsg').textContent,/2 participante\(s\) y 2 respuesta\(s\)/);
+  assert.deepEqual([...new Uint8Array(await file.blob.arrayBuffer()).slice(0,3)],[239,187,191]);assert.equal(p.$('downloadQuizResponses').disabled,false);assert.equal(JSON.stringify([...p.store]),before);
+ }
+});
+test('empty rooms report the absence of participants without downloading a file',async()=>{
+ const p=exportPage();for(const key of [...p.store.keys()])if(key.includes('/players/')||key.includes('/identities/'))p.store.delete(key);
+ await p.$('downloadQuizResponses').onclick();assert.equal(p.downloads.length,0);assert.match(p.$('downloadQuizResponsesMsg').textContent,/todavía no tiene participantes/);assert.equal(p.$('downloadQuizResponses').disabled,false);
+});
+test('downloads require a signed-in facilitator and never query private records for other roles',async()=>{
+ for(const signedIn of [false,true]){
+  const p=exportPage();let reads=0;p.context.getDocsFromServer=async()=>{reads++;throw Error('No debería consultarse');};
+  if(signedIn)p.context.getIdTokenResult=async()=>({claims:{facilitator:false}});else p.run('facilitatorAuth.currentUser=null');
+  await p.$('downloadQuizResponses').onclick();assert.equal(p.downloads.length,0);assert.equal(reads,0);assert.match(p.$('downloadQuizResponsesMsg').textContent,/facilitador/);
+ }
+});
+test('permission and connection failures never download a partial or cached export',async()=>{
+ for(const failure of ['permission-denied','unavailable']){
+  const p=exportPage(),read=p.context.getDocsFromServer;
+  p.context.getDocsFromServer=async ref=>{if(ref.path.endsWith('/identities'))throw Object.assign(Error('Sin conexión'),{code:failure});return read(ref);};
+  await p.$('downloadQuizResponses').onclick();assert.equal(p.downloads.length,0);assert.equal(p.$('downloadQuizResponses').disabled,false);
+  assert.match(p.$('downloadQuizResponsesMsg').textContent,failure==='permission-denied'?/no tiene permiso/:/Sin conexión/);
+ }
+});
+test('historical registrations still download and explicitly report missing complete cedulas',async()=>{
+ const p=exportPage();p.store.delete('gc_quiz_live/partida-export/identities/ana');
+ await p.$('downloadQuizResponses').onclick();assert.equal(p.downloads.length,1);assert.match(p.$('downloadQuizResponsesMsg').textContent,/1 registro\(s\) histórico\(s\)/);
+ const csv=await p.downloads[0].blob.text();assert.match(csv,/Ana María/);assert.doesNotMatch(csv,/000123456/);
+});
+test('switching rooms while fetching cancels the download for the previous room',async()=>{
+ const p=exportPage(),read=p.context.getDocFromServer;let release;
+ p.context.getDocFromServer=ref=>new Promise(resolve=>{release=async()=>resolve(await read(ref));});
+ const pending=p.$('downloadQuizResponses').onclick();await new Promise(resolve=>setImmediate(resolve));p.run("room='partida-other'");await release();await pending;
+ assert.equal(p.downloads.length,0);assert.equal(p.$('downloadQuizResponses').disabled,false);
+});
+test('repeated download clicks produce a single file',async()=>{
+ const p=exportPage(),read=p.context.getDocFromServer;let release;
+ p.context.getDocFromServer=ref=>new Promise(resolve=>{release=async()=>resolve(await read(ref));});
+ const pending=p.$('downloadQuizResponses').onclick();await new Promise(resolve=>setImmediate(resolve));await p.$('downloadQuizResponses').onclick();await release();await pending;
+ assert.equal(p.downloads.length,1);
 });
 test('facilitator creates an untimed autonomous run and publishes a bound link',async()=>{
  const p=page();p.$('className').value='Estrategia';p.$('newQuizMode').value='self_paced';p.$('newQuestionDuration').value='30';

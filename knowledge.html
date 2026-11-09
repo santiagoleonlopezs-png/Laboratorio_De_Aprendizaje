@@ -87,7 +87,8 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 
 <section id="hostPanel" class="hidden">
 <div class="card">
-<div class="row" style="margin-bottom:14px"><button id="manageQuizRooms" class="secondary" type="button">← Mis salas / nueva partida</button></div>
+<div class="row" style="margin-bottom:14px"><button id="manageQuizRooms" class="secondary" type="button">← Mis salas / nueva partida</button><button id="downloadQuizResponses" class="secondary" type="button">Descargar respuestas</button></div>
+<p id="downloadQuizResponsesMsg" class="mini" role="status" aria-live="polite"></p>
 <div class="row between"><div><h2 style="margin-bottom:4px">Panel del facilitador</h2><span class="muted">Sala <b id="hostRoom">GC2026</b> · Estado: <b id="phaseLabel">En espera</b></span></div><div><span class="pill">Inscritos: <b id="connected">0</b></span> <span class="pill"><span id="answeredLabel">Respondieron</span>: <b id="answered">0</b></span></div></div>
 <div id="quizSettings" class="quiz-settings"><div class="grid2"><div><label for="quizMode">Modalidad</label><select id="quizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div id="questionDurationField"><label for="questionDuration">Tiempo máximo por pregunta (segundos)</label><input id="questionDuration" type="number" min="5" max="600" step="1" value="60"></div></div><button id="saveQuizSettings" class="secondary" type="button" style="margin-top:12px">Guardar configuración</button><p id="quizModeInfo" class="mini" style="margin-top:12px"></p></div>
 <div id="participantSettings" class="quiz-settings access-settings"><h3>Experiencia de participantes</h3><div class="grid2"><div><label for="rankingVisibility">Mostrar ranking</label><select id="rankingVisibility"><option value="live">Durante el quiz y al finalizar</option><option value="final">Solo al finalizar</option><option value="hidden">No mostrar</option></select></div><div><label for="participantIdentity">Dato para ingresar</label><select id="participantIdentity"><option value="name">Nombre</option><option value="cedula">Cédula: solo números</option><option value="both">Nombre y cédula</option></select></div></div><p id="participantSettingsInfo" class="mini setting-help">Tú siempre podrás consultar el ranking en este panel.</p><button id="saveParticipantSettings" class="secondary" type="button" style="margin-top:12px">Guardar opciones de participantes</button><p id="participantSettingsMsg" class="mini setting-help" role="status"></p></div>
@@ -159,10 +160,11 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, getDocFromServer, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs, getDocsFromServer, runTransaction } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {getAuth, signInWithEmailAndPassword, getIdTokenResult} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {isSelfPaced, questionSeconds, questionOrder, evaluateAnswer, selfPacedRanking, rankingVisibility, participantIdentity, identityError, participantLabel, canShowParticipantRanking} from './quiz-engine.mjs';
 import {createSelfPacedQuiz} from './quiz-autonomo.js';
+import {buildQuizResponseExport} from './quiz-export.mjs';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBnHTbmdSPWjYKTiLjv7HPKkqzpD4SOmJY",
@@ -366,6 +368,7 @@ window.deleteClassRoom=async encoded=>{
  finally{setRoomDeletionBusy(false);await renderRooms();}
 };
 async function enterHostRun(runId){
+ $("downloadQuizResponsesMsg").textContent='';
  hostUnsubs.forEach(u=>u());hostUnsubs=[];if(playerUnsub)playerUnsub();selfPaced.stop();clearInterval(tick);room=runId;state=null;players=[];selectedQuestions=null;$("pickerList").dataset.editing='false';$("quizSettings").dataset.editing='false';$("participantSettings").dataset.editing='false';$("participantSettingsMsg").textContent='';
  const rs=await getDoc(roomRef());if(!rs.exists())throw Error("No existe la partida seleccionada.");
  const rd=rs.data();if(rd.deleting)throw Error('Esta sala se está eliminando. Vuelve a Mis salas para reintentar.');state=rd;selectedQuestions=Array.isArray(rd.selectedQuestions)?rd.selectedQuestions:null;currentBankId=rd.bankId||"agilismo";
@@ -542,6 +545,30 @@ $("publishSelfQuiz").onclick=async()=>{try{
  }catch(e){hostFailure(e);}};
 $("closeSelfQuiz").onclick=async()=>{if(!confirm('¿Cerrar el instrumento y detener la recepción de respuestas?'))return;try{await updateDoc(roomRef(),{selfPacedStatus:'closed',updatedAt:serverTimestamp()});hostClearError();}catch(e){hostFailure(e);}};
 $("copyQuizLink").onclick=async()=>{try{await navigator.clipboard.writeText($("quizShareLink").value);$("quizShareMsg").textContent='Enlace copiado.';}catch{$("quizShareLink").focus();$("quizShareLink").select();$("quizShareMsg").textContent='El enlace está seleccionado. Cópialo con Ctrl+C o mantén pulsado para copiar.';}};
+let downloadingQuizResponses=false;
+$("downloadQuizResponses").onclick=async()=>{
+ if(downloadingQuizResponses)return;
+ const exportRoom=room,button=$("downloadQuizResponses"),message=$("downloadQuizResponsesMsg"),fallbackQuestions=Q.map(q=>[q[0],q[1],[...q[2]],q[3]]);
+ downloadingQuizResponses=true;button.disabled=true;message.textContent='Preparando todas las respuestas de esta partida…';
+ try{
+  const user=facilitatorAuth.currentUser;if(!user)throw Error('Ingresa como facilitador para descargar las respuestas.');
+  const token=await getIdTokenResult(user,true);if(token.claims.facilitator!==true)throw Error('Tu cuenta no tiene el rol de facilitador.');
+  const snapshot=await getDocFromServer(doc(db,ROOT,exportRoom));
+  if(!snapshot.exists()||snapshot.data().recordType!=='run'||snapshot.data().deleting)throw Error('Esta partida ya no está disponible.');
+  const [registrations,identities]=await Promise.all([getDocsFromServer(collection(db,ROOT,exportRoom,'players')),getDocsFromServer(collection(db,ROOT,exportRoom,'identities'))]);
+  if(room!==exportRoom||$("hostPanel").classList.contains('hidden')||facilitatorAuth.currentUser?.uid!==user.uid)return;
+  if(!registrations.docs.length){message.textContent='Esta partida todavía no tiene participantes para descargar.';return;}
+  const run=snapshot.data(),result=buildQuizResponseExport({run,runId:exportRoom,
+   questions:Array.isArray(run.questions)?questionsFromFirestore(run.questions):fallbackQuestions,
+   players:registrations.docs.map(d=>({...d.data(),id:d.id})),identities:identities.docs.map(d=>({...d.data(),id:d.id}))});
+  const url=URL.createObjectURL(new Blob([result.csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');
+  link.href=url;link.download=result.filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  message.textContent=`Descarga preparada: ${result.participantCount} participante(s) y ${result.answerCount} respuesta(s). También se incluyen las preguntas sin responder.`
+   +(result.pendingCount?' Hay puntajes pendientes de revelar.':'')
+   +(result.missingIdentityCount?` En ${result.missingIdentityCount} registro(s) histórico(s) no quedó guardada la cédula completa.`:'');
+ }catch(e){if(room===exportRoom)message.textContent=e.code==='permission-denied'?'Tu cuenta no tiene permiso para descargar las respuestas y los datos de identificación.':e.message||'No se pudieron descargar las respuestas. Revisa la conexión e intenta de nuevo.';}
+ finally{downloadingQuizResponses=false;button.disabled=false;}
+};
 function renderHost(){
  if(!state)return;renderModeSettings();$("connected").textContent=players.length;
  if(isSelfPaced(state)){
