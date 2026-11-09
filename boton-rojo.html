@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1527">
+<meta name="description" content="El botón rojo: cuatro decisiones laborales que cambian cuando aparece nueva información. Una experiencia del Laboratorio de Aprendizaje y Decisión.">
+<title>El botón rojo · Laboratorio de Aprendizaje y Decisión</title>
+<link rel="stylesheet" href="boton-rojo.css">
+</head>
+<body>
+<header class="site-head">
+  <a class="brand" href="index.html#experiencias"><span class="symbol">LAB</span><span>LABORATORIO DE<br>APRENDIZAJE Y DECISIÓN</span></a>
+  <div class="head-right"><span class="head-tag">DECISIONES LABORALES</span><button id="hostEntry" type="button" class="text-button">Facilitador</button></div>
+</header>
+<main class="shell">
+<section id="landing" class="view">
+  <div class="intro"><span class="eyebrow">EXPERIENCIA / 04 RONDAS</span><h1>El botón <em>rojo.</em></h1><p>¿Qué decides cuando todavía no conoces toda la historia? Actúa, descubre nueva evidencia y observa si cambia tu criterio.</p><div class="pill-row"><span>Decisión individual</span><span>Evidencia progresiva</span><span>Reflexión colectiva</span></div></div>
+  <div class="entry-wrap">
+    <article class="panel"><span class="eyebrow">PARTICIPA EN LA EXPERIENCIA</span><h2>Ingresa a tu sala</h2><p>Usa el código que compartió tu facilitador. No necesitas crear una cuenta.</p>
+      <form id="joinForm"><label for="joinCode">Código de sala</label><input id="joinCode" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="Ej. B7C9PL" required>
+      <label for="joinName">Tu nombre</label><input id="joinName" maxlength="55" autocomplete="name" placeholder="Nombre y apellido" required>
+      <button class="btn primary full" type="submit">Entrar a la experiencia <span>↗</span></button></form>
+    </article>
+    <aside class="side-note"><div class="red-symbol" aria-hidden="true"><span></span></div><h3>Decide antes de conocer todo.</h3><p>Cuatro situaciones. Dos momentos por ronda. No buscamos respuestas perfectas: queremos descubrir cómo razonamos.</p><p class="fine">La discusión jurídica será guiada por el facilitador.</p></aside>
+  </div>
+</section>
+<section id="hostLoginView" class="view hidden">
+  <button class="quiet" data-back="landing">← Volver</button>
+  <div class="panel narrow"><span class="eyebrow">ACCESO RESTRINGIDO</span><h1>Espacio del facilitador</h1><p>Ingresa con la cuenta autorizada del Laboratorio.</p>
+    <form id="loginForm"><label for="hostEmail">Correo electrónico</label><input id="hostEmail" type="email" autocomplete="username" required><label for="hostPassword">Contraseña</label><input id="hostPassword" type="password" autocomplete="current-password" required><button class="btn primary full" type="submit">Ingresar al panel</button></form>
+  </div>
+</section>
+<section id="hostView" class="view hidden">
+  <div class="host-heading"><div><span class="eyebrow">CENTRO DE DECISIONES</span><h1>El botón <em>rojo.</em></h1><p id="roomSubtitle">Prepara tu experiencia y dirige el ritmo de las decisiones.</p></div><button id="hostLogout" type="button" class="quiet">Salir de mi cuenta</button></div>
+  <nav class="tabs" aria-label="Espacios del facilitador"><button class="tab active" data-tab="prepare" type="button">Preparar</button><button class="tab" data-tab="live" type="button">Dirigir experiencia</button><button class="tab" data-tab="report" type="button">Resultados e informe</button></nav>
+  <section id="prepareTab" class="tab-view">
+    <div class="setup-grid">
+      <article class="panel"><span class="eyebrow">NUEVA EXPERIENCIA</span><h2>Crear sala</h2><p>Una sala nueva conserva sus decisiones y resultados separados de las demás.</p><form id="createForm"><label for="roomTitle">Nombre de la sesión</label><input id="roomTitle" maxlength="75" required value="Legislación laboral · El botón rojo"><button class="btn primary" type="submit">Crear sala ↗</button></form></article>
+      <article class="panel"><span class="eyebrow">RETOMAR UNA SALA</span><h2>Continuar sesión</h2><p>Abre una sesión en curso o consulta su informe.</p><form id="resumeForm"><label for="resumeCode">Código de sala</label><input id="resumeCode" maxlength="6" placeholder="Código de seis caracteres" required><button class="btn outline" type="submit">Abrir sala</button></form></article>
+    </div>
+    <article class="panel spaced"><div class="section-line"><div><span class="eyebrow">HISTORIAL</span><h2>Tus experiencias</h2></div><button class="quiet" id="refreshHistory" type="button">Actualizar</button></div><div id="historyList" class="history-list">Inicia sesión para consultar tu historial.</div></article>
+  </section>
+  <section id="liveTab" class="tab-view hidden">
+    <div class="panel">
+      <div class="section-line"><div><span class="eyebrow">SALA ACTIVA</span><h2 id="liveTitle">El botón rojo</h2><p id="liveStatus" class="muted">Esperando una sala</p></div><div class="room-code-box"><span>CÓDIGO</span><strong id="liveCode">—</strong><button id="copyLink" class="btn outline mini" type="button">Copiar enlace</button></div></div>
+      <div class="share-row"><div id="roomQR" class="qr" aria-label="Código QR de la sala"></div><p class="muted">Comparte este QR o el enlace de ingreso. Los estudiantes responden desde sus propios dispositivos.</p></div>
+      <div class="kpi-grid" id="liveKpis"></div>
+      <div class="control-grid" id="hostControls"></div>
+      <p id="hostWarning" class="warning hidden" role="status"></p>
+    </div>
+    <div class="panel spaced"><div class="section-line"><div><span class="eyebrow">RONDA EN CURSO</span><h2 id="roundHeading">Abre la primera ronda</h2></div><span class="phase-tag" id="phaseTag">EN ESPERA</span></div><p id="roundSituation" class="case-text">Crea una sala para comenzar.</p><div id="revealText" class="evidence hidden"></div><div id="pendingNames" class="muted"></div></div>
+    <div class="visual-grid"><article class="panel"><span class="eyebrow">ANTES DE LA EVIDENCIA</span><h2>Decisión inicial</h2><div id="initialChart" class="chart"></div></article><article class="panel"><span class="eyebrow">DESPUÉS DE LA EVIDENCIA</span><h2>Decisión final</h2><div id="finalChart" class="chart"></div></article></div>
+    <article class="panel spaced"><span class="eyebrow">CAMBIOS DE CRITERIO</span><h2>¿Qué cambió?</h2><div id="transitionAnalysis"></div></article>
+    <article class="panel spaced"><div class="section-line"><div><span class="eyebrow">SOLO FACILITADOR</span><h2>Participantes y respuestas</h2></div><span id="rosterState" class="muted" aria-live="polite">Conectando…</span></div><div class="table-scroll"><table><thead><tr><th>Participante</th><th>Inicial</th><th>Final</th><th>Cambio</th><th>Estado</th></tr></thead><tbody id="rosterRows"></tbody></table></div><div id="individualDetail" class="detail hidden"></div></article>
+  </section>
+  <section id="reportTab" class="tab-view hidden">
+    <div class="panel"><span class="eyebrow">RESULTADOS GUARDADOS POR SALA</span><div class="section-line"><div><h2>Lo que revelan nuestras decisiones</h2><p id="reportIntro" class="muted">Selecciona una sesión del historial.</p></div><button class="btn outline" id="projectResults" type="button">Revelar resultados</button></div><div id="reportBody"></div></div>
+  </section>
+</section>
+<section id="studentView" class="view hidden">
+  <div class="student-heading"><div><span class="eyebrow">EXPERIENCIA EN VIVO</span><h1>El botón <em>rojo.</em></h1><p id="studentRoomLine">Conectando con tu sala…</p></div><button id="leaveRoom" class="quiet" type="button">Volver al inicio</button></div>
+  <div class="student-progress"><span id="studentRound">RONDA 1 / 4</span><span id="studentPhase">ESPERANDO</span></div>
+  <article id="studentContent" class="panel student-card"><div class="wait-icon" aria-hidden="true">◌</div><h2>Conectando…</h2><p>Tu facilitador dirigirá el inicio.</p></article>
+  <p class="footer-note">Tus respuestas son individuales. No puedes ver las decisiones de otras personas.</p>
+</section>
+<section id="projectionView" class="view hidden">
+  <div class="section-line"><div><span class="eyebrow">REVELACIÓN COLECTIVA · SIN NOMBRES</span><h1>Lo que revelan nuestras decisiones</h1></div><button id="closeProjection" type="button" class="btn outline">Volver al panel</button></div>
+  <div id="projectionBody"></div>
+  <blockquote>¿Qué habría pasado si hubiéramos tomado una decisión laboral definitiva antes de conocer toda la información?</blockquote>
+</section>
+</main>
+<footer>© 2026 Laboratorio de Aprendizaje y Decisión · Aprender haciendo.</footer>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="firebase-config.js"></script>
+<script src="boton-rojo.js?v=20261108-1"></script>
+</body></html>
