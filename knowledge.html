@@ -43,6 +43,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <div id="joinRoomSummary" class="join-room hidden" role="status"></div>
 <div id="roomCodeField"><label for="roomCode">Código de sala</label><input id="roomCode" maxlength="80" autocomplete="off" placeholder="Escribe el código de tu sala"><p id="roomLookupMsg" class="mini" role="status"></p></div>
 <div id="identityField" class="hidden"><label id="playerIdentityLabel" for="playerName">Nombre</label><input id="playerName" maxlength="30" placeholder="Tu nombre" autocomplete="name" aria-describedby="identityHint joinMsg"><p id="identityHint" class="mini setting-help">Ingresa el nombre con el que responderás el quiz.</p></div>
+<div id="cedulaField" class="hidden"><label for="playerCedula">Cédula</label><input id="playerCedula" maxlength="30" placeholder="Ej.: 1020304050" inputmode="numeric" pattern="[0-9]+" autocomplete="off" aria-describedby="cedulaHint joinMsg"><p id="cedulaHint" class="mini setting-help">Solo números. No se aceptan puntos, espacios ni otros caracteres.</p></div>
 <div class="row" style="margin-top:14px"><button id="joinBtn">Entrar</button><button class="secondary back">Volver</button></div>
 <p id="joinMsg" style="margin-top:12px" role="alert"></p>
 </section>
@@ -57,7 +58,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <h2>Mis salas</h2><p class="muted">El nombre de la clase será el código de acceso de los participantes.</p>
 <label>Nombre de la clase / código de sala</label><input id="className" maxlength="80" placeholder="Ej.: Legislación Laboral">
 <div class="quiz-settings grid2"><div><label for="newQuizMode">Modalidad de la nueva partida</label><select id="newQuizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div id="newQuestionDurationField"><label for="newQuestionDuration">Tiempo máximo por pregunta (segundos)</label><input id="newQuestionDuration" type="number" min="5" max="600" step="1" value="60"></div><p id="newSelfPacedInfo" class="mini hidden">La modalidad autónoma no tiene límite de tiempo. La espera entre preguntas cuenta para los puntos por rapidez.</p></div>
-<div class="quiz-settings grid2"><div><label for="newRankingVisibility">Ranking para participantes</label><select id="newRankingVisibility"><option value="live">Durante el quiz y al finalizar</option><option value="final">Solo al finalizar</option><option value="hidden">No mostrar</option></select></div><div><label for="newParticipantIdentity">Dato para ingresar</label><select id="newParticipantIdentity"><option value="name">Nombre</option><option value="cedula">Cédula: solo números</option></select></div></div>
+<div class="quiz-settings grid2"><div><label for="newRankingVisibility">Ranking para participantes</label><select id="newRankingVisibility"><option value="live">Durante el quiz y al finalizar</option><option value="final">Solo al finalizar</option><option value="hidden">No mostrar</option></select></div><div><label for="newParticipantIdentity">Dato para ingresar</label><select id="newParticipantIdentity"><option value="name">Nombre</option><option value="cedula">Cédula: solo números</option><option value="both">Nombre y cédula</option></select></div></div>
 <div class="row" style="margin-top:12px"><button id="createRoom">Crear sala / nueva partida</button><button id="reopenRoom" class="secondary">Reabrir sala</button><button id="roomBack" class="secondary">Volver</button></div>
 <p id="roomManagerMsg" class="muted" role="status" aria-live="polite"></p><h3>Salas creadas</h3><div id="roomHistory"></div>
 </section>
@@ -89,9 +90,9 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 <div class="row" style="margin-bottom:14px"><button id="manageQuizRooms" class="secondary" type="button">← Mis salas / nueva partida</button></div>
 <div class="row between"><div><h2 style="margin-bottom:4px">Panel del facilitador</h2><span class="muted">Sala <b id="hostRoom">GC2026</b> · Estado: <b id="phaseLabel">En espera</b></span></div><div><span class="pill">Inscritos: <b id="connected">0</b></span> <span class="pill"><span id="answeredLabel">Respondieron</span>: <b id="answered">0</b></span></div></div>
 <div id="quizSettings" class="quiz-settings"><div class="grid2"><div><label for="quizMode">Modalidad</label><select id="quizMode"><option value="facilitated">Dirigida por el facilitador</option><option value="self_paced">Autónoma: compartir instrumento</option></select></div><div id="questionDurationField"><label for="questionDuration">Tiempo máximo por pregunta (segundos)</label><input id="questionDuration" type="number" min="5" max="600" step="1" value="60"></div></div><button id="saveQuizSettings" class="secondary" type="button" style="margin-top:12px">Guardar configuración</button><p id="quizModeInfo" class="mini" style="margin-top:12px"></p></div>
-<div id="participantSettings" class="quiz-settings access-settings"><h3>Experiencia de participantes</h3><div class="grid2"><div><label for="rankingVisibility">Mostrar ranking</label><select id="rankingVisibility"><option value="live">Durante el quiz y al finalizar</option><option value="final">Solo al finalizar</option><option value="hidden">No mostrar</option></select></div><div><label for="participantIdentity">Dato para ingresar</label><select id="participantIdentity"><option value="name">Nombre</option><option value="cedula">Cédula: solo números</option></select></div></div><p id="participantSettingsInfo" class="mini setting-help">Tú siempre podrás consultar el ranking en este panel.</p><button id="saveParticipantSettings" class="secondary" type="button" style="margin-top:12px">Guardar opciones de participantes</button><p id="participantSettingsMsg" class="mini setting-help" role="status"></p></div>
+<div id="participantSettings" class="quiz-settings access-settings"><h3>Experiencia de participantes</h3><div class="grid2"><div><label for="rankingVisibility">Mostrar ranking</label><select id="rankingVisibility"><option value="live">Durante el quiz y al finalizar</option><option value="final">Solo al finalizar</option><option value="hidden">No mostrar</option></select></div><div><label for="participantIdentity">Dato para ingresar</label><select id="participantIdentity"><option value="name">Nombre</option><option value="cedula">Cédula: solo números</option><option value="both">Nombre y cédula</option></select></div></div><p id="participantSettingsInfo" class="mini setting-help">Tú siempre podrás consultar el ranking en este panel.</p><button id="saveParticipantSettings" class="secondary" type="button" style="margin-top:12px">Guardar opciones de participantes</button><p id="participantSettingsMsg" class="mini setting-help" role="status"></p></div>
 <div id="selfHostControls" class="quiz-settings hidden"><h3>Instrumento autónomo</h3><p id="selfHostStatus" class="muted"></p><div class="row"><button id="publishSelfQuiz" type="button">Habilitar instrumento</button><button id="closeSelfQuiz" class="secondary" type="button">Cerrar instrumento</button></div></div>
-<div id="quizShareControls" class="quiz-settings"><h3>Comparte el acceso a esta sala</h3><p class="mini">El enlace ya incluye la sala. La persona solo deberá ingresar su nombre o cédula, según tu configuración.</p><div class="share-row"><input id="quizShareLink" type="text" readonly aria-label="Enlace de la sala"><button id="copyQuizLink" class="secondary" type="button">Copiar enlace</button></div><p id="quizShareMsg" class="mini" role="status"></p></div>
+<div id="quizShareControls" class="quiz-settings"><h3>Comparte el acceso a esta sala</h3><div class="quiz-share-layout"><div id="quizShareQR" class="quiz-share-qr" role="img" aria-label="Código QR para ingresar a esta sala"></div><div class="quiz-share-details"><p id="quizShareInfo" class="mini">El QR y el enlace ya incluyen la sala. La persona solo deberá ingresar los datos que hayas elegido.</p><div class="share-row"><input id="quizShareLink" type="text" readonly aria-label="Enlace de la sala"><button id="copyQuizLink" class="secondary" type="button">Copiar enlace</button></div><a id="openQuizLink" class="quiz-open-link" target="_blank" rel="noopener">Abrir sala ↗</a><p id="quizShareMsg" class="mini" role="status"></p></div></div></div>
 <div id="facilitatedControls" class="row" style="margin-top:16px"><button id="openQ">Abrir pregunta</button><button id="closeQ" class="secondary">Cerrar respuestas</button><button id="revealQ" class="secondary">Mostrar resultados</button><button id="nextQ">Siguiente pregunta</button></div>
 <div id="hostError" role="alert" style="display:none;margin-top:12px;padding:12px;border-radius:10px;background:#fff1f1;color:#9a1b1b"></div><div class="row" style="margin-top:10px"><button id="resetGame" class="danger">Reiniciar partida</button><button id="clearPlayers" class="secondary">Eliminar participantes</button><button id="toggleEditor" class="secondary" type="button">Banco de preguntas ↓</button></div>
 <details id="questionPicker" class="card" style="margin-top:18px">
@@ -155,6 +156,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 </section>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -211,12 +213,14 @@ async function cedulaKey(value){const bytes=new TextEncoder().encode(room+':'+va
 const saveSession=()=>{localStorage.setItem(SESSION_KEY,JSON.stringify({room,playerId,playerName}));$("resumeQuiz").classList.remove('hidden');};
 const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{return null}};
 function configureIdentity(run){
- joinRun=run;const cedula=participantIdentity(run)==='cedula',input=$("playerName");
+ joinRun=run;const type=participantIdentity(run),cedula=type==='cedula',both=type==='both',input=$("playerName");
  $("identityField").classList.remove('hidden');$("playerIdentityLabel").textContent=cedula?'Cédula':'Nombre';
  input.placeholder=cedula?'Ej.: 1020304050':'Tu nombre';input.inputMode=cedula?'numeric':'text';input.autocomplete=cedula?'off':'name';input.pattern=cedula?'[0-9]+':'.*\\S.*';
- $("identityHint").textContent=cedula?'Solo números. No se aceptan puntos, espacios ni otros caracteres.':'Ingresa el nombre con el que responderás el quiz.';
- input.setAttribute('aria-invalid','false');$("joinMsg").textContent='';$("joinBtn").disabled=false;
+ $("identityHint").textContent=cedula?'Solo números. No se aceptan puntos, espacios ni otros caracteres.':both?'Este nombre aparecerá en el ranking.':'Ingresa el nombre con el que responderás el quiz.';
+ $("cedulaField").classList.toggle('hidden',!both);$("playerCedula").disabled=!both;$("playerCedula").required=both;input.required=true;
+ input.setAttribute('aria-invalid','false');$("playerCedula").setAttribute('aria-invalid','false');$("joinMsg").textContent='';$("joinBtn").disabled=!!joinIdentityError();
 }
+const joinIdentityError=()=>identityError($("playerName").value,participantIdentity(joinRun),$("playerCedula").value);
 async function loadJoinRoom(){
  const request=++joinLookup;$("joinBtn").disabled=true;$("joinMsg").textContent='';
  $("roomLookupMsg").textContent='Buscando sala…';
@@ -230,14 +234,16 @@ async function loadJoinRoom(){
   configureIdentity(snap.data());$("roomLookupMsg").textContent='Sala encontrada.';
   $("joinRoomSummary").textContent='Sala · '+(joinRun.className||'Quiz');$("joinRoomSummary").classList.remove('hidden');
   if(inviteRunId){$("roomCode").value=joinRun.className||'Quiz';$("roomCodeField").classList.add('hidden');$("homeMsg").textContent='Tu sala está lista: '+(joinRun.className||'Quiz')+'.';}
- }catch(e){if(request!==joinLookup)return;joinRun=null;$("identityField").classList.add('hidden');$("joinRoomSummary").classList.add('hidden');$("roomLookupMsg").textContent='';$("joinMsg").textContent=e.message;$("joinBtn").disabled=true;}
+ }catch(e){if(request!==joinLookup)return;joinRun=null;$("identityField").classList.add('hidden');$("cedulaField").classList.add('hidden');$("joinRoomSummary").classList.add('hidden');$("roomLookupMsg").textContent='';$("joinMsg").textContent=e.message;$("joinBtn").disabled=true;}
 }
-$("roomCode").oninput=()=>{joinLookup++;joinRun=null;$("identityField").classList.add('hidden');$("joinRoomSummary").classList.add('hidden');$("joinMsg").textContent='';$("roomLookupMsg").textContent='';$("joinBtn").disabled=true;};
+$("roomCode").oninput=()=>{joinLookup++;joinRun=null;$("identityField").classList.add('hidden');$("cedulaField").classList.add('hidden');$("joinRoomSummary").classList.add('hidden');$("joinMsg").textContent='';$("roomLookupMsg").textContent='';$("joinBtn").disabled=true;};
 $("roomCode").onchange=loadJoinRoom;
 $("roomCode").onblur=()=>{if(!joinRun&&$("roomCode").value)return loadJoinRoom();};
 $("roomCode").onkeydown=async e=>{if(e.key==='Enter'){e.preventDefault();await loadJoinRoom();if(joinRun)$("playerName").focus();}};
-$("playerName").oninput=()=>{const error=identityError($("playerName").value,participantIdentity(joinRun));$("playerName").setAttribute('aria-invalid',error?'true':'false');$("joinMsg").textContent=error;$("joinBtn").disabled=!!error||!joinRun;};
-$("playerName").onkeydown=e=>{if(e.key==='Enter'&&!$("joinBtn").disabled){e.preventDefault();$("joinBtn").click();}};
+['playerName','playerCedula'].forEach(id=>{
+ $(id).oninput=()=>{const type=id==='playerCedula'?'cedula':participantIdentity(joinRun)==='cedula'?'cedula':'name',error=identityError($(id).value,type);$(id).setAttribute('aria-invalid',error?'true':'false');$("joinMsg").textContent=error;$("joinBtn").disabled=joinBusy||!joinRun||!!joinIdentityError();};
+ $(id).onkeydown=e=>{if(e.key!=='Enter')return;e.preventDefault();if(id==='playerName'&&participantIdentity(joinRun)==='both')$("playerCedula").focus();else if(!$("joinBtn").disabled)$("joinBtn").click();};
+});
 $("resumeQuiz").onclick=async()=>{
  detachPlayer();const epoch=navigationEpoch;
  try{const saved=loadSession(),restored=saved&&await restoreSession(saved);if(epoch!==navigationEpoch)return;if(!restored){$("homeMsg").textContent='La sesión anterior ya no está disponible. Puedes ingresar de nuevo o entrar como facilitador.';show('home');}}
@@ -255,7 +261,7 @@ async function restoreSession(s){
  const ps=await getDoc(pRef(playerId));if(!ps.exists())return false;if(epoch!==navigationEpoch)return true;playerName=ps.data().name||playerName;saveSession();
  $("welcome").textContent="¡Bienvenido de nuevo, "+participantLabel(ps.data())+"!";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return true;
 }
-async function recoverOrJoin(name,code){
+async function recoverOrJoin(name,code,cedula=''){
  const epoch=navigationEpoch;
  const codeName=normalizeRoom(code);let runSnapshot;
  if(!inviteRunId&&!codeName)return $("joinMsg").textContent="Escribe el código de tu sala.";
@@ -275,23 +281,24 @@ async function recoverOrJoin(name,code){
  if(!runSnapshot.exists()||runSnapshot.data().recordType!=='run')throw Error('Esta sala ya no está disponible.');
  const live=runSnapshot.data(),identityType=participantIdentity(live);configureIdentity(live);
  if(live.deleting)throw Error('Esta sala se está eliminando y ya no recibe participantes.');
- const error=identityError(name,identityType);if(error){$("playerName").setAttribute('aria-invalid','true');$("joinBtn").disabled=true;return $("joinMsg").textContent=error;}
+ const error=identityError(name,identityType,cedula);if(error){$(identityType==='both'&&!identityError(name)?'playerCedula':'playerName').setAttribute('aria-invalid','true');$("joinBtn").disabled=true;return $("joinMsg").textContent=error;}
  playerName=identityType==='cedula'?participantLabel({name:String(name),identityType}):String(name).trim();
- // Store a room-specific digest for recovery; never persist the full document number.
- const target=identityType==='cedula'?await cedulaKey(String(name)):normalizeName(playerName),snap=await getDocs(playersRef());
- const existing=snap.docs.find(d=>(d.data().identityType||'name')===identityType&&(identityType==='cedula'?d.data().normalizedName===target:normalizeName(d.data().name)===target));
+ // Recovery uses a room-specific digest. Full identity is stored separately from public ranking data.
+ const usesCedula=identityType==='cedula'||identityType==='both',documentNumber=String(identityType==='cedula'?name:cedula),target=usesCedula?await cedulaKey(documentNumber):normalizeName(playerName),snap=await getDocs(playersRef());
+ const existing=snap.docs.find(d=>(d.data().identityType||'name')===identityType&&(usesCedula?d.data().normalizedName===target:normalizeName(d.data().name)===target));
  if(epoch!==navigationEpoch)return;
- if(existing){playerId=existing.id;playerName=existing.data().name||playerName;saveSession();$("welcome").textContent="Sesión recuperada: "+participantLabel(existing.data())+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return;}
- const ref=doc(playersRef()),runDocument=roomRef();playerId=ref.id;
- await runTransaction(db,async transaction=>{const current=await transaction.get(runDocument);if(!current.exists()||current.data().deleting)throw Error('Esta sala ya no está disponible.');transaction.set(ref,{name:playerName,identityType,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});});
+ if(existing){playerId=existing.id;playerName=existing.data().name||playerName;if(usesCedula)await setDoc(identityRef(playerId),{name:identityType==='both'?playerName:'',cedula:documentNumber,identityType},{merge:true});if(epoch!==navigationEpoch)return;saveSession();$("welcome").textContent="Sesión recuperada: "+participantLabel(existing.data())+" · "+(existing.data().score||0)+" pts";show("waiting");await touchPresence(true);if(epoch===navigationEpoch)listenPlayer();return;}
+ const ref=doc(playersRef()),runDocument=roomRef(),privateRef=identityRef(ref.id),identityData={name:identityType==='both'?playerName:'',cedula:documentNumber,identityType};playerId=ref.id;
+ await runTransaction(db,async transaction=>{const current=await transaction.get(runDocument);if(!current.exists()||current.data().deleting)throw Error('Esta sala ya no está disponible.');transaction.set(ref,{name:playerName,identityType,normalizedName:target,score:0,correctTime:0,rank:null,answers:{},online:true,lastSeen:serverTimestamp(),joinedAt:serverTimestamp()});if(usesCedula)transaction.set(privateRef,identityData);});
  if(epoch!==navigationEpoch)return;saveSession();$("welcome").textContent="¡Listo, "+participantLabel({name:playerName,identityType})+"!";show("waiting");listenPlayer();
 }
 
 const roomRef=()=>doc(db,ROOT,room); const playersRef=()=>collection(db,ROOT,room,"players"); const pRef=id=>doc(db,ROOT,room,"players",id); const scoreboardRef=()=>doc(db,ROOT,room,"public","scoreboard");
+const identitiesRef=()=>collection(db,ROOT,room,'identities'),identityRef=id=>doc(db,ROOT,room,'identities',id);
 const selfPaced=createSelfPacedQuiz({db,roomRef,playerRef:()=>pRef(playerId),playersRef,getQuestions:()=>Q,getPlayerId:()=>playerId,getPlayerName:()=>playerName,$,show,escapeHtml});
 function safeId(s){return (s.toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi,"-").replace(/^-|-$/g,"").slice(0,40)||"jugador")+"-"+Math.random().toString(36).slice(2,7)}
 async function ensureRoom(){const r=await getDoc(roomRef());if(!r.exists())await setDoc(roomRef(),{questionIndex:0,status:"lobby",openedAt:0,duration:60,bankId:currentBankId,updatedAt:serverTimestamp()})}
-$("joinBtn").onclick=async()=>{if(joinBusy)return;joinBusy=true;$("joinBtn").disabled=true;try{await recoverOrJoin($("playerName").value,$("roomCode").value)}catch(e){console.error(e);$("joinMsg").textContent=e.message||"No fue posible entrar o recuperar la sesión.";}finally{joinBusy=false;$("joinBtn").disabled=!joinRun||!!identityError($("playerName").value,participantIdentity(joinRun));}};
+$("joinBtn").onclick=async()=>{if(joinBusy)return;joinBusy=true;$("joinBtn").disabled=true;try{await recoverOrJoin($("playerName").value,$("roomCode").value,$("playerCedula").value)}catch(e){console.error(e);$("joinMsg").textContent=e.message||"No fue posible entrar o recuperar la sesión.";}finally{joinBusy=false;$("joinBtn").disabled=!joinRun||!!joinIdentityError();}};
 $("hostBtn").onclick=async()=>{
  try {
    const email=$("hostEmail").value.trim();
@@ -345,7 +352,8 @@ window.deleteClassRoom=async encoded=>{
    let publicDocs=[];
    try{publicDocs=(await getDocs(collection(db,ROOT,id,'public'))).docs;}
    catch(error){if(error.code==='permission-denied')restrictedBoards++;else throw error;}
-   const docs=[...participants.docs,...publicDocs];
+   const identities=await getDocs(collection(db,ROOT,id,'identities'));
+   const docs=[...participants.docs,...identities.docs,...publicDocs];
    await commitInChunks([...docs.map(d=>batch=>batch.delete(d.ref)),batch=>batch.delete(doc(db,ROOT,id))]);
   }
   const latest=await getDoc(alias);if(latest.exists()&&latest.data().activeRun)throw Error('Se creó una nueva partida mientras se eliminaba la sala. Reintenta para incluirla.');
@@ -472,16 +480,27 @@ function assertInstrumentEditable(){if(instrumentLocked())throw Error('El instru
 function renderParticipantSettings(){
  if($("participantSettings").dataset.editing!=='true'){$("rankingVisibility").value=rankingVisibility(state);$("participantIdentity").value=participantIdentity(state);}
  $("participantIdentity").disabled=players.length>0;
- $("participantSettingsInfo").textContent='Tú siempre podrás consultar el ranking en este panel. '+(players.length?'El tipo de identificación queda fijo desde la primera inscripción.':'Puedes elegir nombre o cédula antes de recibir inscripciones.');
+ $("participantSettingsInfo").textContent='Tú siempre podrás consultar el ranking en este panel. '+(players.length?'El tipo de identificación queda fijo desde la primera inscripción.':'Puedes elegir nombre, cédula o ambos antes de recibir inscripciones. Si eliges ambos, el ranking mostrará el nombre.');
  const link=new URL(location.href);link.search='';link.hash='';link.searchParams.set('partida',room);$("quizShareLink").value=link.href;
- $("copyQuizLink").disabled=isSelfPaced(state)&&(!state.selfPacedStatus||state.selfPacedStatus==='draft');
+ const ready=!(isSelfPaced(state)&&(!state.selfPacedStatus||state.selfPacedStatus==='draft'));
+ $("copyQuizLink").disabled=!ready;$("openQuizLink").href=ready?link.href:'';$("openQuizLink").classList.toggle('hidden',!ready);
+ $("quizShareInfo").textContent=ready?'Escanea el QR o comparte el enlace directo. Ambos abren esta partida y piden los datos que elegiste.':'Habilita el instrumento para compartir su QR y enlace directo.';
+ renderQuizQR(link.href,ready);
+}
+function renderQuizQR(url,ready){
+ const el=$("quizShareQR");
+ if(!ready){el.dataset.url='';el.textContent='El QR estará disponible al habilitar el instrumento.';return;}
+ if(el.dataset.url===url)return;
+ el.dataset.url='';el.textContent='';
+ try{if(typeof QRCode==='undefined')throw Error('QR no disponible');new QRCode(el,{text:url,width:180,height:180,colorDark:'#12315c',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});el.dataset.url=url;}
+ catch{el.textContent='No se pudo generar el QR. Puedes compartir el enlace directo.';}
 }
 $("participantSettings").addEventListener('input',()=>{$("participantSettings").dataset.editing='true';$("participantSettingsMsg").textContent='Tienes opciones sin guardar.';});
 $("saveParticipantSettings").onclick=async()=>{
  try{
   const visibility=rankingVisibility({rankingVisibility:$("rankingVisibility").value}),identity=participantIdentity({participantIdentity:$("participantIdentity").value});
   const live=await getDoc(roomRef());if(!live.exists())throw Error('La sala ya no está disponible.');
-  if(identity!==participantIdentity(live.data())){const registrations=await getDocs(playersRef());if(registrations.docs.length)throw Error('Ya hay personas inscritas. Crea una nueva partida para cambiar entre nombre y cédula.');}
+  if(identity!==participantIdentity(live.data())){const registrations=await getDocs(playersRef());if(registrations.docs.length)throw Error('Ya hay personas inscritas. Crea una nueva partida para cambiar los datos de ingreso.');}
   await updateDoc(roomRef(),{rankingVisibility:visibility,participantIdentity:identity,updatedAt:serverTimestamp()});
   state={...state,rankingVisibility:visibility,participantIdentity:identity};$("participantSettings").dataset.editing='false';renderParticipantSettings();
   $("participantSettingsMsg").textContent='Opciones guardadas. Se aplican a quienes ingresen y a quienes ya estén respondiendo.';hostClearError();
@@ -646,7 +665,7 @@ $("nextQ").onclick=async()=>{
  catch(e){hostFailure(e);}
 };
 $("resetGame").onclick=async()=>{if(!confirm("¿Reiniciar toda la partida y puntajes? En modalidad autónoma el instrumento volverá a preparación."))return;try{const snap=await getDocs(playersRef());await commitInChunks(snap.docs.map(d=>b=>b.update(d.ref,{score:0,correctTime:0,correctCount:0,answeredCount:0,rank:null,answers:{},selfPaced:null})));await updateDoc(roomRef(),{questionIndex:0,status:'lobby',openedAt:0,selfPacedStatus:'draft',quizVersion:crypto.randomUUID(),updatedAt:serverTimestamp()});hostClearError();}catch(e){hostFailure(e);}};
-$("clearPlayers").onclick=async()=>{if(!confirm("¿Eliminar todos los participantes?"))return;let batch=writeBatch(db);(await getDocs(playersRef())).forEach(d=>batch.delete(d.ref));await batch.commit()};
+$("clearPlayers").onclick=async()=>{if(!confirm("¿Eliminar todos los participantes?"))return;try{const participants=await getDocs(playersRef()),identities=await getDocs(identitiesRef());await commitInChunks([...participants.docs,...identities.docs].map(d=>batch=>batch.delete(d.ref)));hostClearError();}catch(e){hostFailure(e);}};
 
 const bankRef=id=>doc(db,BANKS,id);
 const questionsToFirestore=qs=>qs.map(q=>({

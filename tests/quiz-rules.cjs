@@ -1,0 +1,43 @@
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const {initializeTestEnvironment,assertSucceeds,assertFails}=require('@firebase/rules-unit-testing');
+const {doc,collection,getDoc,getDocs,setDoc,updateDoc,deleteDoc,writeBatch}=require('firebase/firestore');
+const projectId='demo-quiz-identities',room='partida-identities';
+let env;
+async function run(){
+ env=await initializeTestEnvironment({projectId,firestore:{rules:fs.readFileSync('firestore.rules','utf8'),host:'127.0.0.1',port:8080}});
+ const guest=env.unauthenticatedContext(),student=env.authenticatedContext('student'),host=env.authenticatedContext('host',{facilitator:true});
+ const path=(ctx,kind,id='ana',runId=room)=>doc(ctx.firestore(),'gc_quiz_live',runId,kind,id);
+ const roomRef=(ctx,runId=room)=>doc(ctx.firestore(),'gc_quiz_live',runId);
+ const identity={name:'Ana María',cedula:'000123456',identityType:'both'};
+ await env.withSecurityRulesDisabled(async ctx=>{await setDoc(roomRef(ctx),{recordType:'run',participantIdentity:'both'});});
+ const batch=writeBatch(guest.firestore());batch.set(path(guest,'players'),{name:'Ana María',identityType:'both'});batch.set(path(guest,'identities'),identity);
+ await assertSucceeds(batch.commit());
+ assert.deepEqual((await assertSucceeds(getDoc(path(host,'identities')))).data(),identity);
+ assert.equal((await getDoc(path(guest,'players'))).data().cedula,undefined);
+ for(const ctx of [guest,student]){await assertFails(getDoc(path(ctx,'identities')));await assertFails(getDocs(collection(ctx.firestore(),'gc_quiz_live',room,'identities')));}
+ assert.equal((await assertSucceeds(getDocs(collection(host.firestore(),'gc_quiz_live',room,'identities')))).size,1);
+ console.log('PASS: complete name and cedula saved atomically; only facilitators can read or list identities');
+ await assertSucceeds(setDoc(path(guest,'identities'),identity,{merge:true}));
+ for(const patch of [{name:'Otro nombre'},{cedula:'999'},{identityType:'cedula'},{cedula:123456},{cedula:'123.456'},{name:'X'.repeat(31)},{cedula:'1'.repeat(31)},{extra:true}])await assertFails(updateDoc(path(guest,'identities'),patch));
+ await assertFails(setDoc(path(guest,'identities'),{cedula:identity.cedula,identityType:'both'}));
+ await assertFails(deleteDoc(path(guest,'identities')));
+ console.log('PASS: re-entry is idempotent; overwrites, invalid types, oversized fields and extra fields rejected');
+ await assertFails(setDoc(path(guest,'identities','missing-player'),identity));
+ await assertFails(setDoc(path(guest,'identities','missing-player','partida-missing'),identity));
+ const invalid=writeBatch(guest.firestore());invalid.set(path(guest,'players','invalid'),{name:'Ana María',identityType:'both'});invalid.set(path(guest,'identities','invalid'),{...identity,cedula:'123 456'});
+ await assertFails(invalid.commit());assert.equal((await getDoc(path(guest,'players','invalid'))).exists(),false);
+ const mismatched=writeBatch(guest.firestore());mismatched.set(path(guest,'players','mismatch'),{name:'Otra persona',identityType:'both'});mismatched.set(path(guest,'identities','mismatch'),identity);
+ await assertFails(mismatched.commit());
+ await env.withSecurityRulesDisabled(ctx=>updateDoc(roomRef(ctx),{deleting:true}));
+ await assertFails(setDoc(path(guest,'identities'),identity,{merge:true}));
+ await assertSucceeds(deleteDoc(path(host,'identities')));
+ console.log('PASS: orphaned, mismatched and closing-room writes rejected; facilitator deletion allowed');
+ const cedulaRoom='partida-cedula';
+ await env.withSecurityRulesDisabled(async ctx=>{await setDoc(roomRef(ctx,cedulaRoom),{recordType:'run',participantIdentity:'cedula'});await setDoc(path(ctx,'players','person',cedulaRoom),{name:'Cédula ••••3456',identityType:'cedula'});});
+ await assertSucceeds(setDoc(path(guest,'identities','person',cedulaRoom),{name:'',cedula:'000123456',identityType:'cedula'}));
+ await assertFails(setDoc(path(guest,'identities','person',cedulaRoom),identity));
+ console.log('PASS: cedula-only entry stores the full number and no uncollected name');
+}
+run().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(env)await env.cleanup();});

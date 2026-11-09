@@ -7,8 +7,8 @@ import * as engine from '../quiz-engine.mjs';
 
 const html=fs.readFileSync(new URL('../knowledge.html',import.meta.url),'utf8');
 const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import .*;\n/gm,'');
-function page(search='', saved=null){
- const elements=new Map(),store=new Map(),observers=[],startup=[],savedValues=new Map(),errors=[],batchSizes=[];let autoId=0;
+function page(search='', saved=null, url='https://example.test/knowledge.html'){
+ const elements=new Map(),store=new Map(),observers=[],startup=[],savedValues=new Map(),errors=[],batchSizes=[],qrCodes=[],clipboard=[];let autoId=0;
  if(saved)savedValues.set('gc_quiz_session_v7',JSON.stringify(saved));
  function element(id){
   const tag=html.match(new RegExp('<[^>]+\\bid="'+id+'"[^>]*>'))?.[0]||'';
@@ -23,7 +23,8 @@ function page(search='', saved=null){
  const ref=(...parts)=>{const path=parts.slice(parts[0]?.kind==='db'?1:0).map(p=>p?.path||p).join('/');return {path,id:path.split('/').at(-1)};};
  const getDoc=async r=>({exists:()=>store.has(r.path),data:()=>structuredClone(store.get(r.path))});
  const put=async(r,data,options)=>{store.set(r.path,options?.merge?{...store.get(r.path),...structuredClone(data)}:structuredClone(data));};
- const context={...engine,console:{...console,error:error=>errors.push(error)},URL,URLSearchParams,TextEncoder,crypto:{randomUUID:()=>`version-${++autoId}`,subtle:webcrypto.subtle},location:{href:'https://example.test/knowledge.html'+search,search},navigator:{onLine:true,clipboard:{writeText:async()=>{}}},
+ const context={...engine,console:{...console,error:error=>errors.push(error)},URL,URLSearchParams,TextEncoder,crypto:{randomUUID:()=>`version-${++autoId}`,subtle:webcrypto.subtle},location:{href:url+search,search},navigator:{onLine:true,clipboard:{writeText:async text=>{clipboard.push(text);}}},
+  QRCode:Object.assign(function(el,options){qrCodes.push({id:el.id,...options});el.textContent='QR';},{CorrectLevel:{M:0}}),
   document:{getElementById:$,querySelectorAll:selector=>selector==='.back'?backButtons:[],createElement:()=>element('generated'),activeElement:null},window:{addEventListener(){}},
   localStorage:{getItem:key=>savedValues.get(key)||null,setItem:(key,value)=>savedValues.set(key,value),removeItem:key=>savedValues.delete(key)},
   setTimeout:fn=>{startup.push(fn);},setInterval:()=>0,clearInterval(){},confirm:()=>true,alert(){},prompt:()=>null,
@@ -37,7 +38,7 @@ function page(search='', saved=null){
   createSelfPacedQuiz:()=>({updateRun(){},stop(){}})
  };
  vm.createContext(context);vm.runInContext(script,context);
- return {$,store,context,run:code=>vm.runInContext(code,context),observers,backButtons,errors,batchSizes,
+ return {$,store,context,run:code=>vm.runInContext(code,context),observers,backButtons,errors,batchSizes,qrCodes,clipboard,
   emit:async(path,data)=>{store.set(path,data);for(const o of [...observers])if(o.active&&o.r.path===path)await o.cb({exists:()=>true,data:()=>structuredClone(data)});},
   boot:async()=>{for(const fn of startup)await fn();},isShown:id=>!$(id).classList.contains('hidden')};
 }
@@ -133,6 +134,7 @@ test('shared links hide the room field and load the correct identity for both mo
   assert.equal(p.$('playerIdentityLabel').textContent,'Cédula');assert.equal(p.$('playerName').inputMode,'numeric');assert.equal(p.$('joinRoomSummary').textContent,'Sala · SALA UNO');
   await p.run("recoverOrJoin('0010203040','')");const player=[...p.store.entries()].find(([path])=>path.includes('/players/'))?.[1];
   assert.equal(player.name,'Cédula ••••3040');assert.equal(player.identityType,'cedula');assert.equal(player.normalizedName.length,64);
+  const identity=[...p.store.entries()].find(([path])=>path.includes('/identities/'))[1];assert.equal(identity.cedula,'0010203040');assert.equal(identity.name,'');
   assert.equal(JSON.stringify(player).includes('0010203040'),false);assert.equal(JSON.stringify(p.run('loadSession()')).includes('0010203040'),false);
  }
 });
@@ -155,6 +157,73 @@ test('ordinary names keep spaces and recover the same participant',async()=>{
  const p=page('?partida=partida-fixed');p.store.set('gc_quiz_live/partida-fixed',{recordType:'run'});
  await p.run('recoverOrJoin(" Ana María ","")');const id=p.run('playerId');await p.run('recoverOrJoin("ana maria","")');
  assert.equal(p.run('playerId'),id);assert.equal(p.run('playerName'),'Ana María');
+});
+test('combined identity persists in either mode and requires two fields on manual and shared entry',async()=>{
+ for(const mode of ['facilitated','self_paced']){
+  const host=page();host.$('className').value='Reto';host.$('newQuizMode').value=mode;host.$('newQuestionDuration').value='60';host.$('newParticipantIdentity').value='both';
+  await host.$('createRoom').onclick();assert.equal([...host.store.values()].find(r=>r.recordType==='run').participantIdentity,'both');
+  for(const shared of [false,true]){
+   const p=page(shared?'?partida=partida-both':'');p.store.set('gc_quiz_live/CLASE',{activeRun:'partida-both'});p.store.set('gc_quiz_live/partida-both',{recordType:'run',className:'CLASE',mode,participantIdentity:'both'});
+   p.$('roomCode').value='CLASE';await p.run('loadJoinRoom()');
+   assert.equal(p.isShown('cedulaField'),true);assert.equal(p.$('playerIdentityLabel').textContent,'Nombre');assert.equal(p.$('playerName').inputMode,'text');
+   p.$('playerName').value='Ana María';p.$('playerName').oninput();assert.equal(p.$('joinBtn').disabled,true);
+   p.$('playerCedula').value='0010203040';p.$('playerCedula').oninput();assert.equal(p.$('joinBtn').disabled,false);
+   await p.$('joinBtn').onclick();const player=[...p.store.entries()].find(([path])=>path.includes('/players/'))[1];
+   assert.equal(player.name,'Ana María');assert.equal(player.identityType,'both');assert.equal(player.normalizedName.length,64);assert.equal(engine.participantLabel(player),'Ana María');
+   const identity=[...p.store.entries()].find(([path])=>path.includes('/identities/'))[1];assert.equal(identity.cedula,'0010203040');assert.equal(identity.name,'Ana María');
+   assert.equal(JSON.stringify(player).includes('0010203040'),false);assert.equal(JSON.stringify(p.run('loadSession()')).includes('0010203040'),false);
+   assert.match(p.$('welcome').textContent,/Ana María/);
+  }
+ }
+});
+test('combined identity rejects missing names and invalid cedulas before saving',async()=>{
+ const p=page('?partida=partida-both');p.store.set('gc_quiz_live/partida-both',{recordType:'run',participantIdentity:'both'});
+ await p.run('recoverOrJoin("  ","","123456")');assert.match(p.$('joinMsg').textContent,/Escribe tu nombre/);
+ for(const cedula of ['','123 456','123.456',' 123','123 ','123-4','1e6','abc','123\n456']){
+  await p.run('recoverOrJoin("Ana","",'+JSON.stringify(cedula)+')');assert.match(p.$('joinMsg').textContent,/sin puntos ni espacios/);assert.equal(p.$('playerCedula').getAttribute('aria-invalid'),'true');
+ }
+ assert.equal([...p.store.keys()].filter(path=>path.includes('/players/')).length,0);
+});
+test('combined identity recovers by cedula without merging people who share a name',async()=>{
+ const p=page('?partida=partida-both');p.store.set('gc_quiz_live/partida-both',{recordType:'run',participantIdentity:'both'});
+ await p.run('recoverOrJoin("Ana María","","00123")');const first=p.run('playerId'),path='gc_quiz_live/partida-both/players/'+first;
+ p.store.get(path).score=17;await p.run('recoverOrJoin("Otro nombre","","00123")');assert.equal(p.run('playerId'),first);assert.equal(p.run('playerName'),'Ana María');assert.equal(p.store.get(path).score,17);
+ await p.run('recoverOrJoin("Ana María","","00456")');assert.notEqual(p.run('playerId'),first);assert.equal([...p.store.keys()].filter(path=>path.includes('/players/')).length,2);
+});
+test('re-entry completes older cedula registrations without losing scores',async()=>{
+ const p=page('?partida=partida-old'),path='gc_quiz_live/partida-old';p.store.set(path,{recordType:'run',participantIdentity:'cedula'});
+ await p.run('recoverOrJoin("000123","")');const id=p.run('playerId');p.store.delete(path+'/identities/'+id);p.store.get(path+'/players/'+id).score=21;
+ await p.run('recoverOrJoin("000123","")');assert.equal(p.run('playerId'),id);assert.equal(p.store.get(path+'/identities/'+id).cedula,'000123');assert.equal(p.store.get(path+'/players/'+id).score,21);
+});
+test('directed results publish the name for combined identity in both scoreboard copies',async()=>{
+ const p=page('?partida=partida-both'),path='gc_quiz_live/partida-both';p.store.set(path,{recordType:'run',participantIdentity:'both'});
+ await p.run('recoverOrJoin("Ana María","","0010203040")');const player=p.run('playerId');
+ p.store.get(path+'/players/'+player).answers={0:{option:0,elapsed:1}};
+ p.run("state={mode:'facilitated',status:'closed',questionIndex:0,selectedQuestions:[0]};selectedQuestions=[0]");await p.$('revealQ').onclick();
+ assert.equal(p.store.get(path).lastResults.top[0].name,'Ana María');assert.equal(p.store.get(path+'/public/scoreboard').top[0].name,'Ana María');
+ assert.equal(JSON.stringify(p.store.get(path).lastResults).includes('0010203040'),false);
+});
+test('an empty room can switch to combined identity and reopening retains that choice',async()=>{
+ const p=page(),path='gc_quiz_live/partida-both';p.store.set(path,{recordType:'run',className:'CLASE',participantIdentity:'name'});p.store.set('gc_quiz_live/CLASE',{activeRun:'partida-both'});p.run("room='partida-both';state={participantIdentity:'name'}");
+ p.$('participantIdentity').value='both';await p.$('saveParticipantSettings').onclick();assert.equal(p.store.get(path).participantIdentity,'both');
+ await p.run("window.openClassRoom('CLASE')");assert.equal(p.$('participantIdentity').value,'both');
+});
+test('QR, open-room link and clipboard bind the same run on either publication path',async()=>{
+ for(const base of ['https://laboratorio.hacerlofc.com/knowledge.html','https://www.hacerlofc.com/laboratorio/knowledge.html']){
+  const p=page('?old=1#section',null,base);p.run("room='partida-first';state={mode:'facilitated'};renderParticipantSettings()");
+  const link=base+'?partida=partida-first';assert.equal(p.$('quizShareLink').value,link);assert.equal(p.$('openQuizLink').href,link);
+  assert.equal(p.qrCodes[0].text,link);assert.equal(p.qrCodes[0].width,180);assert.equal(p.qrCodes[0].height,180);
+  await p.$('copyQuizLink').onclick();assert.deepEqual(p.clipboard,[link]);
+  p.run('renderParticipantSettings()');assert.equal(p.qrCodes.length,1);
+  p.run("room='partida-second';renderParticipantSettings()");assert.equal(p.qrCodes.at(-1).text,base+'?partida=partida-second');assert.equal(p.$('openQuizLink').href,p.$('quizShareLink').value);
+ }
+});
+test('autonomous draft does not expose a QR until enabled and QR failures retain the direct link',()=>{
+ const p=page();p.run("room='partida-quiz';state={mode:'self_paced',selfPacedStatus:'draft'};renderParticipantSettings()");
+ assert.equal(p.qrCodes.length,0);assert.equal(p.$('copyQuizLink').disabled,true);assert.equal(p.isShown('openQuizLink'),false);
+ p.run("state.selfPacedStatus='published';renderParticipantSettings()");assert.equal(p.qrCodes.length,1);assert.equal(p.isShown('openQuizLink'),true);
+ p.run("state.selfPacedStatus='draft';renderParticipantSettings()");assert.equal(p.$('quizShareQR').dataset.url,'');
+ p.context.QRCode=undefined;p.run("state.selfPacedStatus='published';renderParticipantSettings()");assert.match(p.$('quizShareQR').textContent,/enlace directo/);assert.equal(p.$('copyQuizLink').disabled,false);
 });
 test('ranking visibility remains editable after publication without changing questions or scoring',async()=>{
  const p=page(),path='gc_quiz_live/partida-fixed';p.store.set(path,{recordType:'run',mode:'self_paced',selfPacedStatus:'published',quizVersion:'keep',participantIdentity:'cedula',selectedQuestions:[1]});
@@ -189,7 +258,12 @@ function seedRoomForDeletion(p){
  p.store.set('gc_quiz_live/CLASE',{recordType:'class_alias',displayName:'Clase',activeRun:'partida-current',runs:['partida-current']});
  p.store.set('gc_quiz_live/partida-current',{recordType:'run',className:'CLASE',mode:'self_paced',selfPacedStatus:'published'});
  p.store.set('gc_quiz_live/partida-current/players/ana',{name:'Ana',answers:{0:{points:10}},score:10});
+ p.store.set('gc_quiz_live/partida-current/identities/ana',{name:'Ana',cedula:'000123',identityType:'both'});
 }
+test('clearing participants removes their full identities and preserves other rooms',async()=>{
+ const p=page();seedRoomForDeletion(p);p.run("room='partida-current'");p.store.set('gc_quiz_live/partida-other/identities/luis',{name:'Luis',cedula:'000456',identityType:'both'});
+ await p.$('clearPlayers').onclick();assert.equal(p.store.has('gc_quiz_live/partida-current/players/ana'),false);assert.equal(p.store.has('gc_quiz_live/partida-current/identities/ana'),false);assert.ok(p.store.has('gc_quiz_live/partida-other/identities/luis'));assert.ok(p.store.has('gc_quiz_live/partida-current'));
+});
 test('deleting a room removes all its runs, responses and public results while preserving other rooms and banks',async()=>{
  const p=page('',{room:'partida-current',playerId:'ana',playerName:'Ana'});seedRoomForDeletion(p);
  // This historical run fell outside the alias history, which is capped at 100.

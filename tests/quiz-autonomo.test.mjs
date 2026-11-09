@@ -38,6 +38,14 @@ test('directed quiz keeps its time cap and existing scoring',()=>{
  assert.equal(engine.evaluateAnswer(1,1,10,10).points,0);
  assert.equal(engine.isSelfPaced({}),false);assert.equal(engine.questionSeconds({}),60);
 });
+test('combined identity shows the name in autonomous live and final rankings',async()=>{
+ const f=fixture({participantIdentity:'both'}),ana=f.client('participant');
+ Object.assign(ana.player(),{name:'Ana María',identityType:'both',normalizedName:'room-digest'});
+ await ana.start();f.advance(1000);await ana.answer(2);
+ assert.match(ana.$('selfLiveRanking').innerHTML,/Ana María/);
+ await ana.next();await ana.answer(0);
+ assert.match(ana.$('selfFinalRanking').innerHTML,/Ana María/);assert.doesNotMatch(ana.$('selfFinalRanking').innerHTML,/room-digest|Cédula/);
+});
 test('autonomous correct answers never expire and speed remains part of the score',()=>{
  assert.equal(engine.evaluateSelfPacedAnswer(1,1,1).points,10);
  assert.equal(engine.evaluateSelfPacedAnswer(1,1,31).points,5);
