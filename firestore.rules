@@ -846,9 +846,7 @@ match /ocai_rooms/{roomCode} {
           && request.resource.data.durationMs is number
           && request.resource.data.durationMs >= 0
           && request.resource.data.durationMs <= 3600000
-          && request.resource.data.submittedAt == request.time
-          && (request.resource.data.stage == 'initial' ||
-            exists(/databases/$(database)/documents/boton_rojo_rooms/$(roomCode)/answers/$(request.auth.uid + '_' + string(request.resource.data.round) + '_initial_0')));
+          && request.resource.data.submittedAt == request.time;
         allow update, delete: if false;
       }
     }
