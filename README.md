@@ -8,6 +8,22 @@ Abre `index.html` con servidor HTTP o publícalo con GitHub Pages desde la rama 
 
 La publicación bajo HACERLO está en **https://www.hacerlofc.com/laboratorio/**. Los archivos públicos de este repositorio (`.html`, `.css`, `.js` y `.mjs`, sin tests) también se publican en la carpeta `laboratorio/` del repositorio `PaginaHacerlo`. Al actualizar un simulador, sincroniza allí exactamente los mismos archivos para mantener ambas publicaciones. La página comercial y el dominio principal conservan su configuración. Los enlaces de sala se generan con el dominio desde el que se abre SaberON.
 
+## El botón rojo — Decisiones laborales (noviembre de 2026)
+
+Experiencia independiente en **boton-rojo.html**, **boton-rojo.css** y **boton-rojo.js**, integrada al catálogo de experiencias sin modificar SaberON u otros simuladores. También se publica bajo https://www.hacerlofc.com/laboratorio/boton-rojo.html.
+
+**Recorrido:** El facilitador inicia sesión con su cuenta de Firebase Authentication que tenga la autorización de facilitador, crea una sala, comparte el enlace o QR y abre la primera ronda. Cada estudiante escribe su nombre, responde una situación laboral con una de cuatro alternativas y confirma. La decisión inicial es inmutable. Cuando el facilitador revela la información adicional, cada persona responde nuevamente y puede añadir una reflexión de hasta 150 caracteres. El facilitador cierra la fase, avanza a la siguiente ronda y, tras cuatro rondas, revela los resultados colectivos sin nombres. La sala no avanza automáticamente por un temporizador.
+
+**Casos:** 1) resultados de productividad y fallas del sistema, 2) ausencia y urgencia médica, 3) uso personal de un equipo con autorización previa, 4) negativa a ejecutar una instrucción con advertencia de riesgo de seguridad. El objetivo es reconsiderar decisiones a partir de información nueva, no asignar automáticamente aciertos o infracciones jurídicas.
+
+**Datos y controles:**
+- La colección **boton_rojo_rooms** contiene salas separadas; cada una tiene subcolecciones **participants** y **answers**. Las respuestas son documentos inmutables identificados por persona, ronda, fase y token de reapertura.
+- La sala usa actualizaciones de Firestore en tiempo real, con presencia aproximada por última actividad. El facilitador ve asistentes, pendientes, distribución de A/B/C/D, cambios individuales y transiciones. La reconexión de la misma sesión de autenticación recupera su avance.
+- El facilitador puede pausar, reanudar, confirmar el avance con pendientes y reabrir **la fase final de la ronda actual** antes de avanzar. Reabrir genera nuevas respuestas sin destruir las anteriores; el informe usa la versión más reciente por persona y fase.
+- La pestaña **Resultados e informe** recompone el historial guardado dentro de la plataforma, sin puntuaciones automáticas, e incorpora orientaciones didácticas sobre los artículos 58, 60 y 115 del CST. La proyección colectiva es anónima; los registros nominales quedan en la vista privada del facilitador.
+
+**Configuración obligatoria antes de utilizarla en vivo:** Publicar en Firebase Console el archivo completo [firestore.rules](./firestore.rules), que añade reglas estrictas del nuevo módulo a las colecciones existentes. Verificar que el proyecto Firebase tenga activados los proveedores de Auth **Anónimo** y **Correo/Contraseña**, y que el docente autorizado conserve la autorización **facilitator: true**. Publicar código en GitHub **no publica las reglas de Firestore**. Prueba el acceso de 11 participantes, la secuencia de dos decisiones, el cierre y la generación del informe antes de utilizarlo en clase.
+
 ## Quiz: modalidad dirigida y autónoma
 
 SaberON (`knowledge.html`) conserva las partidas dirigidas: el facilitador abre y cierra preguntas y revela resultados. Las salas anteriores mantienen esa modalidad y sus 60 segundos por pregunta.
