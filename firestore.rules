@@ -823,7 +823,46 @@ match /ocai_rooms/{roomCode} {
       }
       match /answers/{answerId} {
         allow get: if brHost(roomCode)
-          || (brSigned() && resource.data.uid == request.auth.uid);
+          || (brSigned() && answerId.matches('^' + request.auth.uid + '_[1-4]_(initial|final)_[0-9]+
+        allow list: if brHost(roomCode);
+        allow create: if brMember(roomCode)
+          && request.resource.data.keys().hasOnly([
+            'uid','round','stage','token','choice','note','durationMs','submittedAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.round is int
+          && request.resource.data.round == brRoom(roomCode).round
+          && request.resource.data.stage in ['initial','final']
+          && request.resource.data.stage == brRoom(roomCode).phase
+          && request.resource.data.token is int
+          && request.resource.data.token ==
+            (request.resource.data.stage == 'initial' ? 0 : brRoom(roomCode).token)
+          && brValidAnswerId(answerId,request.resource.data)
+          && brRoom(roomCode).status == 'active'
+          && request.resource.data.choice in ['A','B','C','D']
+          && request.resource.data.note is string
+          && request.resource.data.note.size() <= 150
+          && (request.resource.data.stage != 'initial' || request.resource.data.note == '')
+          && request.resource.data.durationMs is number
+          && request.resource.data.durationMs >= 0
+          && request.resource.data.durationMs <= 3600000
+          && request.resource.data.submittedAt == request.time
+          && (request.resource.data.stage == 'initial' ||
+            exists(/databases/$(database)/documents/boton_rojo_rooms/$(roomCode)/answers/$(request.auth.uid + '_' + string(request.resource.data.round) + '_initial_0')));
+        allow update, delete: if false;
+      }
+    }
+
+    // =====================================================
+    // TODO LO DEMÁS CONTINÚA CERRADO
+    // =====================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+));
         allow list: if brHost(roomCode);
         allow create: if brMember(roomCode)
           && request.resource.data.keys().hasOnly([
