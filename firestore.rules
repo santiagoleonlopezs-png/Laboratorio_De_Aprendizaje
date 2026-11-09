@@ -67,6 +67,36 @@ service cloud.firestore {
       match /players/{playerId} {
         allow read, create, update, delete: if true;
       }
+
+      // Full identity is not copied to the publicly readable player/ranking documents.
+      // identities/{playerId}: name (0..30 chars; required for "both"),
+      // cedula (1..30 digits, string preserves leading zeros), identityType.
+      match /identities/{playerId} {
+        function quizFacilitator() {
+          return request.auth != null && request.auth.token.facilitator == true;
+        }
+        function validQuizIdentity() {
+          let data = request.resource.data;
+          let run = getAfter(/databases/$(database)/documents/gc_quiz_live/$(roomId)).data;
+          let player = getAfter(/databases/$(database)/documents/gc_quiz_live/$(roomId)/players/$(playerId)).data;
+          return data.keys().hasAll(['name', 'cedula', 'identityType'])
+            && data.keys().hasOnly(['name', 'cedula', 'identityType'])
+            && data.identityType in ['cedula', 'both']
+            && data.name is string && data.name.size() <= 30
+            && (data.identityType == 'both'
+              ? data.name.size() > 0 && data.name == player.name
+              : data.name == '')
+            && data.cedula is string && data.cedula.matches('^[0-9]{1,30}$')
+            && player.identityType == data.identityType
+            && run.recordType == 'run' && run.participantIdentity == data.identityType
+            && run.get('deleting', false) == false;
+        }
+        // Participants can submit the data they supplied, without being able to read or list it.
+        allow create: if validQuizIdentity();
+        // Re-entry is idempotent; an existing identity cannot be overwritten.
+        allow update: if validQuizIdentity() && request.resource.data == resource.data;
+        allow read, delete: if quizFacilitator();
+      }
     }
 
     // =====================================================

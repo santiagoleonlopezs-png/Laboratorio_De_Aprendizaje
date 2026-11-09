@@ -9,8 +9,9 @@ export function questionOrder(run, questions) {
   return [...new Set(source.filter(i => Number.isInteger(i) && i >= 0 && i < questions.length))];
 }
 export const rankingVisibility = run => ['live', 'final', 'hidden'].includes(run?.rankingVisibility) ? run.rankingVisibility : 'live';
-export const participantIdentity = run => run?.participantIdentity === 'cedula' ? 'cedula' : 'name';
-export function identityError(value, type = 'name') {
+export const participantIdentity = run => ['name', 'cedula', 'both'].includes(run?.participantIdentity) ? run.participantIdentity : 'name';
+export function identityError(value, type = 'name', cedula = '') {
+  if (type === 'both') return identityError(value, 'name') || identityError(cedula, 'cedula');
   if (type === 'cedula') return /^[0-9]+$/.test(String(value || '')) ? '' : 'Escribe tu cédula solo con números, sin puntos ni espacios.';
   return String(value || '').trim() ? '' : 'Escribe tu nombre.';
 }

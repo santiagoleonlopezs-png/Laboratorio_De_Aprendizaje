@@ -7,6 +7,8 @@ on:
       - 'quiz-engine.mjs'
       - 'quiz-autonomo.js'
       - 'tests/quiz-*.test.mjs'
+      - 'tests/quiz-rules.cjs'
+      - 'firestore.rules'
       - '.github/workflows/validate-quiz.yml'
   pull_request:
     paths:
@@ -15,6 +17,8 @@ on:
       - 'quiz-engine.mjs'
       - 'quiz-autonomo.js'
       - 'tests/quiz-*.test.mjs'
+      - 'tests/quiz-rules.cjs'
+      - 'firestore.rules'
       - '.github/workflows/validate-quiz.yml'
   workflow_dispatch:
 jobs:
@@ -27,3 +31,19 @@ jobs:
           node-version: '22'
       - name: Comprobar reloj, respuestas, ranking y flujo del facilitador
         run: node --test tests/quiz-*.test.mjs
+  identity-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Instalar herramientas de pruebas
+        run: npm install --no-save --no-package-lock firebase-tools@latest @firebase/rules-unit-testing@latest firebase@latest
+      - name: Comprobar almacenamiento privado de nombre y cédula
+        run: npx firebase emulators:exec --only firestore --project demo-quiz-identities "node tests/quiz-rules.cjs"

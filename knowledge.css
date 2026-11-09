@@ -34,6 +34,12 @@ button.room-delete{background:#fff1f2;color:#b42318;border:1px solid #fecaca}
 .ranking-card{margin-top:18px}.ranking-card h3{font-size:17px}
 .access-settings{margin-top:16px}.access-settings h3{font-size:16px}
 .setting-help{margin:8px 0 0;line-height:1.5}
+.quiz-share-layout{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.quiz-share-qr{flex:0 0 212px;width:212px;min-height:212px;padding:16px;background:#fff;border:1px solid var(--line);border-radius:12px;color:var(--muted);display:grid;place-items:center;text-align:center;font-size:13px;line-height:1.5}
+.quiz-share-qr canvas,.quiz-share-qr img{max-width:180px;max-height:180px}
+.quiz-share-details{flex:1;min-width:min(100%,260px)}
+.quiz-share-details .share-row button{flex-shrink:0}
+.quiz-open-link{display:inline-block;color:var(--accent);font-size:14px;margin-top:12px;text-underline-offset:3px}
 #home{position:relative;overflow:hidden;background:linear-gradient(125deg,#101c34,#0d182c 68%,#11284c);border:1px solid #2b4162;border-radius:26px;padding:32px 42px 24px;color:#edf4ff;min-height:590px}
 #home::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.22;background-image:radial-gradient(#7197d2 1px,transparent 1px);background-size:26px 26px;mask-image:linear-gradient(90deg,transparent 30%,#000)}
 .home-top,.home-layout,.home-steps{position:relative}
