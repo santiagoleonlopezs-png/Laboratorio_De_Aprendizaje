@@ -706,15 +706,7 @@ match /ocai_rooms/{roomCode} {
       allow get: if brSigned();
       allow list: if brFacilitator() && resource.data.hostUid == request.auth.uid;
       allow create: if brFacilitator()
-        && roomCode.matches('^[A-HJ-NP-Z2-9]{6}
-    // =====================================================
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-)
+        && roomCode.matches('^[A-HJ-NP-Z2-9]{6}$')
         && request.resource.data.keys().hasOnly([
           'gameId','hostUid','organizationId','title','status','round','phase',
           'token','createdAt','updatedAt','openedAt'
@@ -823,7 +815,7 @@ match /ocai_rooms/{roomCode} {
       }
       match /answers/{answerId} {
         allow get: if brHost(roomCode)
-          || (brSigned() && answerId.matches('^' + request.auth.uid + '_[1-4]_(initial|final)_[0-9]+
+          || (brSigned() && answerId.matches('^' + request.auth.uid + '_[1-4]_(initial|final)_[0-9]+$'));
         allow list: if brHost(roomCode);
         allow create: if brMember(roomCode)
           && request.resource.data.keys().hasOnly([
@@ -847,45 +839,6 @@ match /ocai_rooms/{roomCode} {
           && request.resource.data.durationMs >= 0
           && request.resource.data.durationMs <= 3600000
           && request.resource.data.submittedAt == request.time;
-        allow update, delete: if false;
-      }
-    }
-
-    // =====================================================
-    // TODO LO DEMÁS CONTINÚA CERRADO
-    // =====================================================
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-));
-        allow list: if brHost(roomCode);
-        allow create: if brMember(roomCode)
-          && request.resource.data.keys().hasOnly([
-            'uid','round','stage','token','choice','note','durationMs','submittedAt'
-          ])
-          && request.resource.data.uid == request.auth.uid
-          && request.resource.data.round is int
-          && request.resource.data.round == brRoom(roomCode).round
-          && request.resource.data.stage in ['initial','final']
-          && request.resource.data.stage == brRoom(roomCode).phase
-          && request.resource.data.token is int
-          && request.resource.data.token ==
-            (request.resource.data.stage == 'initial' ? 0 : brRoom(roomCode).token)
-          && brValidAnswerId(answerId,request.resource.data)
-          && brRoom(roomCode).status == 'active'
-          && request.resource.data.choice in ['A','B','C','D']
-          && request.resource.data.note is string
-          && request.resource.data.note.size() <= 150
-          && (request.resource.data.stage != 'initial' || request.resource.data.note == '')
-          && request.resource.data.durationMs is number
-          && request.resource.data.durationMs >= 0
-          && request.resource.data.durationMs <= 3600000
-          && request.resource.data.submittedAt == request.time
-          && (request.resource.data.stage == 'initial' ||
-            exists(/databases/$(database)/documents/boton_rojo_rooms/$(roomCode)/answers/$(request.auth.uid + '_' + string(request.resource.data.round) + '_initial_0')));
         allow update, delete: if false;
       }
     }
