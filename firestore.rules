@@ -673,6 +673,187 @@ match /ocai_rooms/{roomCode} {
     }
 
     // =====================================================
+    // EL BOTÓN ROJO — SALAS Y RESPUESTAS INMUTABLES
+    // =====================================================
+    function brSigned() {
+      return request.auth != null;
+    }
+    function brFacilitator() {
+      return brSigned() && request.auth.token.facilitator == true;
+    }
+    function brExists(roomCode) {
+      return exists(/databases/$(database)/documents/boton_rojo_rooms/$(roomCode));
+    }
+    function brRoom(roomCode) {
+      return get(/databases/$(database)/documents/boton_rojo_rooms/$(roomCode)).data;
+    }
+    function brHost(roomCode) {
+      return brFacilitator() && brExists(roomCode)
+        && brRoom(roomCode).hostUid == request.auth.uid
+        && brRoom(roomCode).organizationId ==
+          request.auth.token.get('organizationId', request.auth.uid);
+    }
+    function brMember(roomCode) {
+      return brSigned() && exists(
+        /databases/$(database)/documents/boton_rojo_rooms/$(roomCode)/participants/$(request.auth.uid)
+      );
+    }
+    function brValidAnswerId(answerId, d) {
+      return answerId == d.uid + '_' + string(d.round) + '_' + d.stage + '_' + string(d.token);
+    }
+    match /boton_rojo_rooms/{roomCode} {
+      // El código de sala solo permite leer instrucciones/estado, no resultados.
+      allow get: if brSigned();
+      allow list: if brFacilitator() && resource.data.hostUid == request.auth.uid;
+      allow create: if brFacilitator()
+        && roomCode.matches('^[A-HJ-NP-Z2-9]{6}
+    // =====================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && request.resource.data.keys().hasOnly([
+          'gameId','hostUid','organizationId','title','status','round','phase',
+          'token','createdAt','updatedAt','openedAt'
+        ])
+        && request.resource.data.gameId == 'boton-rojo-v1'
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.organizationId ==
+          request.auth.token.get('organizationId', request.auth.uid)
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 4
+        && request.resource.data.title.size() <= 75
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.phase == 'initial'
+        && request.resource.data.round == 1
+        && request.resource.data.token == 0
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.openedAt == request.time;
+      allow update: if brHost(roomCode)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status','round','phase','token','updatedAt','openedAt'
+        ])
+        && request.resource.data.status in ['waiting','active','paused','completed']
+        && request.resource.data.round in [1,2,3,4]
+        && request.resource.data.phase in ['initial','final','review','reveal']
+        && request.resource.data.token is int
+        && request.resource.data.token >= 0
+        && request.resource.data.token <= 100
+        && request.resource.data.updatedAt == request.time
+        && request.resource.data.openedAt is timestamp
+        && (request.resource.data.status != 'completed' || request.resource.data.round == 4)
+        && (
+          (resource.data.status == 'waiting'
+            && request.resource.data.status == 'active'
+            && request.resource.data.round == 1
+            && request.resource.data.phase == 'initial'
+            && request.resource.data.token == 0)
+          || (resource.data.status == 'active'
+            && request.resource.data.status == 'paused'
+            && request.resource.data.round == resource.data.round
+            && request.resource.data.phase == resource.data.phase
+            && request.resource.data.token == resource.data.token)
+          || (resource.data.status == 'paused'
+            && request.resource.data.status == 'active'
+            && request.resource.data.round == resource.data.round
+            && request.resource.data.phase == resource.data.phase
+            && request.resource.data.token == resource.data.token)
+          || (resource.data.status == 'active'
+            && resource.data.phase == 'initial'
+            && request.resource.data.status == 'active'
+            && request.resource.data.phase == 'final'
+            && request.resource.data.round == resource.data.round
+            && request.resource.data.token == resource.data.token)
+          || (resource.data.status == 'active'
+            && resource.data.phase == 'final'
+            && request.resource.data.status == 'active'
+            && request.resource.data.phase == 'review'
+            && request.resource.data.round == resource.data.round
+            && request.resource.data.token == resource.data.token)
+          || (resource.data.status == 'active'
+            && resource.data.phase == 'review'
+            && request.resource.data.status == 'active'
+            && request.resource.data.phase == 'final'
+            && request.resource.data.round == resource.data.round
+            && request.resource.data.token == resource.data.token + 1)
+          || (resource.data.status == 'active'
+            && resource.data.phase == 'review'
+            && resource.data.round < 4
+            && request.resource.data.status == 'active'
+            && request.resource.data.phase == 'initial'
+            && request.resource.data.round == resource.data.round + 1
+            && request.resource.data.token == 0)
+          || (resource.data.status == 'active'
+            && resource.data.phase == 'review'
+            && resource.data.round == 4
+            && request.resource.data.status == 'completed'
+            && request.resource.data.phase == 'review'
+            && request.resource.data.token == resource.data.token)
+          || (resource.data.status == 'completed'
+            && resource.data.phase == 'review'
+            && request.resource.data.status == 'completed'
+            && request.resource.data.phase == 'reveal'
+            && request.resource.data.round == 4
+            && request.resource.data.token == resource.data.token)
+        );
+      allow delete: if false;
+      match /participants/{participantId} {
+        allow get: if brHost(roomCode) || (brSigned() && participantId == request.auth.uid);
+        allow list: if brHost(roomCode);
+        allow create: if brSigned() && brExists(roomCode)
+          && participantId == request.auth.uid
+          && brRoom(roomCode).status in ['waiting','active','paused']
+          && request.resource.data.keys().hasOnly([
+            'uid','name','joinedAt','lastSeenAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 2
+          && request.resource.data.name.size() <= 55
+          && request.resource.data.joinedAt == request.time
+          && request.resource.data.lastSeenAt == request.time;
+        allow update: if brSigned() && participantId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastSeenAt'])
+          && request.resource.data.lastSeenAt == request.time;
+        allow delete: if false;
+      }
+      match /answers/{answerId} {
+        allow get: if brHost(roomCode)
+          || (brSigned() && resource.data.uid == request.auth.uid);
+        allow list: if brHost(roomCode);
+        allow create: if brMember(roomCode)
+          && request.resource.data.keys().hasOnly([
+            'uid','round','stage','token','choice','note','durationMs','submittedAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.round is int
+          && request.resource.data.round == brRoom(roomCode).round
+          && request.resource.data.stage in ['initial','final']
+          && request.resource.data.stage == brRoom(roomCode).phase
+          && request.resource.data.token is int
+          && request.resource.data.token ==
+            (request.resource.data.stage == 'initial' ? 0 : brRoom(roomCode).token)
+          && brValidAnswerId(answerId,request.resource.data)
+          && brRoom(roomCode).status == 'active'
+          && request.resource.data.choice in ['A','B','C','D']
+          && request.resource.data.note is string
+          && request.resource.data.note.size() <= 150
+          && (request.resource.data.stage != 'initial' || request.resource.data.note == '')
+          && request.resource.data.durationMs is number
+          && request.resource.data.durationMs >= 0
+          && request.resource.data.durationMs <= 3600000
+          && request.resource.data.submittedAt == request.time
+          && (request.resource.data.stage == 'initial' ||
+            exists(/databases/$(database)/documents/boton_rojo_rooms/$(roomCode)/answers/$(request.auth.uid + '_' + string(request.resource.data.round) + '_initial_0')));
+        allow update, delete: if false;
+      }
+    }
+
+    // =====================================================
     // TODO LO DEMÁS CONTINÚA CERRADO
     // =====================================================
 
