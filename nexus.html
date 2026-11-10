@@ -6,8 +6,8 @@
   <title>NEXUS | Laboratorio de Aprendizaje y Decisión</title>
   <meta name="theme-color" content="#080f20">
   <meta name="description" content="NEXUS: una simulación de liderazgo del cambio. Lee el sistema, prioriza intervenciones y aprende de cada decisión en el Laboratorio de Aprendizaje y Decisión.">
-  <link rel="stylesheet" href="knowledge.css?v=20261110-laboratorio">
-  <link rel="stylesheet" href="nexus.css?v=20261110-laboratorio">
+  <link rel="stylesheet" href="knowledge.css?v=20261110-nexus-controles-1">
+  <link rel="stylesheet" href="nexus.css?v=20261110-nexus-controles-1">
 </head>
 <body class="play-view">
 <nav class="brandNav" aria-label="Navegación principal"><a class="backLink" href="index.html#experiencias">← Volver al laboratorio</a><span>Laboratorio de Aprendizaje y Decisión</span></nav>
@@ -118,7 +118,16 @@
     <p class="facMuted">La modalidad se guarda al crear la sala. Puedes cambiarla después con el botón de la sala activa.</p></section>
     <section id="facRoomControl" class="roomControl card" hidden><div class="sectionHead"><div><p id="facModeLabel" class="eyebrow"></p><h2 id="facPhaseTitle"></h2><p id="facPhaseDescription" class="muted"></p></div><div class="facActions"><button id="facChangeMode" class="secondary" type="button">Cambiar modalidad</button></div></div>
     <div class="roomShare"><label for="facShareLink">Enlace para los equipos</label><div><input id="facShareLink" readonly><button id="facCopyLink" class="secondary" type="button">Copiar enlace y código</button></div><p id="facShareStatus" role="status"></p></div>
-    <div class="roundActions"><button id="facDiscuss" type="button">Mostrar ranking y conversar</button><button id="facResume" class="secondary" type="button" hidden>Reabrir esta ronda</button><button id="facNext" type="button" hidden>Habilitar siguiente ronda →</button></div><p id="facProgress" class="muted"></p></section>
+    <div class="facRoundHeader"><b>Control de rondas</b><span id="facRoundState" class="facStatePill">Preparando</span></div>
+    <div class="roundActions" aria-label="Controles de ronda">
+      <button id="facOpenRound" type="button" hidden>Abrir ronda</button>
+      <button id="facCloseRound" type="button" hidden>Cerrar ronda y conversar</button>
+      <button id="facReopen" class="secondary" type="button" hidden>Reabrir ronda</button>
+      <button id="facNext" type="button" hidden>Avanzar a la siguiente →</button>
+      <button id="facFinish" type="button" hidden>Finalizar experiencia</button>
+    </div>
+    <p id="facProgress" class="muted" aria-live="polite"></p>
+    <div class="facManageBar"><div><b>Administrar participantes</b><small>Retira equipos desde el ranking o reinicia la sala completa.</small></div><button id="facResetAll" type="button" class="facDanger">Reiniciar a todos</button></div></section>
     <div class="facSummary">
       <div class="facStat"><span>Equipos</span><b id="facTeams">0</b></div>
       <div class="facStat"><span>Promedio</span><b id="facAvg">0</b></div>
@@ -127,8 +136,8 @@
     </div>
     <div class="sectionHead boardTitle"><h2>Ranking general en vivo</h2><label>Buscar equipo <input id="facSearch" type="search" placeholder="Nombre del equipo"></label></div><div class="facBoard tableScroll">
       <table class="facTable">
-        <thead><tr><th>#</th><th>Equipo</th><th>Puntaje neto</th><th>Deuda</th><th>Ronda</th><th>KPI negocio</th><th>Apropiación</th><th>Actualizado</th></tr></thead>
-        <tbody id="facRows"><tr><td colspan="8" class="facMuted">Ingresa el código de clase y carga la sala.</td></tr></tbody>
+        <thead><tr><th>#</th><th>Equipo</th><th>Puntaje neto</th><th>Deuda</th><th>Ronda</th><th>KPI negocio</th><th>Apropiación</th><th>Actualizado</th><th>Administrar</th></tr></thead>
+        <tbody id="facRows"><tr><td colspan="9" class="facMuted">Ingresa el código de clase y carga la sala.</td></tr></tbody>
       </table>
     </div>
     <section class="roundReview card"><div class="sectionHead"><div><p class="eyebrow">OBSERVAR → CONVERSAR → AJUSTAR</p><h2>La historia de cada ronda</h2><p class="muted">Elige una ronda para ver su ranking, las decisiones y las señales para la conversación.</p></div></div><div id="facRoundTabs" class="roundTabs" role="tablist" aria-label="Seleccionar ronda"></div>
@@ -144,12 +153,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="nexus-engine.js?v=20261110-laboratorio"></script>
-<script src="nexus-firebase.js?v=20261110-laboratorio"></script>
+<script src="nexus-engine.js?v=20261110-nexus-controles-1"></script>
+<script src="nexus-firebase.js?v=20261110-nexus-controles-1"></script>
 <script>window.CHANGE_LAB_CONFIG={classCode:'LID-CAMBIO'};</script>
 
-<script src="nexus-player.js?v=20261110-laboratorio"></script>
-<script src="nexus-facilitator.js?v=20261110-laboratorio"></script>
+<script src="nexus-player.js?v=20261110-nexus-controles-1"></script>
+<script src="nexus-facilitator.js?v=20261110-nexus-controles-1"></script>
 
 
 </body></html>
