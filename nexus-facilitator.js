@@ -51,19 +51,29 @@ function renderFac(){
  let place=0,prev=null;
  // Calcular posiciones antes del filtro conserva el puesto real de cada equipo.
  const positions=new Map(rowsCache.map((r,i)=>{if(i===0||r.score!==prev)place=i+1;prev=r.score;return [r.id,place];}));
- $f('facRows').innerHTML=rows.length?rows.map(r=>`<tr><td>${medal(positions.get(r.id))}</td><td><b>${esc(r.team)}</b></td><td><b>${Math.round(r.score||0)}<small> /100</small></b></td><td class="${r.borrowed?'debtLabel':'facMuted'}">${r.borrowed||0} créditos</td><td>${(r.gameState?.history||[]).length}/5 decididas</td><td>${Math.round(r.business||0)}/100</td><td>${Math.round(r.appropriation||0)}/100</td><td class="facMuted">${fmt(r.updated_at)}</td></tr>`).join(''):'<tr><td colspan="8" class="facMuted">'+(rowsCache.length?'Ningún equipo coincide con la búsqueda.':'Los equipos aparecerán aquí al ingresar a la sala.')+'</td></tr>';
+ $f('facRows').innerHTML=rows.length?rows.map(r=>`<tr><td>${medal(positions.get(r.id))}</td><td><b>${esc(r.team)}</b></td><td><b>${Math.round(r.score||0)}<small> /100</small></b></td><td class="${r.borrowed?'debtLabel':'facMuted'}">${r.borrowed||0} créditos</td><td>${(r.gameState?.history||[]).length}/5 decididas</td><td>${Math.round(r.business||0)}/100</td><td>${Math.round(r.appropriation||0)}/100</td><td class="facMuted">${fmt(r.updated_at)}</td><td><button type="button" class="facRemove" data-remove-team="${esc(r.id)}" ${busy?'disabled':''} aria-label="Retirar a ${esc(r.team)}">Retirar</button></td></tr>`).join(''):'<tr><td colspan="9" class="facMuted">'+(rowsCache.length?'Ningún equipo coincide con la búsqueda.':'Los equipos aparecerán aquí al ingresar a la sala.')+'</td></tr>';
  $f('facRoomControl').hidden=!room;
  if(room){
-   const guided=room.mode==='guided',discuss=room.phase==='discussion';
+   const guided=room.mode==='guided',discuss=room.phase==='discussion',waiting=room.phase==='waiting',deciding=room.phase==='deciding',completed=room.status==='completed',resetting=room.status==='resetting';
    $f('facModeLabel').textContent=guided?'SALA DIRIGIDA · '+loadedCode:'SALA AUTÓNOMA · '+loadedCode;
-   $f('facPhaseTitle').textContent=guided?`Ronda ${room.currentRound} · ${discuss?'ranking y conversación':'decisiones en curso'}`:'Cinco rondas, al ritmo de cada equipo';
-   $f('facPhaseDescription').textContent=guided?(discuss?'El ranking ya está visible. Usa los patrones y las preguntas para conversar antes de abrir otra ronda.':'Recibe las decisiones. Cuando estén listos, muestra el ranking y abre la conversación.'):'Cada equipo ve su resultado, feedback y ranking antes de continuar. Aquí puedes revisar cualquier ronda.';
+   $f('facPhaseTitle').textContent=resetting?'Reiniciando sala…':completed?'Experiencia finalizada':guided?`Ronda ${room.currentRound} · ${waiting?'preparada':discuss?'cerrada para conversar':'recibiendo decisiones'}`:'Cinco rondas, al ritmo de cada equipo';
+   $f('facPhaseDescription').textContent=resetting?'No se admiten envíos hasta terminar el reinicio.':completed?'Puedes revisar los resultados históricos o reiniciar la experiencia.':guided?(waiting?'La ronda aún no está disponible para los equipos. Presiona «Abrir ronda» cuando quieras comenzar.':discuss?'La recepción está cerrada. Reabre solo para recibir respuestas pendientes o avanza a la siguiente ronda.':'Los equipos pueden decidir. Cuando estén listos, cierra la ronda para conversar.'):'Cada equipo avanza a su propio ritmo. Consulta sus resultados y gestiona participantes desde este panel.';
    const n=rowsCache.filter(r=>(r.gameState?.history||[]).some(h=>h.round===room.currentRound)).length;
    $f('facProgress').textContent=guided?`${n} de ${rowsCache.length} equipos registraron su decisión de la ronda ${room.currentRound}.`:`${rowsCache.filter(r=>(r.gameState?.history||[]).length>=5).length} de ${rowsCache.length} equipos completaron la experiencia.`;
-   $f('facDiscuss').hidden=!guided||discuss;$f('facDiscuss').disabled=busy||!rowsCache.length;
-   $f('facNext').hidden=!guided||!discuss||room.currentRound>=5;
-   $f('facResume').hidden=!guided||!discuss;
-   $f('facNext').disabled=busy;$f('facResume').disabled=busy;
+   const actions={
+     facOpenRound: guided&&waiting&&!completed&&!resetting,
+     facCloseRound: guided&&deciding&&!completed&&!resetting,
+     facReopen: guided&&discuss&&!completed&&!resetting,
+     facNext: guided&&discuss&&room.currentRound<5&&!completed&&!resetting,
+     facFinish: guided&&discuss&&room.currentRound===5&&!completed&&!resetting
+   };
+   Object.entries(actions).forEach(([id,visible])=>{
+     $f(id).hidden=!visible;$f(id).disabled=busy;
+   });
+   $f('facRoundState').dataset.phase=completed?'completed':room.phase;
+   $f('facRoundState').textContent=resetting?'REINICIANDO':completed?'FINALIZADA':guided?(waiting?'PREPARADA':deciding?'ABIERTA':'CERRADA'):'AUTÓNOMA';
+   $f('facChangeMode').disabled=busy||resetting||completed;
+   $f('facResetAll').disabled=busy||resetting;
    const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('sala',loadedCode);
    $f('facShareLink').value=url.href;
  }
@@ -128,12 +138,50 @@ $f('facCreate').onclick=async()=>{
 $f('facLoad').onclick=loadFac;$f('facRefresh').onclick=loadFac;$f('facSearch').oninput=()=>renderFac();
 $f('facPassword').addEventListener('keydown',e=>{if(e.key==='Enter')$f('facLoginBtn').click();});
 $f('facClassCode').addEventListener('keydown',e=>{if(e.key==='Enter')loadFac();});
-$f('facDiscuss').onclick=()=>{
+$f('facOpenRound').onclick=()=>control('open');
+$f('facCloseRound').onclick=()=>{
+ if(!room)return;
  const missing=rowsCache.filter(r=>!(r.gameState?.history||[]).some(h=>h.round===room.currentRound));
- if(missing.length&&!confirm(`Faltan ${missing.length} equipos por decidir. Al abrir la conversación se pausarán los envíos. ¿Mostrar el ranking con las decisiones recibidas?`))return;
- control('discussion');
+ if(missing.length&&!confirm(`Faltan ${missing.length} de ${rowsCache.length} equipos por decidir. Al cerrar la ronda no podrán enviar hasta que la reabras. ¿Cerrar y conversar?`))return;
+ control('close');
 };
-$f('facNext').onclick=()=>control('next');$f('facResume').onclick=()=>control('resume');
+$f('facReopen').onclick=()=>{
+ if(confirm('¿Reabrir la ronda '+room.currentRound+' para permitir respuestas pendientes? Las decisiones confirmadas se conservarán.'))control('reopen');
+};
+$f('facNext').onclick=()=>{
+ if(confirm('¿Avanzar a la ronda '+(room.currentRound+1)+'? Quedará preparada hasta que presiones «Abrir ronda».'))control('next');
+};
+$f('facFinish').onclick=()=>{
+ if(confirm('¿Finalizar esta experiencia? Se conservan todos los resultados para su consulta.'))control('finish');
+};
+$f('facRows').addEventListener('click',async e=>{
+ const button=e.target.closest('[data-remove-team]');
+ if(!button||busy||!room)return;
+ const entry=rowsCache.find(r=>r.id===button.dataset.removeTeam);
+ if(!entry)return;
+ if(!confirm('¿Retirar al equipo «'+entry.team+'»? Se eliminarán sus decisiones y su posición del ranking. No podrá reingresar hasta reiniciar la sala.'))return;
+ busy=true;renderFac();$f('facError').textContent='';
+ try{
+   await window.NEXUS_FIREBASE.removeTeam(loadedCode,entry.id);
+   $f('facShareStatus').textContent='Equipo «'+entry.team+'» retirado de la sala.';
+ }catch(err){$f('facError').textContent=nexusError(err);}
+ finally{busy=false;renderFac();}
+});
+$f('facResetAll').onclick=async()=>{
+ if(!room||busy)return;
+ const typed=prompt('Vas a eliminar los resultados, decisiones, puntajes y participantes de esta sala. Para confirmar escribe REINICIAR:');
+ if(typed===null)return;
+ if(typed.trim().toUpperCase()!=='REINICIAR'){
+   $f('facError').textContent='Reinicio cancelado. La palabra de confirmación no coincide.';return;
+ }
+ busy=true;renderFac();$f('facError').textContent='';
+ try{
+   await window.NEXUS_FIREBASE.resetRoom(loadedCode);
+   reviewRound=1;$f('facSearch').value='';
+   $f('facShareStatus').textContent='Partida reiniciada. Comparte el mismo código; los equipos deben ingresar de nuevo.';
+ }catch(err){$f('facError').textContent='No se completó el reinicio: '+nexusError(err)+'. Puedes volver a usar «Reiniciar a todos» para continuarlo.';}
+ finally{busy=false;renderFac();}
+};
 $f('facChangeMode').onclick=()=>{
  const next=room.mode==='guided'?'autonomous':'guided';
  if(confirm(next==='autonomous'?'Los equipos podrán completar todas las rondas a su ritmo. ¿Cambiar a modalidad autónoma?':`Retomarás el control desde la ronda ${room.currentRound}. Los avances ya registrados se conservan. ¿Cambiar a modalidad dirigida?`))control('mode',next);
