@@ -8,7 +8,7 @@ const critical=[['Conciencia','Confianza'],['Capacidad','Confianza'],['Confianza
 const interventionEffort={
  'ADKAR':1,'Escucha persuasiva':1,'TRIZ':1,'Reconocimiento':1,
  'Intenciones de implementación':1,'Identificación de casos exitosos':1,'Análisis anticipado del fracaso':1,
- 'Lean Change':2,'Redes de influencia':2,'Coaching para líderes':2,'Gestión Humana':2,'Capacitación':2,
+ 'Lean Change':2,'Plan de comunicaciones':2,'Redes de influencia':2,'Coaching para líderes':2,'Gestión Humana':2,'Capacitación':2,
  'Co-creación':3,'Aprendizaje experiencial':3,'Coaching':3
 };
 function interventionLoad(practices,before={}){
