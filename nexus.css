@@ -149,3 +149,17 @@ body.play-view{--bg:#080f20;--panel:#111e34;--panel2:#152641;--line:#293c58;--in
 
 /* Los controles no disponibles deben permanecer ocultos aunque tengan estilos de botón. */
 #facRoomControl[hidden],#facRoomControl button[hidden]{display:none!important}
+
+/* NEXUS · QR de ingreso: integrado con el panel del facilitador */
+.roomControl .roomShare{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center}
+.roomShareDetails{min-width:0}
+.roomShareInline{display:flex;align-items:center;gap:10px;min-width:0}
+.roomShareInline input{min-width:0;flex:1}
+.roomShareInline button{flex:none}
+.roomShare .facQrHelp{color:#9eb5d1;font-size:11px;margin:11px 0 0}
+.roomQrBox{background:#ffffff0a;border:1px solid #45648b;padding:12px;border-radius:16px;display:flex;align-items:center;flex-direction:column;gap:7px;min-width:165px}
+.roomQrArt{width:142px;height:142px;background:#fff;display:grid;place-items:center;border:8px solid white;border-radius:8px;overflow:hidden}
+.roomQrArt img,.roomQrArt canvas{display:block;max-width:100%;height:auto}
+.roomQrCode{font-size:13px;color:#d4e5ff;font-weight:600;letter-spacing:.12em}
+.roomQrBox button{font-size:11px;padding:7px 12px;margin:0;width:100%;min-height:33px}
+@media(max-width:760px){.roomControl .roomShare{grid-template-columns:1fr}.roomQrBox{max-width:220px;margin:auto;width:100%}.roomShareInline{flex-wrap:wrap}.roomShareInline button{width:100%}}
