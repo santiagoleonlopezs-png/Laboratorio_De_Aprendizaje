@@ -299,16 +299,19 @@
     const room=await roomRef(code).get();
     if(!room.exists)throw Error('Esta sala aún no existe. Haz clic en CREAR SALA para activarla.');
     if(room.data().hostUid!==user.uid)throw Error('Esta sala pertenece a otra cuenta de facilitador.');
+    // La primera suscripción trae toda la sala; las siguientes solo actualizan
+    // los documentos modificados. Evita reconstruir copias de historiales a cada respuesta.
+    const teamIndex=new Map();
     return roomRef(code).collection('teams').onSnapshot(snapshot=>{
-      const rows=snapshot.docs.map(d=>({...d.data(),id:d.id,updated_at:timestamp(d.data().updatedAt)}))
+      for(const change of snapshot.docChanges()){
+        const doc=change.doc;
+        if(change.type==='removed'){teamIndex.delete(doc.id);continue;}
+        const data=doc.data();
+        teamIndex.set(doc.id,{...data,id:doc.id,updated_at:timestamp(data.updatedAt)});
+      }
+      const rows=Array.from(teamIndex.values())
         .sort((a,b)=>(b.score||0)-(a.score||0)||String(a.team).localeCompare(String(b.team)));
-      const decisions=rows.flatMap(r=>(r.gameState?.history||[]).map(h=>({
-        team:r.team,round:h.round,objective:h.target,audience:h.audience,
-        practices:h.practices,hypothesis:h.hypothesis,
-        consequence:(h.consequence?.warnings||[]).join(' · '),
-        credits:h.credits,borrowed:r.borrowed||0
-      })));
-      onUpdate(rows,decisions);
+      onUpdate(rows);
     },e=>onError(err(e)));
   }
   window.NEXUS_FIREBASE={init,join,save,ranking,login,createRoom,subscribeRoom,watchRoom,controlRoom,removeTeam,resetRoom,watchOwnTeam,stopRanking,error:err};
