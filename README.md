@@ -91,6 +91,12 @@ El nuevo instrumento está en [`cultura-cvf.html`](./cultura-cvf.html), accesibl
 
 Fuentes de referencia metodológica: https://www.ocai-official.com/about-ocai y https://www.ocai-official.com/intro-to-cvf. Para usar el **cuestionario oficial OCAI™** se deben verificar las condiciones de licencia con Cameron Institute.
 
+## NEXUS — Activar un plan de comunicaciones (noviembre de 2026)
+
+Se incorpora **Activar un plan de comunicaciones** al catálogo de intervenciones de NEXUS, sin alterar las demás acciones: requiere **25 créditos** y supone una carga **mediana (2 unidades)**. Representa definir mensajes, audiencias, canales y frecuencia, verificar la comprensión y ajustar los mensajes. Tiene efectos simulados sobre conciencia, conocimiento, confianza, compromiso y energía, con pertinencia contextual por ronda. Es más oportuno al anunciar el cambio; comunicar sin escuchar cuando la conciencia ya es alta puede aumentar la carga y reducir la confianza. Combinarlo con **Escuchar antes de convencer** puede generar una sinergia positiva. La simulación no garantiza que toda comunicación sea una buena decisión: debe evaluarse frente a las señales y a la capacidad disponible.
+
+No requiere cambiar reglas de Firestore: utiliza la estructura existente de decisiones por equipo y las mismas restricciones de puntaje y presupuesto.
+
 ## NEXUS — Controles para sesiones dirigidas (noviembre de 2026)
 
 En la modalidad **Dirigida por rondas**, el panel **Control de rondas** permite: **Abrir ronda** (la habilita), **Cerrar ronda y conversar** (pausa nuevas decisiones), **Reabrir ronda** (recibe respuestas de equipos pendientes, sin borrar decisiones ya confirmadas), **Avanzar a la siguiente** (la deja *preparada*, el facilitador debe abrirla) y **Finalizar experiencia** al cerrar la quinta ronda. Las salas antiguas en fase de decisión se pueden cerrar sin reiniciarlas.
