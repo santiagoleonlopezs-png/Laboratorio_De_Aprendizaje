@@ -53,7 +53,7 @@ function scoreRound({round,practices,consequence={},attention={},target,bets={},
  if(points.speed)feedback.push(`Decidieron con agilidad y pertinencia: +${points.speed} puntos. El tiempo de conversación no se cuenta.`);
  if(!speedEligible)feedback.push('La rapidez no sumó: primero debe haber pertinencia y un diagnóstico alineado con las señales.');
  if(delay)feedback.push(`El tiempo de decisión restó ${delay} puntos; no hay cierre automático por tiempo.`);
- feedback.push(`Para la próxima: ${overload?'reduce la carga y conserva las acciones esenciales':fit<.65?'contrasta cada acción con las señales del caso':'revisa los indicadores que bajaron y ajusta tu predicción'}.`);
+ feedback.push(`Para la próxima: ${overload?'elige menos intervenciones y conserva las que mejor respondan al problema':fit<.65?'contrasta cada acción con las señales del caso':'revisa los indicadores que bajaron y ajusta tu predicción'}.`);
  return {version:3,exertion,points,penalties:{overload,wrong,delay},totalNoDebt,elapsedSeconds:Math.round(seconds),critical:focus,feedback};
 }
 function snapshot(row,round){
@@ -82,7 +82,7 @@ function analyzeRound(rows,round){
  if(lowfit)patterns.push({title:'Oportunidad de las acciones',text:`${lowfit} de ${n} equipos eligieron al menos una acción de pertinencia baja o con efectos adversos.`});
  const first=entries[0],lastEntry=entries[entries.length-1];
  const questions=[`¿Qué señal del caso les llevó a elegir ${most[0]}? ¿Qué evidencia habría cambiado esa decisión?`,overload?'Si tuvieran que ejecutar menos intervenciones, ¿cuáles conservarían y por qué?':'¿Cuál fue la acción mínima que produjo un avance útil? ¿Cómo comprobarían su efecto?',fatigue?'¿Qué resultado mejoró mientras caía la energía? ¿Sería sostenible repetir esa estrategia?':'¿Qué costo o efecto tardío podría estar oculto detrás de la mejora?',`¿Qué anticiparon en su apuesta y qué ocurrió realmente en ${(critical[round-1]||[]).join(' y ')}?`];
- if(n>1&&first.score!==null&&lastEntry.score!==null&&first.score!==lastEntry.score)questions.push(`Comparen ${first.team} (${first.score}/100) y ${lastEntry.team} (${lastEntry.score}/100): ¿qué diferencias de foco, carga y oportunidad explican los puntajes?`);
+ if(n>1&&first.score!==null&&lastEntry.score!==null&&first.score!==lastEntry.score)questions.push(`Comparen ${first.team} (${first.score}/100) y ${lastEntry.team} (${lastEntry.score}/100): ¿qué diferencias de prioridades, esfuerzo y momento explican los puntajes?`);
  return {count:n,patterns,questions,entries};
 }
 const api={interventionEffort,interventionLoad,roomConfig,canPlay,scoreRound,roundRanking,analyzeRound,critical};
