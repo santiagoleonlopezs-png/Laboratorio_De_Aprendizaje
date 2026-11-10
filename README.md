@@ -91,6 +91,12 @@ El nuevo instrumento está en [`cultura-cvf.html`](./cultura-cvf.html), accesibl
 
 Fuentes de referencia metodológica: https://www.ocai-official.com/about-ocai y https://www.ocai-official.com/intro-to-cvf. Para usar el **cuestionario oficial OCAI™** se deben verificar las condiciones de licencia con Cameron Institute.
 
+## NEXUS — Decisiones libres y consecuencias de saturación (noviembre de 2026)
+
+En NEXUS ya no existe un límite fijo de tres intervenciones por ronda. Cada equipo puede seleccionar libremente todas las acciones distintas que considere necesarias del catálogo. **Antes de ejecutar** no se muestra el tamaño de carga ni la capacidad, el exceso ni una advertencia del castigo por saturación. El juego solo mantiene los costos económicos visibles, la decisión de solicitar créditos y sus reglas de financiación.
+
+**Después de ejecutar**, el motor calcula la capacidad sistémica según energía y habilidad, los efectos negativos en las dimensiones, la saturación y su penalización en el ranking. El castigo por exceso equivale a cuatro puntos por unidad sobrante, con máximo de 45; se acumula con otras consecuencias negativas relevantes. El feedback muestra por qué una selección extensa puede resultar contraproducente. La libre elección no equivale a ausencia de consecuencias.
+
 ## NEXUS — Activar un plan de comunicaciones (noviembre de 2026)
 
 Se incorpora **Activar un plan de comunicaciones** al catálogo de intervenciones de NEXUS, sin alterar las demás acciones: requiere **25 créditos** y supone una carga **mediana (2 unidades)**. Representa definir mensajes, audiencias, canales y frecuencia, verificar la comprensión y ajustar los mensajes. Tiene efectos simulados sobre conciencia, conocimiento, confianza, compromiso y energía, con pertinencia contextual por ronda. Es más oportuno al anunciar el cambio; comunicar sin escuchar cuando la conciencia ya es alta puede aumentar la carga y reducir la confianza. Combinarlo con **Escuchar antes de convencer** puede generar una sinergia positiva. La simulación no garantiza que toda comunicación sea una buena decisión: debe evaluarse frente a las señales y a la capacidad disponible.
@@ -109,7 +115,7 @@ Las decisiones ya registradas se mantienen inmutables al reabrir una ronda; solo
 
 ## Proyecto NEXUS — Firebase y financiación (31/10/2026)
 
-Se conservaron las cinco rondas y las 15 intervenciones. NEXUS usa ahora el mismo proyecto Firebase `simuladores-juegos` que los demás módulos, sin conectarse a Supabase.
+Se conservaron las cinco rondas y el catálogo de intervenciones. NEXUS usa ahora el mismo proyecto Firebase `simuladores-juegos` que los demás módulos, sin conectarse a Supabase.
 
 - **Facilitador:** cuenta de Firebase Auth (Correo/Contraseña) con custom claim `facilitator: true`. Abre el panel, ingresa un código de clase (p. ej., `LID-CAMBIO`), pulsa **CREAR SALA** y comparte el código. El tablero muestra puntaje, deuda e historial de decisiones en tiempo real.
 - **Equipos:** acceden con código y nombre ficticio usando Firebase Auth anónimo. Los registros privados (hipótesis, métricas, historial) se guardan en `nexus_rooms/{codigo}/teams/{uid}`. La clasificación compartida (`ranking/{uid}`) almacena solo nombre, puntaje, ronda y deuda. Ambos registros se guardan en una operación atómica.
