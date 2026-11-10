@@ -19,7 +19,7 @@ function interventionLoad(practices,before={}){
  const load=actions.reduce((sum,a)=>sum+a.units,0),excess=Math.max(0,load-capacity);
  return {load,capacity,excess,actions,penalty:Math.min(24,excess*4)};
 }
-function roomConfig(room){return {...room,mode:room?.mode==='guided'?'guided':'autonomous',currentRound:clamp(room?.currentRound||1,1,5),phase:room?.phase==='discussion'?'discussion':'deciding'};}
+function roomConfig(room){return {...room,mode:room?.mode==='guided'?'guided':'autonomous',currentRound:clamp(room?.currentRound||1,1,5),phase:['waiting','deciding','discussion'].includes(room?.phase)?room.phase:'deciding'};}
 function canPlay(state,room){
  if(!state||!room||room.status!=='open')return false;
  const r=roomConfig(room),round=state.round+1;
