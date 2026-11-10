@@ -424,26 +424,79 @@ match /ocai_rooms/{roomCode} {
 }
 
     // =====================================================
-    // NEXUS — SALAS, EQUIPOS PRIVADOS Y RANKING
+    // NEXUS — SALAS, EQUIPOS PRIVADOS, RETIROS Y REINICIO
     // =====================================================
     function nexusFacilitator() {
       return request.auth != null && request.auth.token.facilitator == true;
     }
+    function nexusRoom(code) {
+      return get(/databases/$(database)/documents/nexus_rooms/$(code)).data;
+    }
     function nexusHost(code) {
       return nexusFacilitator()
-        && get(/databases/$(database)/documents/nexus_rooms/$(code)).data.hostUid == request.auth.uid;
+        && nexusRoom(code).hostUid == request.auth.uid;
+    }
+    function nexusEpoch(code) {
+      return nexusRoom(code).get('resetEpoch', 0);
+    }
+    function nexusAllowedTeam(code, teamId) {
+      return !exists(/databases/$(database)/documents/nexus_rooms/$(code)/removed/$(teamId))
+        || get(/databases/$(database)/documents/nexus_rooms/$(code)/removed/$(teamId)).data.resetEpoch != nexusEpoch(code);
     }
     match /nexus_rooms/{roomCode} {
       allow get: if request.auth != null;
-      allow list: if nexusFacilitator();
+      allow list: if nexusFacilitator() && resource.data.hostUid == request.auth.uid;
       allow create: if nexusFacilitator()
         && request.resource.data.gameId == 'nexus-v1'
         && request.resource.data.hostUid == request.auth.uid
         && request.resource.data.classCode == roomCode
-        && request.resource.data.status == 'open';
+        && request.resource.data.status == 'open'
+        && request.resource.data.mode in ['guided','autonomous']
+        && request.resource.data.currentRound == 1
+        && request.resource.data.phase in ['waiting','deciding']
+        && request.resource.data.resetEpoch == 0;
       allow update: if nexusHost(roomCode)
-        && request.resource.data.hostUid == resource.data.hostUid;
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status','mode','currentRound','phase','resetEpoch','updatedAt'
+        ])
+        && request.resource.data.hostUid == resource.data.hostUid
+        && request.resource.data.classCode == resource.data.classCode
+        && request.resource.data.gameId == resource.data.gameId
+        && request.resource.data.mode in ['guided','autonomous']
+        && request.resource.data.currentRound is int
+        && request.resource.data.currentRound >= 1
+        && request.resource.data.currentRound <= 5
+        && request.resource.data.phase in ['waiting','deciding','discussion']
+        && request.resource.data.status in ['open','resetting','completed']
+        && request.resource.data.get('resetEpoch',0) is int
+        && (
+          (resource.data.status == 'open'
+            && request.resource.data.status in ['open','completed','resetting']
+            && request.resource.data.get('resetEpoch',0) == resource.data.get('resetEpoch',0))
+          || (resource.data.status == 'resetting'
+            && request.resource.data.status == 'open'
+            && request.resource.data.currentRound == 1
+            && request.resource.data.phase ==
+              (request.resource.data.mode == 'guided' ? 'waiting' : 'deciding')
+            && request.resource.data.get('resetEpoch',0) == resource.data.get('resetEpoch',0) + 1)
+        );
       allow delete: if false;
+
+      match /removed/{teamId} {
+        allow get: if request.auth != null
+          && (request.auth.uid == teamId || nexusHost(roomCode));
+        allow list: if nexusHost(roomCode);
+        allow create, update: if nexusHost(roomCode)
+          && request.resource.data.keys().hasOnly([
+            'ownerUid','team','resetEpoch','removedAt'
+          ])
+          && request.resource.data.ownerUid == teamId
+          && request.resource.data.team is string
+          && request.resource.data.team.size() <= 35
+          && request.resource.data.resetEpoch == nexusEpoch(roomCode)
+          && request.resource.data.removedAt == request.time;
+        allow delete: if nexusHost(roomCode);
+      }
 
       match /teams/{teamId} {
         allow get: if request.auth != null
@@ -451,36 +504,44 @@ match /ocai_rooms/{roomCode} {
         allow list: if nexusHost(roomCode);
         allow create: if request.auth != null
           && request.auth.uid == teamId
+          && nexusRoom(roomCode).status == 'open'
+          && nexusAllowedTeam(roomCode,teamId)
           && request.resource.data.ownerUid == teamId
+          && request.resource.data.resetEpoch == nexusEpoch(roomCode)
           && request.resource.data.team is string
           && request.resource.data.team.size() >= 2
           && request.resource.data.team.size() <= 35
           && request.resource.data.gameState is map
           && request.resource.data.score is int
           && request.resource.data.score >= 0
-          && request.resource.data.score <= 100
-          && get(/databases/$(database)/documents/nexus_rooms/$(roomCode)).data.status == 'open';
+          && request.resource.data.score <= 100;
         allow update: if request.auth != null
           && request.auth.uid == teamId
+          && nexusRoom(roomCode).status == 'open'
+          && nexusAllowedTeam(roomCode,teamId)
           && resource.data.ownerUid == teamId
           && request.resource.data.ownerUid == teamId
           && request.resource.data.team == resource.data.team
+          && request.resource.data.resetEpoch == nexusEpoch(roomCode)
           && request.resource.data.round >= resource.data.round
           && request.resource.data.borrowed >= resource.data.borrowed
           && request.resource.data.spent >= resource.data.spent
           && request.resource.data.score is int
           && request.resource.data.score >= 0
           && request.resource.data.score <= 100;
-        allow delete: if false;
+        allow delete: if nexusHost(roomCode);
       }
 
       match /ranking/{teamId} {
         allow read: if request.auth != null;
         allow create, update: if request.auth != null
           && request.auth.uid == teamId
+          && nexusRoom(roomCode).status == 'open'
+          && nexusAllowedTeam(roomCode,teamId)
           && request.resource.data.ownerUid == teamId
+          && request.resource.data.resetEpoch == nexusEpoch(roomCode)
           && request.resource.data.keys().hasOnly([
-            'ownerUid','team','score','round','borrowed','updatedAt'
+            'ownerUid','team','resetEpoch','score','round','borrowed','updatedAt'
           ])
           && request.resource.data.score is int
           && request.resource.data.score >= 0
@@ -491,7 +552,7 @@ match /ocai_rooms/{roomCode} {
           && request.resource.data.borrowed == getAfter(
             /databases/$(database)/documents/nexus_rooms/$(roomCode)/teams/$(teamId)
           ).data.borrowed;
-        allow delete: if false;
+        allow delete: if nexusHost(roomCode);
       }
     }
 
