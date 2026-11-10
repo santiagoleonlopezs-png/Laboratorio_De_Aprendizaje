@@ -17,7 +17,7 @@ function interventionLoad(practices,before={}){
  const capacity=Math.max(2,(energy>=65?6:energy>=45?5:energy>=30?4:3)+(ability>=70?1:ability<35?-1:0));
  const actions=practices.map(name=>{const units=interventionEffort[name]||1;return {name,units,size:units===1?'Pequeña':units===2?'Mediana':'Grande'};});
  const load=actions.reduce((sum,a)=>sum+a.units,0),excess=Math.max(0,load-capacity);
- return {load,capacity,excess,actions,penalty:Math.min(24,excess*4)};
+ return {load,capacity,excess,actions,penalty:Math.min(45,excess*4)};
 }
 function roomConfig(room){return {...room,mode:room?.mode==='guided'?'guided':'autonomous',currentRound:clamp(room?.currentRound||1,1,5),phase:['waiting','deciding','discussion'].includes(room?.phase)?room.phase:'deciding'};}
 function canPlay(state,room){
