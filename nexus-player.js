@@ -71,7 +71,7 @@ async function enterGame(){
    state.score=Math.max(0,state.baseScore-debtPenalty());
    localStorage.setItem("changeTeam",team);localStorage.setItem("changeClassCode",classCode);
    const cached=JSON.parse(localStorage.getItem(stateKey())||'null');
-   if(cached?.history?.length===state.history.length&&cached?.clock?.round===state.round+1)state.clock={...cached.clock,runningSince:null};
+   if(cached?.sessionEpoch===state.sessionEpoch&&cached?.history?.length===state.history.length&&cached?.clock?.round===state.round+1)state.clock={...cached.clock,runningSince:null};
    else state.clock=state.clock?.round===state.round+1?{...state.clock,runningSince:null}:null;
    save();$("teamTag").textContent=" · "+team+" · "+classCode;
    $("joinOverlay").style.display="none";setLayer('');render();updateBudget();
