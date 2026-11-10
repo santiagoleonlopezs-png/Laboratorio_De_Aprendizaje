@@ -87,16 +87,34 @@
       batch.set(roomRef(code).collection('ranking').doc(uid),publicScore(team,state));
       await batch.commit();
     }
-    return {restore};
+    return {restore,room:room.data()};
   }
   async function save(code,team,state){
     init();
     if(!auth.currentUser||auth.currentUser.uid!==activeUid||code!==activeCode||team!==activeTeam)
       throw Error('No hay una sesión de equipo activa para esta sala.');
-    const batch=db.batch();
-    batch.update(roomRef(code).collection('teams').doc(activeUid),scoreData(code,team,state));
-    batch.set(roomRef(code).collection('ranking').doc(activeUid),publicScore(team,state));
-    await batch.commit();
+    // El documento de sala decide el avance, también si se abre una pestaña antigua.
+    await db.runTransaction(async tx=>{
+      const room=await tx.get(roomRef(code));
+      const ref=roomRef(code).collection('teams').doc(activeUid);
+      const saved=await tx.get(ref);
+      if(!room.exists||room.data().status!=='open')throw Error('La sala está cerrada.');
+      const oldHistory=saved.data()?.gameState?.history||[];
+      const history=state.history||[];
+      if(history.length<oldHistory.length)throw Error('Hay un avance más reciente. Vuelve a ingresar para recuperarlo.');
+      if(history.length>oldHistory.length+1)throw Error('Debes registrar las decisiones una ronda a la vez.');
+      if(history.length>oldHistory.length){
+        const config=window.NEXUS_ENGINE.roomConfig(room.data());
+        const decision=history[history.length-1];
+        if(decision.round!==oldHistory.length+1)throw Error('La decisión no corresponde a la siguiente ronda.');
+        if(config.mode==='guided'&&(config.phase!=='deciding'||decision.round>config.currentRound))
+          throw Error('El facilitador aún no ha habilitado esta ronda o ya abrió la conversación.');
+      }else if(history.some((h,i)=>h.id&&oldHistory[i]?.id&&h.id!==oldHistory[i].id)){
+        throw Error('Otra pestaña ya registró esta ronda. Vuelve a ingresar para recuperar el resultado.');
+      }
+      tx.update(ref,scoreData(code,team,state));
+      tx.set(roomRef(code).collection('ranking').doc(activeUid),publicScore(team,state));
+    });
     return true;
   }
   function ranking(code,onUpdate,onError){
@@ -120,7 +138,7 @@
     activeCode='';activeUid='';activeTeam='';
     return credential.user.uid;
   }
-  async function createRoom(code){
+  async function createRoom(code,mode="guided"){
     init();
     const user=auth.currentUser;
     if(!user||user.isAnonymous)throw Error('Inicia sesión como facilitador.');
@@ -132,8 +150,38 @@
       return false;
     }
     await ref.set({gameId:'nexus-v1',hostUid:user.uid,classCode:code,status:'open',
-      createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      mode:mode==='guided'?'guided':'autonomous',currentRound:1,phase:'deciding',
+      scoringVersion:2,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     return true;
+  }
+  function watchRoom(code,onUpdate,onError){
+    init();
+    return roomRef(code).onSnapshot(snap=>onUpdate(snap.exists?snap.data():null),e=>onError(err(e)));
+  }
+  async function controlRoom(code,action,value){
+    init();
+    const user=auth.currentUser;
+    if(!user||user.isAnonymous)throw Error('Inicia sesión como facilitador.');
+    await db.runTransaction(async tx=>{
+      const ref=roomRef(code),snapshot=await tx.get(ref);
+      if(!snapshot.exists||snapshot.data().hostUid!==user.uid)throw Error('No tienes acceso a esta sala.');
+      const config=window.NEXUS_ENGINE.roomConfig(snapshot.data());
+      const patch={updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+      if(action==='mode'){
+        patch.mode=value==='guided'?'guided':'autonomous';
+        patch.currentRound=config.currentRound;patch.phase='deciding';
+      }else if(action==='discussion'){
+        if(config.mode!=='guided')throw Error('Esta sala es autónoma.');
+        patch.phase='discussion';
+      }else if(action==='next'){
+        if(config.mode!=='guided'||config.phase!=='discussion')throw Error('Muestra primero el ranking y conversa sobre esta ronda.');
+        if(config.currentRound>=5)throw Error('Ya se completaron las cinco rondas.');
+        patch.currentRound=config.currentRound+1;patch.phase='deciding';
+      }else if(action==='resume'){
+        patch.phase='deciding';
+      }else throw Error('Acción de sala desconocida.');
+      tx.update(ref,patch);
+    });
   }
   async function subscribeRoom(code,onUpdate,onError){
     init();
@@ -154,6 +202,6 @@
       onUpdate(rows,decisions);
     },e=>onError(err(e)));
   }
-  window.NEXUS_FIREBASE={init,join,save,ranking,login,createRoom,subscribeRoom,stopRanking,error:err};
+  window.NEXUS_FIREBASE={init,join,save,ranking,login,createRoom,subscribeRoom,watchRoom,controlRoom,stopRanking,error:err};
 })();
 

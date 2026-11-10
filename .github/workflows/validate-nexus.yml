@@ -1,0 +1,23 @@
+name: Validar NEXUS
+on:
+  push:
+    paths: ['nexus*', 'tests/nexus-*.test.cjs', '.github/workflows/validate-nexus.yml']
+  pull_request:
+    paths: ['nexus*', 'tests/nexus-*.test.cjs', '.github/workflows/validate-nexus.yml']
+  workflow_dispatch:
+jobs:
+  nexus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar sintaxis
+        run: |
+          node --check nexus-engine.js
+          node --check nexus-firebase.js
+          node --check nexus-player.js
+          node --check nexus-facilitator.js
+      - name: Verificar puntaje, avance, ranking y transacciones
+        run: node --test tests/nexus-*.test.cjs
