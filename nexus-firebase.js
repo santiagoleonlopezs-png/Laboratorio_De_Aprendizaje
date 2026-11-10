@@ -151,7 +151,7 @@
     }
     await ref.set({gameId:'nexus-v1',hostUid:user.uid,classCode:code,status:'open',
       mode:mode==='guided'?'guided':'autonomous',currentRound:1,phase:'deciding',
-      scoringVersion:2,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      scoringVersion:3,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     return true;
   }
   function watchRoom(code,onUpdate,onError){

@@ -88,7 +88,7 @@ let selected=[]; let time=420, tick;
 const $=id=>document.getElementById(id);
 vars.forEach(v=>{$("target").innerHTML+=`<option>${v}</option>`;$("bets").innerHTML+=`<div class="betrow"><span>${v} <details class="helpTip"><summary aria-label="Qué significa ${v}">?</summary><div>${definitions[v]}</div></details></span><input aria-label="Predicción para ${v}" type="range" min="-15" max="15" value="0" data-bet="${v}"><b id="b_${v}">0</b></div>`});
 ["Alta dirección","Líderes","Influenciadores","Equipos","Individuos"].forEach(a=>$("audience").innerHTML+=`<option>${a}</option>`);
-practices.forEach((p,i)=>$("practices").innerHTML+=`<button type="button" class="practice" data-i="${i}" aria-pressed="false"><b>${easyName(p[0])}</b><small>${p[1]}</small><span class="cost">${practiceCosts[p[0]]} créditos</span></button>`);
+practices.forEach((p,i)=>$("practices").innerHTML+=`<button type="button" class="practice" data-i="${i}" aria-pressed="false"><b>${easyName(p[0])}</b><small>${p[1]}</small><span class="effort">${engine.interventionLoad([p[0]]).actions[0].size} · ${engine.interventionEffort[p[0]]||1} de carga</span><span class="cost">${practiceCosts[p[0]]} créditos</span></button>`);
 function selectedCost(){return selected.reduce((sum,i)=>sum+(practiceCosts[practices[i][0]]||0),0)}
 function debtPenalty(){return Math.min(50,Math.round((state?.borrowed||0)*0.4));}
 function remainingBudget(){return TOTAL_BUDGET+(state.borrowed||0)-(state.spent||0)-(state.history.some(h=>h.round===state.round+1)?0:selectedCost());}
@@ -110,6 +110,10 @@ function updateBudget(){
  $("budgetUsed").textContent=used;$("budgetSpent").textContent=spent;
  $("budgetRemaining").textContent=remaining;$("budgetOwn").textContent=own;
  $("budgetDebt").textContent=borrowed;
+ const last=state.history.find(h=>h.round===state.round+1);
+ const load=last?.scoring?.exertion||engine.interventionLoad(selected.map(i=>practices[i][0]),last?.before||state.metrics);
+ $("loadPreview").classList.toggle('overloaded',load.excess>0);
+ $("loadPreview").innerHTML=`<div><span>Carga de las intervenciones</span><b>${load.load} / ${load.capacity}</b></div><small>${load.excess?`Exceso de ${load.excess} unidades · −${load.penalty} pts por saturación`:'Dentro de la capacidad disponible · sin penalización por saturación'}</small>`;
  document.querySelector(".budgetbox").classList.toggle("inDebt",borrowed>0);
  $("budgetFill").style.width=Math.min(100,((spent+planned)/(TOTAL_BUDGET+borrowed))*100)+"%";
  document.querySelectorAll(".practice").forEach(x=>{
@@ -125,7 +129,7 @@ document.querySelectorAll(".practice").forEach(x=>x.onclick=()=>{
    selected=selected.filter(z=>z!==i);x.classList.remove("selected");
  }else{
    const cost=practiceCosts[practices[i][0]]||0;
-   if(selected.length>=3){alert("Puedes elegir hasta 3 intervenciones. La tercera aumenta la carga y puede restar puntos por saturación.");return;}
+   if(selected.length>=3){alert("Puedes elegir hasta 3 intervenciones. La saturación depende del tamaño de las acciones y de la capacidad disponible.");return;}
    if(cost>remainingBudget()&&!requestLoan(cost-remainingBudget()))return;
    selected.push(i);x.classList.add("selected");
  }
@@ -349,11 +353,13 @@ function effects(){
     consequence.warnings.push("Costo de oportunidad: se invirtieron recursos sin intervenir suficientemente la condición crítica de la ronda.");
   }
 
-  // Sobreintervención y concentración excesiva de presupuesto.
-  const spend=selectedCost();
-  if(names.length>=3){e.Energía-=4;e.Confianza-=2;consequence.warnings.push("La sobreintervención aumentó la carga y los costos de coordinación.");}
-  if(spend>=70){e.Energía-=5;e.Compromiso-=2;consequence.warnings.push("Concentrar muchos recursos en una sola ronda redujo la sostenibilidad.");}
-  if(spend>=90){e.Energía-=4;e.Confianza-=3;}
+  // Proporcionalidad: tres acciones pequeñas pueden caber; una combinación
+  // grande solo satura si supera la capacidad que permiten energía y habilidad.
+  const loadInfo=engine.interventionLoad(names,state.metrics);
+  if(loadInfo.excess>0){
+    e.Energía-=loadInfo.excess*2;e.Confianza-=loadInfo.excess*.75;e.Compromiso-=loadInfo.excess*.5;
+    consequence.warnings.push(`La carga de las acciones (${loadInfo.load}) superó la capacidad disponible (${loadInfo.capacity}) en ${loadInfo.excess} unidades. El exceso aumentó el cansancio y la coordinación necesaria.`);
+  }
 
   // Presión natural de cada ronda: no actuar bien también tiene consecuencias.
   const pressure=[{Energía:-2},{Energía:-4,Capacidad:-2},{Energía:-6,Confianza:-2},{Energía:-5,Compromiso:-2},{Energía:-5,Compromiso:-3}][state.round];
@@ -420,9 +426,11 @@ function showResult(h){
 }
 function renderScoreFeedback(h){
  const score=h.scoring;
- if(!score){$("resultScoreFormula").textContent='Esta decisión pertenece a la versión anterior del puntaje.';$("resultScoreBreakdown").innerHTML='';$("resultPersonalFeedback").innerHTML='';return;}
+ if(!score){$("resultLoadSummary").textContent='';$("resultScoreFormula").textContent='Esta decisión pertenece a la versión anterior del puntaje.';$("resultScoreBreakdown").innerHTML='';$("resultPersonalFeedback").innerHTML='';return;}
  const labels={relevance:['Pertinencia',40],diagnosis:['Lectura del problema',20],forecast:['Predicción',10],impact:['Efecto en el sistema',15],focus:['Foco y recursos',10],speed:['Agilidad con criterio',5]};
  const debt=Math.min(50,Math.round((h.borrowed||0)*.4));
+ const load=score.exertion;
+ $("resultLoadSummary").textContent=load?`Carga de esta decisión: ${load.load}/${load.capacity} unidades. `+load.actions.map(a=>`${easyName(a.name)}: ${a.size.toLowerCase()} (${a.units})`).join(' · '):'Esta decisión se registró antes del cálculo proporcional de carga.';
  $("resultScoreFormula").textContent=`Esta ronda: ${score.totalNoDebt}/100. Ranking: promedio de tus rondas evaluadas (${h.baseScore}/100) menos ${debt} puntos por deuda = ${h.score}/100.`;
  $("resultScoreBreakdown").innerHTML=Object.entries(labels).map(([k,[label,max]])=>`<div><span>${label}</span><b>+${score.points[k]}<small> / ${max}</small></b></div>`).join('')+Object.entries({Saturación:score.penalties.overload,'Acciones inoportunas':score.penalties.wrong,'Demora al decidir':score.penalties.delay}).map(([label,value])=>`<div class="${value?'negative':''}"><span>${label}</span><b>−${value}</b></div>`).join('');
  $("resultPersonalFeedback").innerHTML=score.feedback.map(f=>`<li>${nexusEscape(f)}</li>`).join('');
@@ -518,6 +526,7 @@ window.addEventListener("resize",()=>{if(state)drawEvolutionChart();});
 
 // Una sola pantalla interactiva a la vez, también para navegación por teclado.
 function setLayer(id){
+ document.body.style.overflow=id?'hidden':'';
  for(const node of document.body.children){
    if(['SCRIPT','STYLE','LINK'].includes(node.tagName))continue;
    node.inert=Boolean(id)&&node.id!==id;

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="nexus.css?v=20261110">
+  <link rel="stylesheet" href="nexus.css?v=20261110-proporcional">
 </head>
 <body>
 <nav class="brandNav" aria-label="Navegación principal"><a class="wordmark" href="index.html"><strong>HACERLO</strong><i></i><span>Fábrica del<br>Comportamiento</span></a><a class="backLink" href="index.html#experiencias">← Volver al laboratorio</a></nav>
@@ -21,7 +21,7 @@
    <div class="storyFacts"><span><b>05</b> rondas</span><span><b>120</b> créditos iniciales</span><span><b>01</b> sistema conectado</span></div></div>
    <a class="backLink" href="index.html#experiencias">← Explorar otras experiencias</a>
   </div>
-  <div class="joinForm"><div class="joinCard"><p class="eyebrow">TU PRÓXIMA DECISIÓN EMPIEZA AQUÍ</p><h2>Tu equipo<br>entra en juego.</h2><p class="muted">Ingresa con el código que comparte tu facilitador. El avance de tu organización se guarda en cada ronda.</p>
+  <div class="joinForm"><div class="joinCard"><p class="eyebrow">TU PRÓXIMA DECISIÓN EMPIEZA AQUÍ</p><h2>Tu equipo<br> entra en juego.</h2><p class="muted">Ingresa con el código que comparte tu facilitador. El avance de tu organización se guarda en cada ronda.</p>
    <label for="joinTeam">Nombre del equipo / organización</label><input id="joinTeam" type="text" maxlength="35" placeholder="Ej. NOVA" autocomplete="organization">
    <label for="joinCode">Código de la sala</label><input id="joinCode" type="text" maxlength="30" placeholder="Ej. LIDERAZGO-CAMBIO" autocomplete="off">
    <button id="joinBtn" type="button">Entrar a la simulación →</button><div id="joinError" role="status" aria-live="polite"></div>
@@ -73,6 +73,7 @@
       <p class="loanNote">El comité aprueba financiación para continuar. Cada crédito prestado resta 0,4 puntos al ranking (máximo 50).</p>
       <small>Comienzas con 120 créditos. Puedes financiar decisiones adicionales, pero la deuda reduce tu puntaje.</small>
     </div>
+    <div id="loadPreview" class="loadSummary" role="status" aria-live="polite"></div>
     <div id="practices" class="practices"></div>
     <h2>4. Haz tu apuesta</h2>
     <p class="muted">Predice cuánto cambiará cada indicador. Acercarte al resultado observado suma puntos.</p><div id="bets"></div>
@@ -86,7 +87,7 @@
 <div id="roundResultOverlay" tabindex="-1" class="roundResultOverlay" role="dialog" aria-modal="true" aria-label="Resultado y ranking de la ronda"><div class="roundResultCard">
 <div class="resultTop"><div><p class="eyebrow">RESULTADO DE LA RONDA <span id="resultRoundNumber">1</span></p><h1 id="resultVerdict">Decisión ejecutada</h1><p>Observa las consecuencias antes de continuar.</p></div><div class="resultScoreBox"><span>Índice de decisión acumulado</span><b id="resultScore">0/100</b></div></div>
 <section class="resultPanel resultRanking"><div class="sectionHead"><div><p class="eyebrow">ANTES DE CONVERSAR</p><h2>Así va el ranking</h2></div><span class="liveBadge">EN VIVO</span></div><p class="muted">Las posiciones se actualizan mientras llegan las decisiones de los demás equipos.</p><div id="resultRanking"></div><p id="resultSyncStatus" role="status" aria-live="polite"></p></section>
-<section class="resultPanel scorePanel"><div><p class="eyebrow">TU DECISIÓN, EXPLICADA</p><h2>Qué sumó y qué restó</h2><p class="muted" id="resultScoreFormula"></p></div><div id="resultScoreBreakdown" class="scoreBreakdown"></div><ul id="resultPersonalFeedback" class="personalFeedback"></ul></section>
+<section class="resultPanel scorePanel"><div><p class="eyebrow">TU DECISIÓN, EXPLICADA</p><h2>Qué sumó y qué restó</h2><p class="muted" id="resultScoreFormula"></p></div><p id="resultLoadSummary" class="loadExplanation"></p><div id="resultScoreBreakdown" class="scoreBreakdown"></div><ul id="resultPersonalFeedback" class="personalFeedback"></ul></section>
 <div class="resultGrid">
 <section class="resultPanel"><h2>Decisión tomada</h2><p><b>Objetivo:</b> <span id="resultTarget"></span></p><p><b>Audiencia:</b> <span id="resultAudience"></span></p><div id="resultPractices" class="resultPracticeTags"></div><p><b>Hipótesis:</b> <span id="resultHypothesis"></span></p></section>
 <section class="resultPanel"><h2>Evolución de indicadores</h2><div id="resultDeltas"></div></section>
@@ -142,12 +143,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="nexus-engine.js?v=20261110"></script>
-<script src="nexus-firebase.js?v=20261110"></script>
+<script src="nexus-engine.js?v=20261110-proporcional"></script>
+<script src="nexus-firebase.js?v=20261110-proporcional"></script>
 <script>window.CHANGE_LAB_CONFIG={classCode:'LID-CAMBIO'};</script>
 
-<script src="nexus-player.js?v=20261110"></script>
-<script src="nexus-facilitator.js?v=20261110"></script>
+<script src="nexus-player.js?v=20261110-proporcional"></script>
+<script src="nexus-facilitator.js?v=20261110-proporcional"></script>
 
 
 <div style="padding:25px;text-align:center;font:12px system-ui;color:#8c9ab0">© 2026 Laboratorio de Aprendizaje y Decisión. Todos los derechos reservados.</div></body></html>
