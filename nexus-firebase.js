@@ -69,11 +69,21 @@
     if(auth.currentUser&&!auth.currentUser.isAnonymous)await auth.signOut();
     if(!auth.currentUser)await auth.signInAnonymously();
     const uid=auth.currentUser.uid;
-    const room=await roomRef(code).get();
+    let room;
+    try{room=await roomRef(code).get();}
+    catch(error){
+      if(error?.code==='permission-denied')throw Error('Firebase no permite consultar la sala. Verifica que el acceso anónimo esté habilitado y publica las reglas actualizadas de NEXUS.');
+      throw error;
+    }
     if(!room.exists)throw Error('No existe esta sala. El facilitador debe crearla desde su panel antes de jugar.');
     if(room.data().status!=='open')throw Error('La sala no admite ingresos en este momento. Consulta al facilitador.');
     const epoch=Number(room.data().resetEpoch)||0;
-    const removed=await roomRef(code).collection('removed').doc(uid).get();
+    let removed;
+    try{removed=await roomRef(code).collection('removed').doc(uid).get();}
+    catch(error){
+      if(error?.code==='permission-denied')throw Error('Firebase no permite comprobar el acceso de equipos retirados. Las reglas activas de NEXUS probablemente son anteriores a los nuevos controles. Publica el archivo firestore.rules actualizado.');
+      throw error;
+    }
     if(removed.exists&&removed.data().resetEpoch===epoch)
       throw Error('El facilitador retiró este equipo de la sala. Solicita su autorización antes de volver a participar.');
     const ref=roomRef(code).collection('teams').doc(uid);
@@ -93,7 +103,11 @@
       const batch=db.batch();
       batch.set(ref,scoreData(code,team,state));
       batch.set(roomRef(code).collection('ranking').doc(uid),publicScore(team,state));
-      await batch.commit();
+      try{await batch.commit();}
+      catch(error){
+        if(error?.code==='permission-denied')throw Error('Firebase no permitió guardar el equipo y su ranking. Debes publicar las reglas nuevas de NEXUS, que incluyen resetEpoch y los controles de participantes.');
+        throw error;
+      }
     }
     return {restore,room:room.data()};
   }
