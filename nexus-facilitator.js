@@ -2,10 +2,32 @@
 (() => {
 'use strict';
 const $f=id=>document.getElementById(id),engine=window.NEXUS_ENGINE,esc=nexusEscape;
-let facUnsub=null,facSerial=0,rowsCache=[],room=null,loadedCode='',reviewRound=1,loggingIn=false,busy=false;
+let facUnsub=null,facSerial=0,rowsCache=[],room=null,loadedCode='',reviewRound=1,loggingIn=false,busy=false,qrLink='';
 const fmt=d=>{const x=new Date(d);return !d||isNaN(x)?'—':x.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});};
 const mode=()=>document.querySelector('[name="facMode"]:checked').value;
 const medal=n=>n===1?'🥇':n===2?'🥈':n===3?'🥉':String(n);
+
+function renderRoomQr(link){
+ if(qrLink===link)return;
+ const target=$f('facQr');if(!target)return;
+ target.replaceChildren();
+ $f('facQrCode').textContent=loadedCode;
+ if(!window.QRCode){
+   target.textContent='QR no disponible';
+   $f('facQrDownload').disabled=true;
+   return;
+ }
+ try{
+   new QRCode(target,{text:link,width:126,height:126,colorDark:'#0a1930',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+   qrLink=link;
+   $f('facQrDownload').disabled=false;
+ }catch(error){
+   console.warn('No se pudo crear el QR de NEXUS',error);
+   target.textContent='QR no disponible';
+   $f('facQrDownload').disabled=true;
+ }
+}
+
 function openFac(){
  if(state)pauseClock();
  $f('facOverlay').classList.add('show');setLayer('facOverlay');$f('facLogin').style.display='block';$f('facDashboard').style.display='none';
@@ -77,6 +99,7 @@ function renderFac(){
    $f('facResetAll').textContent=resetting?'Completar reinicio':'Reiniciar a todos';
    const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('sala',loadedCode);
    $f('facShareLink').value=url.href;
+   renderRoomQr(url.href);
  }
  renderReview(rows);
 }
@@ -186,6 +209,17 @@ $f('facResetAll').onclick=async()=>{
 $f('facChangeMode').onclick=()=>{
  const next=room.mode==='guided'?'autonomous':'guided';
  if(confirm(next==='autonomous'?'Los equipos podrán completar todas las rondas a su ritmo. ¿Cambiar a modalidad autónoma?':`Retomarás el control desde la ronda ${room.currentRound}. Los avances ya registrados se conservan. ¿Cambiar a modalidad dirigida?`))control('mode',next);
+};
+$f('facQrDownload').onclick=()=>{
+ const art=$f('facQr');
+ const picture=art.querySelector('img');
+ const canvas=art.querySelector('canvas');
+ const src=picture?.src?.startsWith('data:image')?picture.src:canvas?.toDataURL('image/png');
+ if(!src){$f('facShareStatus').textContent='El QR aún no está disponible. Puedes copiar el enlace de la sala.';return;}
+ const anchor=document.createElement('a');
+ anchor.href=src;anchor.download='NEXUS-sala-'+loadedCode+'.png';
+ document.body.append(anchor);anchor.click();anchor.remove();
+ $f('facShareStatus').textContent='QR listo para compartir o proyectar.';
 };
 $f('facCopyLink').onclick=async()=>{
  try{await navigator.clipboard.writeText(`NEXUS · Sala ${loadedCode}\n${$f('facShareLink').value}`);$f('facShareStatus').textContent='Enlace y código copiados.';}
