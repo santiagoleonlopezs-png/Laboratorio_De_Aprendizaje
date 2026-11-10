@@ -168,3 +168,8 @@ body.play-view{--bg:#080f20;--panel:#111e34;--panel2:#152641;--line:#293c58;--in
 .facLegalFooter{max-width:1240px;margin:0 auto;padding:2px 24px 26px;text-align:center;color:#8da9cc;font:12px/1.8 Inter,system-ui,Arial,sans-serif}
 .facLegalFooter strong,.labEntryFooter strong{color:#c4d8fa;font-weight:600}
 .facLegalFooter span{display:block;color:#849bb8;font-size:11px}
+
+/* Firma HACERLO enlazada al sitio principal; discreta pero reconocible. */
+a.hacerloFooterLink{color:#c4d8fa;font-weight:600;text-decoration:none;border-bottom:1px solid transparent;transition:color .18s,border-color .18s}
+a.hacerloFooterLink:hover,a.hacerloFooterLink:focus-visible{color:#81e1c9;border-bottom-color:currentColor}
+a.hacerloFooterLink:focus-visible{outline:2px solid #81e1c9;outline-offset:4px;border-radius:2px}
