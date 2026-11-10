@@ -105,7 +105,7 @@ let selected=[]; let time=420, tick;
 const $=id=>document.getElementById(id);
 vars.forEach(v=>{$("target").innerHTML+=`<option>${v}</option>`;$("bets").innerHTML+=`<div class="betrow"><span>${v} <details class="helpTip"><summary aria-label="Qué significa ${v}">?</summary><div>${definitions[v]}</div></details></span><input aria-label="Predicción para ${v}" type="range" min="-15" max="15" value="0" data-bet="${v}"><b id="b_${v}">0</b></div>`});
 ["Alta dirección","Líderes","Influenciadores","Equipos","Individuos"].forEach(a=>$("audience").innerHTML+=`<option>${a}</option>`);
-practices.forEach((p,i)=>$("practices").innerHTML+=`<button type="button" class="practice" data-i="${i}" aria-pressed="false"><b>${easyName(p[0])}</b><small>${p[1]}</small><span class="effort">${engine.interventionLoad([p[0]]).actions[0].size} · ${engine.interventionEffort[p[0]]||1} de carga</span><span class="cost">${practiceCosts[p[0]]} créditos</span></button>`);
+practices.forEach((p,i)=>$("practices").innerHTML+=`<button type="button" class="practice" data-i="${i}" aria-pressed="false"><b>${easyName(p[0])}</b><small>${p[1]}</small><span class="cost">${practiceCosts[p[0]]} créditos</span></button>`);
 function selectedCost(){return selected.reduce((sum,i)=>sum+(practiceCosts[practices[i][0]]||0),0)}
 function debtPenalty(){return Math.min(50,Math.round((state?.borrowed||0)*0.4));}
 function remainingBudget(){return TOTAL_BUDGET+(state.borrowed||0)-(state.spent||0)-(state.history.some(h=>h.round===state.round+1)?0:selectedCost());}
@@ -127,10 +127,6 @@ function updateBudget(){
  $("budgetUsed").textContent=used;$("budgetSpent").textContent=spent;
  $("budgetRemaining").textContent=remaining;$("budgetOwn").textContent=own;
  $("budgetDebt").textContent=borrowed;
- const last=state.history.find(h=>h.round===state.round+1);
- const load=last?.scoring?.exertion||engine.interventionLoad(selected.map(i=>practices[i][0]),last?.before||state.metrics);
- $("loadPreview").classList.toggle('overloaded',load.excess>0);
- $("loadPreview").innerHTML=`<div><span>Carga de las intervenciones</span><b>${load.load} / ${load.capacity}</b></div><small>${load.excess?`Exceso de ${load.excess} unidades · −${load.penalty} pts por saturación`:'Dentro de la capacidad disponible · sin penalización por saturación'}</small>`;
  document.querySelector(".budgetbox").classList.toggle("inDebt",borrowed>0);
  $("budgetFill").style.width=Math.min(100,((spent+planned)/(TOTAL_BUDGET+borrowed))*100)+"%";
  document.querySelectorAll(".practice").forEach(x=>{
@@ -146,7 +142,6 @@ document.querySelectorAll(".practice").forEach(x=>x.onclick=()=>{
    selected=selected.filter(z=>z!==i);x.classList.remove("selected");
  }else{
    const cost=practiceCosts[practices[i][0]]||0;
-   if(selected.length>=3){alert("Puedes elegir hasta 3 intervenciones. La saturación depende del tamaño de las acciones y de la capacidad disponible.");return;}
    if(cost>remainingBudget()&&!requestLoan(cost-remainingBudget()))return;
    selected.push(i);x.classList.add("selected");
  }
@@ -388,8 +383,8 @@ function effects(){
     consequence.warnings.push("Costo de oportunidad: se invirtieron recursos sin intervenir suficientemente la condición crítica de la ronda.");
   }
 
-  // Proporcionalidad: tres acciones pequeñas pueden caber; una combinación
-  // grande solo satura si supera la capacidad que permiten energía y habilidad.
+  // Libertad de elección: se puede activar cualquier cantidad de acciones del catálogo.
+  // La carga se evalúa únicamente después de decidir y se refleja en indicadores y ranking.
   const loadInfo=engine.interventionLoad(names,state.metrics);
   if(loadInfo.excess>0){
     e.Energía-=loadInfo.excess*2;e.Confianza-=loadInfo.excess*.75;e.Compromiso-=loadInfo.excess*.5;
