@@ -4,7 +4,7 @@
 (function(){
   const ROOT='nexus_rooms';
   let app=null,auth=null,db=null,unsubRanking=null;
-  let activeCode='',activeUid='',activeTeam='';
+  let activeCode='',activeUid='',activeTeam='',activeEpoch=0;
   const err=e=>{
     const s=String(e?.code||e?.message||e||'');
     if(/permission-denied|insufficient permissions/i.test(s))
@@ -39,7 +39,7 @@
   }
   function scoreData(code,team,state){
     return {
-      ownerUid:activeUid,team,score:Math.max(0,Math.min(100,Math.round(state.score||0))),
+      ownerUid:activeUid,team,resetEpoch:Number(state.sessionEpoch)||0,score:Math.max(0,Math.min(100,Math.round(state.score||0))),
       baseScore:Math.max(0,Math.min(100,Math.round(state.baseScore??state.score??0))),
       round:Math.max(1,Math.min(5,(state.round||0)+1)),
       business:Math.max(0,Math.min(100,Math.round(state.business||0))),
@@ -52,7 +52,7 @@
   }
   function publicScore(team,state){
     return {
-      ownerUid:activeUid,team,score:Math.max(0,Math.min(100,Math.round(state.score||0))),
+      ownerUid:activeUid,team,resetEpoch:Number(state.sessionEpoch)||0,score:Math.max(0,Math.min(100,Math.round(state.score||0))),
       round:Math.max(1,Math.min(5,(state.round||0)+1)),
       borrowed:Math.max(0,Math.round(state.borrowed||0)),
       updatedAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -71,15 +71,23 @@
     const uid=auth.currentUser.uid;
     const room=await roomRef(code).get();
     if(!room.exists)throw Error('No existe esta sala. El facilitador debe crearla desde su panel antes de jugar.');
-    if(room.data().status!=='open')throw Error('La sala está cerrada. Pide al facilitador que la habilite.');
+    if(room.data().status!=='open')throw Error('La sala no admite ingresos en este momento. Consulta al facilitador.');
+    const epoch=Number(room.data().resetEpoch)||0;
+    const removed=await roomRef(code).collection('removed').doc(uid).get();
+    if(removed.exists&&removed.data().resetEpoch===epoch)
+      throw Error('El facilitador retiró este equipo de la sala. Solicita su autorización antes de volver a participar.');
     const ref=roomRef(code).collection('teams').doc(uid);
     const existing=await ref.get();
+    if(existing.exists && Number(existing.data().resetEpoch||0)!==epoch)
+      throw Error('La sala se reinició. Vuelve a ingresar para comenzar de nuevo.');
     if(existing.exists && existing.data().team!==team)
       throw Error('Este dispositivo ya se registró como '+existing.data().team+' en la clase. Usa ese nombre para continuar.');
-    activeCode=code;activeTeam=team;activeUid=uid;
+    activeCode=code;activeTeam=team;activeUid=uid;activeEpoch=epoch;
+    state.sessionEpoch=epoch;
     let restore=null;
     if(existing.exists){
       restore=existing.data().gameState||null;
+      if(restore)restore.sessionEpoch=epoch;
     }else{
       // Registro atómico: las decisiones completas quedan privadas, el ranking es público en la sala.
       const batch=db.batch();
@@ -93,12 +101,16 @@
     init();
     if(!auth.currentUser||auth.currentUser.uid!==activeUid||code!==activeCode||team!==activeTeam)
       throw Error('No hay una sesión de equipo activa para esta sala.');
+    if(Number(state.sessionEpoch||0)!==activeEpoch)
+      throw Error('La sala ha sido reiniciada. Ingresa de nuevo para empezar desde cero.');
     // El documento de sala decide el avance, también si se abre una pestaña antigua.
     await db.runTransaction(async tx=>{
       const room=await tx.get(roomRef(code));
       const ref=roomRef(code).collection('teams').doc(activeUid);
       const saved=await tx.get(ref);
-      if(!room.exists||room.data().status!=='open')throw Error('La sala está cerrada.');
+      if(!room.exists||room.data().status!=='open')throw Error('La sala no acepta decisiones en este momento.');
+      if(Number(room.data().resetEpoch||0)!==Number(state.sessionEpoch||0))
+        throw Error('Esta decisión pertenece a una partida anterior. Vuelve a ingresar a la sala.');
       const oldHistory=saved.data()?.gameState?.history||[];
       const history=state.history||[];
       if(history.length<oldHistory.length)throw Error('Hay un avance más reciente. Vuelve a ingresar para recuperarlo.');
@@ -135,7 +147,7 @@
       await auth.signOut();
       throw Error('Cuenta autenticada, pero sin el permiso facilitator=true en Firebase.');
     }
-    activeCode='';activeUid='';activeTeam='';
+    activeCode='';activeUid='';activeTeam='';activeEpoch=0;
     return credential.user.uid;
   }
   async function createRoom(code,mode="guided"){
@@ -150,7 +162,8 @@
       return false;
     }
     await ref.set({gameId:'nexus-v1',hostUid:user.uid,classCode:code,status:'open',
-      mode:mode==='guided'?'guided':'autonomous',currentRound:1,phase:'deciding',
+      mode:mode==='guided'?'guided':'autonomous',currentRound:1,
+      phase:mode==='guided'?'waiting':'deciding',resetEpoch:0,
       scoringVersion:3,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     return true;
   }
@@ -166,22 +179,104 @@
       const ref=roomRef(code),snapshot=await tx.get(ref);
       if(!snapshot.exists||snapshot.data().hostUid!==user.uid)throw Error('No tienes acceso a esta sala.');
       const config=window.NEXUS_ENGINE.roomConfig(snapshot.data());
+      if(config.status!=='open')throw Error('La sala está finalizada o reiniciándose.');
       const patch={updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
       if(action==='mode'){
-        patch.mode=value==='guided'?'guided':'autonomous';
-        patch.currentRound=config.currentRound;patch.phase='deciding';
-      }else if(action==='discussion'){
-        if(config.mode!=='guided')throw Error('Esta sala es autónoma.');
+        if(!['guided','autonomous'].includes(value))throw Error('Modalidad no reconocida.');
+        patch.mode=value;
+        patch.currentRound=config.currentRound;
+        patch.phase=value==='guided'?'waiting':'deciding';
+      }else if(action==='open'){
+        if(config.mode!=='guided'||config.phase!=='waiting')throw Error('Solo puedes abrir una ronda preparada.');
+        patch.phase='deciding';
+      }else if(action==='close'||action==='discussion'){
+        if(config.mode!=='guided'||config.phase!=='deciding')throw Error('Primero abre una ronda para recibir las decisiones.');
         patch.phase='discussion';
       }else if(action==='next'){
-        if(config.mode!=='guided'||config.phase!=='discussion')throw Error('Muestra primero el ranking y conversa sobre esta ronda.');
+        if(config.mode!=='guided'||config.phase!=='discussion')throw Error('Primero cierra la ronda y conversa sobre las decisiones.');
         if(config.currentRound>=5)throw Error('Ya se completaron las cinco rondas.');
-        patch.currentRound=config.currentRound+1;patch.phase='deciding';
-      }else if(action==='resume'){
-        patch.phase='deciding';
+        patch.currentRound=config.currentRound+1;
+        patch.phase='waiting'; // El facilitador decide cuándo abrir la ronda.
+      }else if(action==='reopen'||action==='resume'){
+        if(config.mode!=='guided'||config.phase!=='discussion')throw Error('Solo puedes reabrir una ronda cerrada.');
+        patch.phase='deciding'; // Los equipos pendientes pueden responder, los anteriores conservan su decisión.
+      }else if(action==='finish'){
+        if(config.mode!=='guided'||config.phase!=='discussion'||config.currentRound!==5)
+          throw Error('Finaliza después de cerrar la quinta ronda.');
+        patch.status='completed';
       }else throw Error('Acción de sala desconocida.');
       tx.update(ref,patch);
     });
+  }
+  async function facilitatorUser(code){
+    init();
+    const user=auth.currentUser;
+    if(!user||user.isAnonymous)throw Error('Inicia sesión como facilitador.');
+    const token=await user.getIdTokenResult();
+    if(token.claims.facilitator!==true)throw Error('Esta cuenta no tiene el rol de facilitador.');
+    const snap=await roomRef(code).get();
+    if(!snap.exists||snap.data().hostUid!==user.uid)throw Error('No tienes acceso a esta sala.');
+    return snap;
+  }
+  async function removeTeam(code,teamId){
+    const room=await facilitatorUser(code);
+    if(!teamId||typeof teamId!=='string')throw Error('Selecciona el equipo que vas a retirar.');
+    const ref=roomRef(code);
+    await db.runTransaction(async tx=>{
+      const current=await tx.get(ref);
+      const participant=await tx.get(ref.collection('teams').doc(teamId));
+      if(!current.exists||current.data().hostUid!==auth.currentUser.uid)
+        throw Error('No tienes permiso para administrar esta sala.');
+      if(!participant.exists)throw Error('El equipo ya no figura en la sala.');
+      tx.set(ref.collection('removed').doc(teamId),{
+        ownerUid:teamId,team:participant.data().team,
+        resetEpoch:Number(current.data().resetEpoch)||0,
+        removedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      tx.delete(ref.collection('teams').doc(teamId));
+      tx.delete(ref.collection('ranking').doc(teamId));
+    });
+  }
+  async function resetRoom(code){
+    await facilitatorUser(code);
+    const ref=roomRef(code);
+    // Bloquear temporalmente nuevos envíos mientras se borra la partida.
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists||snap.data().hostUid!==auth.currentUser.uid)throw Error('No tienes acceso a esta sala.');
+      if(snap.data().status!=='resetting')
+        tx.update(ref,{status:'resetting',updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    });
+    // Se eliminan todos los documentos y rankings; los retiros previos caducan con resetEpoch.
+    for(let page=0;page<50;page++){
+      const snaps=await Promise.all([
+        ref.collection('teams').limit(190).get(),
+        ref.collection('ranking').limit(190).get()
+      ]);
+      if(!snaps[0].size&&!snaps[1].size)break;
+      const batch=db.batch();
+      for(const snap of snaps)for(const doc of snap.docs)batch.delete(doc.ref);
+      await batch.commit();
+      if(page===49)throw Error('El volumen de participantes es superior al límite de reinicio. Vuelve a ejecutar el reinicio.');
+    }
+    await db.runTransaction(async tx=>{
+      const current=await tx.get(ref);
+      if(!current.exists||current.data().hostUid!==auth.currentUser.uid||current.data().status!=='resetting')
+        throw Error('La sala cambió mientras se reiniciaba.');
+      tx.update(ref,{
+        status:'open',currentRound:1,
+        phase:current.data().mode==='guided'?'waiting':'deciding',
+        resetEpoch:(Number(current.data().resetEpoch)||0)+1,
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    return true;
+  }
+  function watchOwnTeam(code,onUpdate,onError){
+    init();
+    if(!auth.currentUser)throw Error('No hay una identidad de equipo autenticada.');
+    return roomRef(code).collection('teams').doc(auth.currentUser.uid)
+      .onSnapshot({includeMetadataChanges:true},snap=>onUpdate(snap.exists,snap.metadata.fromCache),e=>onError(err(e)));
   }
   async function subscribeRoom(code,onUpdate,onError){
     init();
@@ -202,6 +297,6 @@
       onUpdate(rows,decisions);
     },e=>onError(err(e)));
   }
-  window.NEXUS_FIREBASE={init,join,save,ranking,login,createRoom,subscribeRoom,watchRoom,controlRoom,stopRanking,error:err};
+  window.NEXUS_FIREBASE={init,join,save,ranking,login,createRoom,subscribeRoom,watchRoom,controlRoom,removeTeam,resetRoom,watchOwnTeam,stopRanking,error:err};
 })();
 
