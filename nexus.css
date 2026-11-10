@@ -163,3 +163,8 @@ body.play-view{--bg:#080f20;--panel:#111e34;--panel2:#152641;--line:#293c58;--in
 .roomQrCode{font-size:13px;color:#d4e5ff;font-weight:600;letter-spacing:.12em}
 .roomQrBox button{font-size:11px;padding:7px 12px;margin:0;width:100%;min-height:33px}
 @media(max-width:760px){.roomControl .roomShare{grid-template-columns:1fr}.roomQrBox{max-width:220px;margin:auto;width:100%}.roomShareInline{flex-wrap:wrap}.roomShareInline button{width:100%}}
+
+/* Firma de marca visible también en el panel de pantalla completa del facilitador. */
+.facLegalFooter{max-width:1240px;margin:0 auto;padding:2px 24px 26px;text-align:center;color:#8da9cc;font:12px/1.8 Inter,system-ui,Arial,sans-serif}
+.facLegalFooter strong,.labEntryFooter strong{color:#c4d8fa;font-weight:600}
+.facLegalFooter span{display:block;color:#849bb8;font-size:11px}
