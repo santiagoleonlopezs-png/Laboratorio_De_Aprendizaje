@@ -73,7 +73,8 @@ function renderFac(){
    $f('facRoundState').dataset.phase=completed?'completed':room.phase;
    $f('facRoundState').textContent=resetting?'REINICIANDO':completed?'FINALIZADA':guided?(waiting?'PREPARADA':deciding?'ABIERTA':'CERRADA'):'AUTÓNOMA';
    $f('facChangeMode').disabled=busy||resetting||completed;
-   $f('facResetAll').disabled=busy||resetting;
+   $f('facResetAll').disabled=busy;
+   $f('facResetAll').textContent=resetting?'Completar reinicio':'Reiniciar a todos';
    const url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('sala',loadedCode);
    $f('facShareLink').value=url.href;
  }
