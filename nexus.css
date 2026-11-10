@@ -126,3 +126,23 @@ body.play-view{--bg:#080f20;--panel:#111e34;--panel2:#152641;--line:#293c58;--in
 @media(max-width:760px){.joinOverlay{padding:16px}.labEntryWrap{margin-top:0}#home .home-layout{margin:38px 0 28px;grid-template-columns:1fr}.labJoinCard{padding:24px;margin:18px auto 0}#facOpen.labFacAccess{font-size:11px;padding:8px 4px}#home .home-copy{font-size:14px}#home h1{font-size:44px}.labEntryFooter{margin:30px 0 20px;font-size:10px}#home .home-step p{font-size:11px}#home .home-step b{font-size:11px}}
 @media(max-width:400px){#home h1{font-size:39px}.nexusBrand{font-size:26px}#home .home-steps{gap:12px}#home .home-step p{font-size:10px}.labJoinCard h2{font-size:26px}}
 .modeChoices .modeChoice{display:flex;margin:0;font-size:12px;font-weight:400}
+
+
+/* NEXUS · controles de sala: acciones explícitas y administración discreta */
+.facRoundHeader{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:22px 0 4px}
+.facRoundHeader>b,.facManageBar b{font-size:13px;color:#e1edff;font-weight:570}
+.facStatePill{display:inline-flex;align-items:center;border:1px solid #466b96;border-radius:30px;background:#182f50;color:#bcd5f5;padding:6px 11px;font-size:11px}
+.facStatePill[data-phase="deciding"]{color:#a6e5d6;border-color:#3c817a;background:#123d41}
+.facStatePill[data-phase="discussion"]{color:#d7dfaf;border-color:#68794e;background:#363e2c}
+.facStatePill[data-phase="completed"]{color:#c5d2eb;border-color:#546782;background:#1a293d}
+.roomControl .roundActions{display:flex;flex-wrap:wrap;gap:9px;margin:13px 0}
+.roomControl .roundActions button{min-height:42px;margin:0;width:auto;padding:10px 15px;border-radius:9px;font-size:12px;font-weight:560}
+.facManageBar{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:20px;padding-top:20px;border-top:1px solid #355174}
+.facManageBar small{display:block;color:#98b0cf;font-size:11px;line-height:1.6;margin-top:5px}
+.facDanger,.facRemove{background:transparent;border:1px solid #934c60;color:#ffb5c4;border-radius:9px;font-size:11px;font-weight:540}
+.facDanger{padding:10px 15px;min-width:max-content}
+.facRemove{padding:7px 10px;min-height:34px;margin:0;width:auto}
+.facDanger:hover:not(:disabled),.facRemove:hover:not(:disabled){background:#79304755;border-color:#dc7083}
+.facRemove:disabled,.facDanger:disabled{opacity:.48;cursor:not-allowed}
+.facBoard .facTable td:last-child{text-align:right}
+@media(max-width:650px){.facManageBar{align-items:flex-start;flex-direction:column}.facManageBar .facDanger{width:100%}.facRoundHeader{align-items:flex-start;flex-wrap:wrap}}
