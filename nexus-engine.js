@@ -48,8 +48,8 @@ function scoreRound({round,practices,consequence={},attention={},target,bets={},
  if(medium)feedback.push(`${medium} acciones aportaron de forma complementaria.`);
  if(low||irrelevant||bad)feedback.push(`${low+irrelevant+bad} acciones tuvieron poca pertinencia o efectos adversos. Prioriza antes de añadir otra.`);
  feedback.push(focus.includes(target)?`El objetivo elegido coincide con un foco crítico: ${focus.join(' y ')}.`:`El objetivo se alejó de las señales centrales: revisa ${focus.join(' y ')}.`);
- if(overload)feedback.push(`La carga total fue ${exertion.load} frente a una capacidad disponible de ${exertion.capacity}: ${exertion.excess} unidades de exceso restaron ${overload} puntos. La penalización depende del tamaño de las acciones y la capacidad del sistema.`);
- else feedback.push(`Carga proporcionada: ${exertion.load} de ${exertion.capacity} unidades disponibles. ${practices.length} acciones caben en la capacidad de esta ronda, sin penalización por saturación.`);
+ if(overload)feedback.push('Para la siguiente ronda, prioriza las intervenciones que más responden al problema. Hacer muchas acciones a la vez puede agotar a las personas y restar efectividad.');
+ else feedback.push('El esfuerzo de las acciones estuvo dentro de lo que la organización podía asumir.');
  if(points.speed)feedback.push(`Decidieron con agilidad y pertinencia: +${points.speed} puntos. El tiempo de conversación no se cuenta.`);
  if(!speedEligible)feedback.push('La rapidez no sumó: primero debe haber pertinencia y un diagnóstico alineado con las señales.');
  if(delay)feedback.push(`El tiempo de decisión restó ${delay} puntos; no hay cierre automático por tiempo.`);
@@ -76,12 +76,12 @@ function analyzeRound(rows,round){
  const mismatched=entries.filter(e=>!(critical[round-1]||[]).includes(e.decision.target)).length;
  const lowfit=entries.filter(e=>(e.decision.consequence?.low?.length||0)+(e.decision.consequence?.irrelevant?.length||0)+(e.decision.consequence?.counterproductive?.length||0)>0).length;
  const patterns=[{title:'La elección más frecuente',text:`${most[0]} apareció en ${most[1]} de ${n} decisiones. Coincidir no demuestra que sea la mejor opción.`}];
- if(overload)patterns.push({title:'Carga de intervención',text:`${overload} de ${n} equipos superaron su capacidad disponible por la carga de sus intervenciones.`});
+ if(overload)patterns.push({title:'Demasiadas acciones a la vez',text:`${overload} de ${n} equipos eligieron intervenciones que, juntas, exigían más trabajo del que su organización podía sostener.`});
  if(fatigue)patterns.push({title:'El costo sobre la energía',text:`La energía cayó en ${fatigue} de ${n} equipos. Conviene mirar qué mejoró a costa de ese esfuerzo.`});
  if(mismatched)patterns.push({title:'Foco de la decisión',text:`${mismatched} de ${n} equipos priorizaron una dimensión distinta de los focos del caso: ${(critical[round-1]||[]).join(' y ')}.`});
  if(lowfit)patterns.push({title:'Oportunidad de las acciones',text:`${lowfit} de ${n} equipos eligieron al menos una acción de pertinencia baja o con efectos adversos.`});
  const first=entries[0],lastEntry=entries[entries.length-1];
- const questions=[`¿Qué señal del caso les llevó a elegir ${most[0]}? ¿Qué evidencia habría cambiado esa decisión?`,overload?'Si solo pudieran mantener una acción, ¿cuál conservarían y cuál retirarían para reducir la saturación?':'¿Cuál fue la acción mínima que produjo un avance útil? ¿Cómo comprobarían su efecto?',fatigue?'¿Qué resultado mejoró mientras caía la energía? ¿Sería sostenible repetir esa estrategia?':'¿Qué costo o efecto tardío podría estar oculto detrás de la mejora?',`¿Qué anticiparon en su apuesta y qué ocurrió realmente en ${(critical[round-1]||[]).join(' y ')}?`];
+ const questions=[`¿Qué señal del caso les llevó a elegir ${most[0]}? ¿Qué evidencia habría cambiado esa decisión?`,overload?'Si tuvieran que ejecutar menos intervenciones, ¿cuáles conservarían y por qué?':'¿Cuál fue la acción mínima que produjo un avance útil? ¿Cómo comprobarían su efecto?',fatigue?'¿Qué resultado mejoró mientras caía la energía? ¿Sería sostenible repetir esa estrategia?':'¿Qué costo o efecto tardío podría estar oculto detrás de la mejora?',`¿Qué anticiparon en su apuesta y qué ocurrió realmente en ${(critical[round-1]||[]).join(' y ')}?`];
  if(n>1&&first.score!==null&&lastEntry.score!==null&&first.score!==lastEntry.score)questions.push(`Comparen ${first.team} (${first.score}/100) y ${lastEntry.team} (${lastEntry.score}/100): ¿qué diferencias de foco, carga y oportunidad explican los puntajes?`);
  return {count:n,patterns,questions,entries};
 }
