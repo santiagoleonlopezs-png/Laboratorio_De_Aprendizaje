@@ -91,6 +91,16 @@ El nuevo instrumento está en [`cultura-cvf.html`](./cultura-cvf.html), accesibl
 
 Fuentes de referencia metodológica: https://www.ocai-official.com/about-ocai y https://www.ocai-official.com/intro-to-cvf. Para usar el **cuestionario oficial OCAI™** se deben verificar las condiciones de licencia con Cameron Institute.
 
+## Auditoría técnica y de capacidad de NEXUS (noviembre de 2026)
+
+**Alcance:** comprobaciones sintácticas de los cuatro JavaScript, igualdad de los seis archivos publicados en `PaginaHacerlo/laboratorio/`, integridad de IDs del HTML, estados dirigida/autónoma, 80 combinaciones de cinco rondas por 1–16 intervenciones y simulaciones locales de análisis con 10, 30, 50, 100, 200, 500 y 1000 equipos. **No son pruebas de cientos de dispositivos conectados a Firestore**: los resultados son sintéticos/locales. La batería reproducible en Node está en `tests/nexus-audit.cjs` (ejecutar `node tests/nexus-audit.cjs`).
+
+**Optimizaciones:** el facilitador ahora reutiliza en memoria los equipos que no han cambiado (a partir de `snapshot.docChanges()`), procesa como máximo un redibujado por cuadro con `requestAnimationFrame` y muestra la hora del documento realmente actualizado. Conserva decisiones, ranking, controles y análisis. Las intervenciones siguen siendo de libre selección, el presupuesto se puede financiar y el exceso de esfuerzo se revela al ejecutar.
+
+**Escalabilidad / costos:** las salas no tienen un límite fijo de equipos en el frontend; sin embargo, cada cliente suscrito al ranking recibe los cambios de los demás. Para `N` equipos activos y cinco actualizaciones de puntaje por equipo, las lecturas del ranking podrían rondar al menos `6 × N²` entre suscripciones iniciales y decisiones, antes de añadir préstamos, reconexiones y otras lecturas. Por eso se recomienda iniciar con un piloto de 20–50 equipos, medir una sesión simultánea real y no prometer capacidad masiva sin una prueba de carga conectada y una arquitectura de ranking agregado si el tráfico crece.
+
+**Integridad / seguridad residual:** el puntaje y las consecuencias se calculan en JavaScript del participante. Aunque las reglas de Firestore restringen propietario, sala y permisos, no constituyen una validación autoritativa de los puntos. Una competición de alto impacto necesitaría cálculo/verificación desde un backend seguro (p. ej. Cloud Functions) y pruebas de reglas con el emulador de Firebase. Este cambio no modifica `firestore.rules` ni sustituye su publicación real en Firebase Console.
+
 ## NEXUS — Decisiones libres y consecuencias de saturación (noviembre de 2026)
 
 En NEXUS ya no existe un límite fijo de tres intervenciones por ronda. Cada equipo puede seleccionar libremente todas las acciones distintas que considere necesarias del catálogo. **Antes de ejecutar** no se muestra el tamaño de carga ni la capacidad, el exceso ni una advertencia del castigo por saturación. El juego solo mantiene los costos económicos visibles, la decisión de solicitar créditos y sus reglas de financiación.
