@@ -2,7 +2,14 @@
 (() => {
 'use strict';
 const $f=id=>document.getElementById(id),engine=window.NEXUS_ENGINE,esc=nexusEscape;
-let facUnsub=null,facSerial=0,rowsCache=[],room=null,loadedCode='',reviewRound=1,loggingIn=false,busy=false,qrLink='';
+let facUnsub=null,facSerial=0,facRenderFrame=0,rowsCache=[],room=null,loadedCode='',reviewRound=1,loggingIn=false,busy=false,qrLink='';
+function scheduleFacRender(){
+ if(facRenderFrame)return;
+ facRenderFrame=requestAnimationFrame(()=>{facRenderFrame=0;renderFac();});
+}
+function cancelFacRender(){
+ if(facRenderFrame){cancelAnimationFrame(facRenderFrame);facRenderFrame=0;}
+}
 const fmt=d=>{const x=new Date(d);return !d||isNaN(x)?'—':x.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});};
 const mode=()=>document.querySelector('[name="facMode"]:checked').value;
 const medal=n=>n===1?'🥇':n===2?'🥈':n===3?'🥉':String(n);
@@ -29,11 +36,13 @@ function renderRoomQr(link){
 }
 
 function openFac(){
+ cancelFacRender();
  if(state)pauseClock();
  $f('facOverlay').classList.add('show');setLayer('facOverlay');$f('facLogin').style.display='block';$f('facDashboard').style.display='none';
  $f('facPassword').value='';$f('facLoginError').textContent='';$f('facEmail').focus();
 }
 function closeFac(){
+ cancelFacRender();
  $f('facOverlay').classList.remove('show');setLayer($f('joinOverlay').style.display==='none'?'':'joinOverlay');facSerial++;
  if(facUnsub){facUnsub();facUnsub=null;}
  room=null;loadedCode='';rowsCache=[];
@@ -43,12 +52,13 @@ async function loadFac(){
  const code=$f('facClassCode').value.trim().toUpperCase();
  if(!/^[A-Z0-9-]{3,30}$/.test(code)){$f('facError').textContent='Ingresa un código válido (3–30 caracteres).';return;}
  const serial=++facSerial;
+ cancelFacRender();
  if(facUnsub){facUnsub();facUnsub=null;}
  room=null;loadedCode='';rowsCache=[];$f('facRoomControl').hidden=true;renderFac();$f('facError').textContent='';
  try{
    const stopTeams=await window.NEXUS_FIREBASE.subscribeRoom(code,(rows)=>{
      if(serial!==facSerial)return;
-     rowsCache=rows;renderFac();
+     rowsCache=rows;scheduleFacRender();
    },e=>{if(serial===facSerial)$f('facError').textContent=e;});
    if(serial!==facSerial){stopTeams();return;}
    loadedCode=code;
@@ -59,7 +69,7 @@ async function loadFac(){
      room=engine.roomConfig(data);
      if(oldRound!==room.currentRound)reviewRound=room.currentRound;
      document.querySelector(`[name="facMode"][value="${room.mode}"]`).checked=true;
-     renderFac();
+     scheduleFacRender();
    },e=>{if(serial===facSerial)$f('facError').textContent=e;});
    facUnsub=()=>{stopTeams();stopRoom();};
  }catch(e){if(serial===facSerial)$f('facError').textContent='No se pudo cargar la sala: '+nexusError(e);}
@@ -69,7 +79,8 @@ function renderFac(){
  $f('facTeams').textContent=rowsCache.length;
  $f('facAvg').textContent=rowsCache.length?Math.round(rowsCache.reduce((a,r)=>a+(r.score||0),0)/rowsCache.length):0;
  $f('facRound').textContent=rowsCache.length?Math.max(...rowsCache.map(r=>(r.gameState?.history||[]).length)):0;
- $f('facUpdated').textContent=rowsCache.length?fmt(new Date()):'—';
+ const latestUpdate=rowsCache.reduce((last,row)=>Math.max(last,Date.parse(row.updated_at)||0),0);
+ $f('facUpdated').textContent=latestUpdate?fmt(latestUpdate):'—';
  let place=0,prev=null;
  // Calcular posiciones antes del filtro conserva el puesto real de cada equipo.
  const positions=new Map(rowsCache.map((r,i)=>{if(i===0||r.score!==prev)place=i+1;prev=r.score;return [r.id,place];}));
