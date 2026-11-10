@@ -173,3 +173,11 @@ body.play-view{--bg:#080f20;--panel:#111e34;--panel2:#152641;--line:#293c58;--in
 a.hacerloFooterLink{color:#c4d8fa;font-weight:600;text-decoration:none;border-bottom:1px solid transparent;transition:color .18s,border-color .18s}
 a.hacerloFooterLink:hover,a.hacerloFooterLink:focus-visible{color:#81e1c9;border-bottom-color:currentColor}
 a.hacerloFooterLink:focus-visible{outline:2px solid #81e1c9;outline-offset:4px;border-radius:2px}
+
+/* Resultado: esfuerzo organizacional explicado sin unidades técnicas. */
+.loadExplanation{font-size:12px!important;line-height:1.8!important}
+.loadExplanation strong{display:block;color:#e5f5ff;font-weight:600;font-size:13px;margin-bottom:5px}
+.loadExplanation b{color:#e5f5ff;font-weight:600}
+.loadExplanation.is-overloaded{background:#29243a;border-left-color:#ff9eb1;color:#e3c7d7!important}
+.loadExplanation.is-overloaded strong,.loadExplanation.is-overloaded b{color:#ffccda}
+.loadExplanation .loadAside{display:block;margin-top:9px;font-size:11px;color:#b6bed9}
