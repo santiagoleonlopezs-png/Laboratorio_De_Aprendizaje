@@ -91,6 +91,16 @@ El nuevo instrumento está en [`cultura-cvf.html`](./cultura-cvf.html), accesibl
 
 Fuentes de referencia metodológica: https://www.ocai-official.com/about-ocai y https://www.ocai-official.com/intro-to-cvf. Para usar el **cuestionario oficial OCAI™** se deben verificar las condiciones de licencia con Cameron Institute.
 
+## NEXUS — Controles para sesiones dirigidas (noviembre de 2026)
+
+En la modalidad **Dirigida por rondas**, el panel **Control de rondas** permite: **Abrir ronda** (la habilita), **Cerrar ronda y conversar** (pausa nuevas decisiones), **Reabrir ronda** (recibe respuestas de equipos pendientes, sin borrar decisiones ya confirmadas), **Avanzar a la siguiente** (la deja *preparada*, el facilitador debe abrirla) y **Finalizar experiencia** al cerrar la quinta ronda. Las salas antiguas en fase de decisión se pueden cerrar sin reiniciarlas.
+
+En la tabla de ranking el facilitador propietario puede **Retirar** un equipo: se borran sus decisiones y su posición; el equipo queda impedido de reincorporarse a esa generación de la sala. **Reiniciar a todos** elimina los documentos de equipos y ranking, restablece ronda 1 y crea una nueva generación con el **mismo código**. Requiere escribir REINICIAR para confirmar. Ante una interrupción de red durante un reinicio, **Completar reinicio** permite continuar; mientras tanto, los envíos permanecen bloqueados. Los participantes vuelven a la pantalla de ingreso y pueden empezar desde cero tras el reinicio. El reinicio es destructivo; guarda antes lo que necesites del historial.
+
+Las decisiones ya registradas se mantienen inmutables al reabrir una ronda; solo los equipos que aún no hayan decidido pueden responder. No se aplica una reapertura retrospectiva después de avanzar a otra ronda.
+
+**Requisitos de Firebase:** publicar el archivo completo y actualizado de [firestore.rules](./firestore.rules) en Firebase Console. Las reglas permiten al facilitador propietario retirar equipos, gestionar el reinicio y controlar el acceso por generación de sala. Sin publicar las reglas, los botones de administración pueden producir errores de permisos. GitHub no publica automáticamente las reglas en Firebase. Conserva Authentication Anónimo (equipos) y Correo/Contraseña con el claim facilitator para el facilitador.
+
 ## Proyecto NEXUS — Firebase y financiación (31/10/2026)
 
 Se conservaron las cinco rondas y las 15 intervenciones. NEXUS usa ahora el mismo proyecto Firebase `simuladores-juegos` que los demás módulos, sin conectarse a Supabase.
