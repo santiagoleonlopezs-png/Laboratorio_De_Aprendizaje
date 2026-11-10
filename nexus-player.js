@@ -533,3 +533,12 @@ function setLayer(id){
  }
 }
 setLayer('joinOverlay');
+
+// La misma secuencia de entrada de las otras experiencias del Laboratorio.
+function showNexusJoin(show){
+ $('home').hidden=show;$('nexusJoin').hidden=!show;
+ if(show)$('joinTeam').focus();else $('goPlayer').focus();
+}
+$('goPlayer').onclick=()=>showNexusJoin(true);
+$('joinBack').onclick=()=>showNexusJoin(false);
+if(roomFromLink&&/^[A-Z0-9-]{3,30}$/i.test(roomFromLink))showNexusJoin(true);

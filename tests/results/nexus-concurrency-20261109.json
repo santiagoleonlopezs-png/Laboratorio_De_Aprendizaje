@@ -1,0 +1,449 @@
+{
+  "test": "NEXUS isolated concurrency",
+  "projectId": "demo-nexus-load",
+  "emulator": "127.0.0.1:8080",
+  "sourceCommit": "4f431141afc507b818f3000e8df83a028669bb64",
+  "node": "v24.22.1",
+  "firebase": "13.1.0",
+  "rulesUnitTesting": "6.0.0",
+  "environment": {
+    "cpus": 9,
+    "totalMemoryGB": 9.73
+  },
+  "limitations": [
+    "Local Firestore emulator, not the production service.",
+    "One Node process creates independent authenticated SDK clients; not separate physical browsers.",
+    "Authentication provider throughput, Internet latency and rendering are outside this test."
+  ],
+  "scenarios": [
+    {
+      "teams": 10,
+      "mode": "guided",
+      "rounds": 5,
+      "errors": [],
+      "roundResults": [
+        {
+          "round": 1,
+          "saved": 10,
+          "save": {
+            "n": 10,
+            "p50_ms": 335.5,
+            "p95_ms": 501.77,
+            "max_ms": 501.77
+          },
+          "rankingFanout": {
+            "n": 10,
+            "p50_ms": 509.52,
+            "p95_ms": 510.2,
+            "max_ms": 510.2
+          },
+          "facilitator_ms": 507.84,
+          "allObserved_ms": 517.48
+        },
+        {
+          "round": 2,
+          "saved": 10,
+          "save": {
+            "n": 10,
+            "p50_ms": 155.35,
+            "p95_ms": 292.97,
+            "max_ms": 292.97
+          },
+          "rankingFanout": {
+            "n": 10,
+            "p50_ms": 297.78,
+            "p95_ms": 300.64,
+            "max_ms": 300.64
+          },
+          "facilitator_ms": 299,
+          "allObserved_ms": 308.97
+        },
+        {
+          "round": 3,
+          "saved": 10,
+          "save": {
+            "n": 10,
+            "p50_ms": 147.94,
+            "p95_ms": 286.52,
+            "max_ms": 286.52
+          },
+          "rankingFanout": {
+            "n": 10,
+            "p50_ms": 290.4,
+            "p95_ms": 291.76,
+            "max_ms": 291.76
+          },
+          "facilitator_ms": 291.43,
+          "allObserved_ms": 301.96
+        },
+        {
+          "round": 4,
+          "saved": 10,
+          "save": {
+            "n": 10,
+            "p50_ms": 141.84,
+            "p95_ms": 279.06,
+            "max_ms": 279.06
+          },
+          "rankingFanout": {
+            "n": 10,
+            "p50_ms": 282.82,
+            "p95_ms": 284.48,
+            "max_ms": 284.48
+          },
+          "facilitator_ms": 284.01,
+          "allObserved_ms": 293.63
+        },
+        {
+          "round": 5,
+          "saved": 10,
+          "save": {
+            "n": 10,
+            "p50_ms": 148.46,
+            "p95_ms": 285.35,
+            "max_ms": 285.35
+          },
+          "rankingFanout": {
+            "n": 10,
+            "p50_ms": 284.98,
+            "p95_ms": 290.64,
+            "max_ms": 290.64
+          },
+          "facilitator_ms": 290.32,
+          "allObserved_ms": 300.84
+        }
+      ],
+      "startedAt": "2026-11-10T02:19:07.188Z",
+      "join": {
+        "n": 10,
+        "p50_ms": 357.71,
+        "p95_ms": 403.26,
+        "max_ms": 403.26,
+        "total_ms": 403.64
+      },
+      "integrity": {
+        "teams": 10,
+        "decisions": 50,
+        "allHaveFiveRounds": true,
+        "rankingConsistent": true
+      },
+      "events": {
+        "rankingCallbacks": 520,
+        "roomCallbacks": 100,
+        "facilitatorCallbacks": 54,
+        "rankingRowsDelivered": 5110
+      },
+      "payloadBytes": {
+        "teamDocumentMax": 13979,
+        "totalTeamDocuments": 123419
+      },
+      "ok": true,
+      "roomCode": "LOAD-10-1794277148513",
+      "eventLoop": {
+        "p95_ms": 24.3,
+        "max_ms": 144.44
+      },
+      "memoryRSS_mb": 168.76,
+      "finishedAt": "2026-11-10T02:19:11.144Z"
+    },
+    {
+      "teams": 25,
+      "mode": "guided",
+      "rounds": 5,
+      "errors": [],
+      "roundResults": [
+        {
+          "round": 1,
+          "saved": 25,
+          "save": {
+            "n": 25,
+            "p50_ms": 685.53,
+            "p95_ms": 1028.31,
+            "max_ms": 1062.23
+          },
+          "rankingFanout": {
+            "n": 25,
+            "p50_ms": 1356.19,
+            "p95_ms": 1363.95,
+            "max_ms": 1364.01
+          },
+          "facilitator_ms": 1424.19,
+          "allObserved_ms": 1424.24
+        },
+        {
+          "round": 2,
+          "saved": 25,
+          "save": {
+            "n": 25,
+            "p50_ms": 457.25,
+            "p95_ms": 777.57,
+            "max_ms": 800.42
+          },
+          "rankingFanout": {
+            "n": 25,
+            "p50_ms": 1098.8,
+            "p95_ms": 1111.6,
+            "max_ms": 1114.02
+          },
+          "facilitator_ms": 1228.73,
+          "allObserved_ms": 1238.9
+        },
+        {
+          "round": 3,
+          "saved": 25,
+          "save": {
+            "n": 25,
+            "p50_ms": 468.38,
+            "p95_ms": 809.37,
+            "max_ms": 825.74
+          },
+          "rankingFanout": {
+            "n": 25,
+            "p50_ms": 1145.29,
+            "p95_ms": 1154.13,
+            "max_ms": 1154.21
+          },
+          "facilitator_ms": 1337.88,
+          "allObserved_ms": 1346.07
+        },
+        {
+          "round": 4,
+          "saved": 25,
+          "save": {
+            "n": 25,
+            "p50_ms": 440.73,
+            "p95_ms": 784.56,
+            "max_ms": 804.66
+          },
+          "rankingFanout": {
+            "n": 25,
+            "p50_ms": 1020.88,
+            "p95_ms": 1029.62,
+            "max_ms": 1029.69
+          },
+          "facilitator_ms": 1266.41,
+          "allObserved_ms": 1273.55
+        },
+        {
+          "round": 5,
+          "saved": 25,
+          "save": {
+            "n": 25,
+            "p50_ms": 409.57,
+            "p95_ms": 789.68,
+            "max_ms": 833.58
+          },
+          "rankingFanout": {
+            "n": 25,
+            "p50_ms": 1019.42,
+            "p95_ms": 1035.82,
+            "max_ms": 1035.9
+          },
+          "facilitator_ms": 1371.77,
+          "allObserved_ms": 1371.82
+        }
+      ],
+      "startedAt": "2026-11-10T02:19:11.145Z",
+      "join": {
+        "n": 25,
+        "p50_ms": 394.63,
+        "p95_ms": 426.29,
+        "max_ms": 427.66,
+        "total_ms": 427.73
+      },
+      "integrity": {
+        "teams": 25,
+        "decisions": 125,
+        "allHaveFiveRounds": true,
+        "rankingConsistent": true
+      },
+      "events": {
+        "rankingCallbacks": 3175,
+        "roomCallbacks": 250,
+        "facilitatorCallbacks": 134,
+        "rankingRowsDelivered": 78775
+      },
+      "payloadBytes": {
+        "teamDocumentMax": 13990,
+        "totalTeamDocuments": 308406
+      },
+      "ok": true,
+      "roomCode": "LOAD-25-1794277151396",
+      "eventLoop": {
+        "p95_ms": 37.26,
+        "max_ms": 255.07
+      },
+      "memoryRSS_mb": 389.46,
+      "finishedAt": "2026-11-10T02:19:18.685Z"
+    },
+    {
+      "teams": 50,
+      "mode": "guided",
+      "rounds": 5,
+      "errors": [],
+      "roundResults": [
+        {
+          "round": 1,
+          "saved": 50,
+          "save": {
+            "n": 50,
+            "p50_ms": 1696.99,
+            "p95_ms": 3559.54,
+            "max_ms": 3677.44
+          },
+          "rankingFanout": {
+            "n": 50,
+            "p50_ms": 8443.93,
+            "p95_ms": 8479.15,
+            "max_ms": 8509.44
+          },
+          "facilitator_ms": 8812.07,
+          "allObserved_ms": 8825.31
+        },
+        {
+          "round": 2,
+          "saved": 50,
+          "save": {
+            "n": 50,
+            "p50_ms": 1341.73,
+            "p95_ms": 3031.17,
+            "max_ms": 3123.04
+          },
+          "rankingFanout": {
+            "n": 50,
+            "p50_ms": 8210.42,
+            "p95_ms": 8255.6,
+            "max_ms": 8265.62
+          },
+          "facilitator_ms": 8863.16,
+          "allObserved_ms": 8874.3
+        },
+        {
+          "round": 3,
+          "saved": 50,
+          "save": {
+            "n": 50,
+            "p50_ms": 1517.16,
+            "p95_ms": 3438.71,
+            "max_ms": 3561.93
+          },
+          "rankingFanout": {
+            "n": 50,
+            "p50_ms": 8237.65,
+            "p95_ms": 8292.95,
+            "max_ms": 8300.12
+          },
+          "facilitator_ms": 9224.49,
+          "allObserved_ms": 9225.6
+        },
+        {
+          "round": 4,
+          "saved": 50,
+          "save": {
+            "n": 50,
+            "p50_ms": 1398.63,
+            "p95_ms": 3027.98,
+            "max_ms": 3125.43
+          },
+          "rankingFanout": {
+            "n": 50,
+            "p50_ms": 8245.49,
+            "p95_ms": 8283.09,
+            "max_ms": 8283.42
+          },
+          "facilitator_ms": 9492.85,
+          "allObserved_ms": 9496.98
+        },
+        {
+          "round": 5,
+          "saved": 50,
+          "save": {
+            "n": 50,
+            "p50_ms": 1502.54,
+            "p95_ms": 3368.29,
+            "max_ms": 3445.31
+          },
+          "rankingFanout": {
+            "n": 50,
+            "p50_ms": 8242.8,
+            "p95_ms": 8288.97,
+            "max_ms": 8289.33
+          },
+          "facilitator_ms": 9808.9,
+          "allObserved_ms": 9808.93
+        }
+      ],
+      "startedAt": "2026-11-10T02:19:18.685Z",
+      "join": {
+        "n": 50,
+        "p50_ms": 713.84,
+        "p95_ms": 756.63,
+        "max_ms": 763.38,
+        "total_ms": 763.45
+      },
+      "integrity": {
+        "teams": 50,
+        "decisions": 250,
+        "allHaveFiveRounds": true,
+        "rankingConsistent": true
+      },
+      "events": {
+        "rankingCallbacks": 12600,
+        "roomCallbacks": 500,
+        "facilitatorCallbacks": 271,
+        "rankingRowsDelivered": 627550
+      },
+      "payloadBytes": {
+        "teamDocumentMax": 13990,
+        "totalTeamDocuments": 616299
+      },
+      "ok": true,
+      "roomCode": "LOAD-50-1794277158919",
+      "eventLoop": {
+        "p95_ms": 45.65,
+        "max_ms": 488.11
+      },
+      "memoryRSS_mb": 663.98,
+      "finishedAt": "2026-11-10T02:20:06.265Z"
+    },
+    {
+      "teams": 100,
+      "mode": "guided",
+      "rounds": 5,
+      "errors": [
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "Fallo en guardado concurrente."
+      ],
+      "roundResults": [],
+      "startedAt": "2026-11-10T02:20:06.266Z",
+      "join": {
+        "n": 100,
+        "p50_ms": 1148.89,
+        "p95_ms": 1253.74,
+        "max_ms": 1262.65,
+        "total_ms": 1262.77
+      },
+      "ok": false,
+      "eventLoop": {
+        "p95_ms": 48.43,
+        "max_ms": 3344.96
+      },
+      "memoryRSS_mb": 794.36,
+      "finishedAt": "2026-11-10T02:20:32.894Z"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "test": "NEXUS isolated concurrency",
+  "projectId": "demo-nexus-load",
+  "emulator": "127.0.0.1:8080",
+  "sourceCommit": "4f431141afc507b818f3000e8df83a028669bb64",
+  "node": "v24.22.1",
+  "firebase": "13.1.0",
+  "rulesUnitTesting": "6.0.0",
+  "environment": {
+    "cpus": 9,
+    "totalMemoryGB": 9.73
+  },
+  "limitations": [
+    "Local Firestore emulator, not the production service.",
+    "One Node process creates independent authenticated SDK clients; not separate physical browsers.",
+    "Authentication provider throughput, Internet latency and rendering are outside this test."
+  ],
+  "scenarios": [
+    {
+      "teams": 100,
+      "mode": "guided",
+      "rounds": 5,
+      "errors": [
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "10 ABORTED: Transaction lock timeout.",
+        "Fallo en guardado concurrente."
+      ],
+      "roundResults": [],
+      "startedAt": "2026-11-10T02:22:42.741Z",
+      "join": {
+        "n": 100,
+        "p50_ms": 2084.89,
+        "p95_ms": 2393.39,
+        "max_ms": 2452.18,
+        "total_ms": 2452.73
+      },
+      "ok": false,
+      "eventLoop": {
+        "p95_ms": 49.77,
+        "max_ms": 3810.53
+      },
+      "memoryRSS_mb": 991.75,
+      "finishedAt": "2026-11-10T02:23:11.859Z"
+    }
+  ]
+}

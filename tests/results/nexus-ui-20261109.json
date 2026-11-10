@@ -1,0 +1,10 @@
+{
+  "method": "Chromium, 10 renders por tamaño; función real renderFac + renderReview, datos de 5 rondas por equipo; getBoundingClientRect fuerza cálculo de layout. Transporte sustituido por fixture local.",
+  "scope": "CPU/DOM/layout del panel. No mide red, autenticación, pintura completa ni dispositivos móviles.",
+  "scenarios": [
+    {"teams":10,"historyPerTeam":5,"renders":10,"render_p50_ms":6,"render_p95_ms":27.4,"max_ms":27.4},
+    {"teams":25,"historyPerTeam":5,"renders":10,"render_p50_ms":12.3,"render_p95_ms":13.4,"max_ms":13.4},
+    {"teams":50,"historyPerTeam":5,"renders":10,"render_p50_ms":24.3,"render_p95_ms":33.2,"max_ms":33.2},
+    {"teams":100,"historyPerTeam":5,"renders":10,"render_p50_ms":44.2,"render_p95_ms":48,"max_ms":48}
+  ]
+}
