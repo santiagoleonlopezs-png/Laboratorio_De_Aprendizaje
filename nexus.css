@@ -152,7 +152,7 @@ body.play-view{--bg:#080f20;--panel:#111e34;--panel2:#152641;--line:#293c58;--in
 
 /* NEXUS · QR de ingreso: integrado con el panel del facilitador */
 .roomControl .roomShare{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center}
-.roomShareDetails{min-width:0}
+.roomControl .roomShare > .roomShareDetails{display:block;min-width:0}
 .roomShareInline{display:flex;align-items:center;gap:10px;min-width:0}
 .roomShareInline input{min-width:0;flex:1}
 .roomShareInline button{flex:none}
