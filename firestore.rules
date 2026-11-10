@@ -473,6 +473,9 @@ match /ocai_rooms/{roomCode} {
           (resource.data.status == 'open'
             && request.resource.data.status in ['open','completed','resetting']
             && request.resource.data.get('resetEpoch',0) == resource.data.get('resetEpoch',0))
+          || (resource.data.status == 'completed'
+            && request.resource.data.status == 'resetting'
+            && request.resource.data.get('resetEpoch',0) == resource.data.get('resetEpoch',0))
           || (resource.data.status == 'resetting'
             && request.resource.data.status == 'open'
             && request.resource.data.currentRound == 1
