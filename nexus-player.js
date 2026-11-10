@@ -388,7 +388,7 @@ function effects(){
   const loadInfo=engine.interventionLoad(names,state.metrics);
   if(loadInfo.excess>0){
     e.Energía-=loadInfo.excess*2;e.Confianza-=loadInfo.excess*.75;e.Compromiso-=loadInfo.excess*.5;
-    consequence.warnings.push(`La carga de las acciones (${loadInfo.load}) superó la capacidad disponible (${loadInfo.capacity}) en ${loadInfo.excess} unidades. El exceso aumentó el cansancio y la coordinación necesaria.`);
+    consequence.warnings.push("Pusiste en marcha más trabajo del que la organización podía sostener. Coordinar tantas intervenciones aumentó el cansancio y afectó el resultado.");
   }
 
   // Presión natural de cada ronda: no actuar bien también tiene consecuencias.
@@ -449,21 +449,33 @@ function showResult(h){
  $("resultBusiness").textContent=Math.round(h.business??state.business)+'/100';
  $("resultReading").textContent=net>0?'Hubo una mejora global en los indicadores. Revisa también las dimensiones que bajaron: una mejora total puede esconder fatiga o pérdida de confianza.':'El efecto global fue limitado o negativo. Contrasta la pertinencia de cada acción con las señales del caso y la energía disponible.';
  $("resultDeltas").innerHTML=vars.map(v=>{const d=Math.round((after[v]||0)-(before[v]||0));return `<div class="resultDelta"><span>${v}</span><div class="resultDeltaBar"><i style="width:${Math.round(after[v]||0)}%"></i></div><b class="${d<0?'down':'up'}">${Math.round(after[v]||0)} (${d>0?'+':''}${d})</b></div>`;}).join('');
- $("resultWarnings").innerHTML=[...(consequence.warnings||[]),...(consequence.synergies||[])].map(w=>`<div class="resultWarning">${nexusEscape(w)}</div>`).join('');
+ $("resultWarnings").innerHTML=[...(consequence.warnings||[]),...(consequence.synergies||[])].map(w=>/^La carga de las acciones \(/.test(w)?'Implementar todas estas acciones a la vez exigió más trabajo y coordinación de lo que la organización podía sostener.':w).map(w=>`<div class="resultWarning">${nexusEscape(w)}</div>`).join('');
  renderScoreFeedback(h);
  $("roundResultOverlay").classList.add('show');$("roundResultOverlay").scrollTop=0;setLayer('roundResultOverlay');
  updateRoomStatus();renderLiveRanking();$("roundResultOverlay").focus();
 }
 function renderScoreFeedback(h){
  const score=h.scoring;
- if(!score){$("resultLoadSummary").textContent='';$("resultScoreFormula").textContent='Esta decisión pertenece a la versión anterior del puntaje.';$("resultScoreBreakdown").innerHTML='';$("resultPersonalFeedback").innerHTML='';return;}
+ if(!score){$("resultLoadSummary").textContent='';$("resultLoadSummary").classList.remove("is-overloaded");$("resultScoreFormula").textContent='Esta decisión pertenece a la versión anterior del puntaje.';$("resultScoreBreakdown").innerHTML='';$("resultPersonalFeedback").innerHTML='';return;}
  const labels={relevance:['Pertinencia',40],diagnosis:['Lectura del problema',20],forecast:['Predicción',10],impact:['Efecto en el sistema',15],focus:['Foco y recursos',10],speed:['Agilidad con criterio',5]};
  const debt=Math.min(50,Math.round((h.borrowed||0)*.4));
  const load=score.exertion;
- $("resultLoadSummary").textContent=load?`Carga de esta decisión: ${load.load}/${load.capacity} unidades. `+load.actions.map(a=>`${easyName(a.name)}: ${a.size.toLowerCase()} (${a.units})`).join(' · '):'Esta decisión se registró antes del cálculo proporcional de carga.';
+ const overwork=Number(score.penalties?.overload)||0;
+ const count=(h.practices||[]).length||load?.actions?.length||0;
+ const actionsText=count===1?'una intervención':count+' intervenciones';
+ $("resultLoadSummary").classList.toggle('is-overloaded',overwork>0);
+ $("resultLoadSummary").innerHTML=load
+   ? overwork
+     ? '<strong>La organización asumió más de lo que podía sostener.</strong> Elegiste '+actionsText+'. Ejecutarlas al mismo tiempo exigió demasiado trabajo y coordinación. <b>Resultado: −'+overwork+' puntos en esta ronda.</b><span class="loadAside">No se trata solo de cuántas acciones elegiste, sino del esfuerzo conjunto que exigían.</span>'
+     : '<strong>El esfuerzo fue manejable.</strong> Elegiste '+actionsText+' y la organización podía ponerlas en marcha sin sobrecargarse. <b>No perdiste puntos por exceso de esfuerzo.</b>'
+   : 'Esta decisión se registró antes de evaluar el esfuerzo de las acciones.';
  $("resultScoreFormula").textContent=`Esta ronda: ${score.totalNoDebt}/100. Ranking: promedio de tus rondas evaluadas (${h.baseScore}/100) menos ${debt} puntos por deuda = ${h.score}/100.`;
- $("resultScoreBreakdown").innerHTML=Object.entries(labels).map(([k,[label,max]])=>`<div><span>${label}</span><b>+${score.points[k]}<small> / ${max}</small></b></div>`).join('')+Object.entries({Saturación:score.penalties.overload,'Acciones inoportunas':score.penalties.wrong,'Demora al decidir':score.penalties.delay}).map(([label,value])=>`<div class="${value?'negative':''}"><span>${label}</span><b>−${value}</b></div>`).join('');
- $("resultPersonalFeedback").innerHTML=score.feedback.map(f=>`<li>${nexusEscape(f)}</li>`).join('');
+ $("resultScoreBreakdown").innerHTML=Object.entries(labels).map(([k,[label,max]])=>`<div><span>${label}</span><b>+${score.points[k]}<small> / ${max}</small></b></div>`).join('')+Object.entries({'Exceso de esfuerzo':score.penalties.overload,'Acciones inoportunas':score.penalties.wrong,'Demora al decidir':score.penalties.delay}).map(([label,value])=>`<div class="${value?'negative':''}"><span>${label}</span><b>−${value}</b></div>`).join('');
+ $("resultPersonalFeedback").innerHTML=(score.feedback||[]).map(f=>{
+   if(/^La carga total fue /.test(f))return 'Para la próxima ronda, prioriza las acciones más importantes; poner demasiadas en marcha puede agotar a la organización.';
+   if(/^Carga proporcionada:/.test(f))return 'Las intervenciones fueron viables con el tiempo y las personas disponibles.';
+   return f;
+ }).map(f=>`<li>${nexusEscape(f)}</li>`).join('');
 }
 function renderMetricsOnly(){$("metrics").innerHTML=vars.map(v=>`<div class="metricrow"><span>${v}</span><div class="bar"><div class="fill" style="width:${state.metrics[v]}%"></div></div><b>${Math.round(state.metrics[v])}</b></div>`).join("")+`<div class="metricrow"><span>KPI negocio</span><div class="bar"><div class="fill" style="width:${state.business}%"></div></div><b>${Math.round(state.business)}</b></div>`;$("scoreTag").textContent=state.score+"/100"}
 function save(){localStorage.setItem(stateKey(),JSON.stringify(state))}
