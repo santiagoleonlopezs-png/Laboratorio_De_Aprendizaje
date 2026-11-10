@@ -42,7 +42,7 @@ const rounds=[
 let team="";
 let classCode="";
 let state=null;
-let activeRoom=null,roomUnsubscribe=null,submissionPending=false,executing=false;
+let activeRoom=null,roomUnsubscribe=null,ownTeamUnsubscribe=null,submissionPending=false,executing=false;
 let currentRanking=[];
 const engine=window.NEXUS_ENGINE;
 function freshState(){return{round:0,score:0,baseScore:0,spent:0,borrowed:0,loans:[],business:55,metrics:{Conciencia:52,Confianza:58,Energía:72,Compromiso:44,Conocimiento:61,Capacidad:42,Apropiación:35},history:[]};}
@@ -75,10 +75,26 @@ async function enterGame(){
    else state.clock=state.clock?.round===state.round+1?{...state.clock,runningSince:null}:null;
    save();$("teamTag").textContent=" · "+team+" · "+classCode;
    $("joinOverlay").style.display="none";setLayer('');render();updateBudget();
-   if(roomUnsubscribe)roomUnsubscribe();
+   if(roomUnsubscribe){roomUnsubscribe();roomUnsubscribe=null;}
+   if(ownTeamUnsubscribe){ownTeamUnsubscribe();ownTeamUnsubscribe=null;}
    roomUnsubscribe=window.NEXUS_FIREBASE.watchRoom(c,room=>{
-     pauseClock();activeRoom=room?engine.roomConfig(room):null;updateRoomStatus();
-   },error=>{pauseClock();activeRoom=null;updateRoomStatus();$("rankingStatus").textContent=error;});
+     if(!state||classCode!==c)return;
+     const incoming=room?engine.roomConfig(room):null;
+     if(incoming&&Number(incoming.resetEpoch||0)!==Number(state.sessionEpoch||0)){
+       endTeamSession('La partida fue reiniciada por el facilitador. Entra de nuevo para comenzar desde cero.');return;
+     }
+     if(incoming?.status==='resetting'){
+       endTeamSession('La sala se está reiniciando. Cuando termine, vuelve a ingresar con el mismo código.');return;
+     }
+     pauseClock();activeRoom=incoming;updateRoomStatus();
+   },error=>{if(!state)return;pauseClock();activeRoom=null;updateRoomStatus();$("rankingStatus").textContent=error;});
+   let observedTeam=false;
+   ownTeamUnsubscribe=window.NEXUS_FIREBASE.watchOwnTeam(c,(exists,fromCache)=>{
+     if(!state||classCode!==c)return;
+     if(exists){observedTeam=true;return;}
+     if(observedTeam&&!fromCache)
+       endTeamSession('Este equipo ya no está registrado. Si el facilitador reinició la partida, puedes volver a ingresar.');
+   },error=>{$("rankingStatus").textContent=error;});
    const last=state.history.find(h=>h.round===state.round+1);
    if(last)showResult(last);else updateRoomStatus();
  }catch(e){$("joinError").textContent=window.NEXUS_FIREBASE.error(e);console.error("NEXUS ingreso",e);}
@@ -213,6 +229,21 @@ function startTimer(){
  };
  clearInterval(tick);update();tick=setInterval(update,1000);save();
 }
+function endTeamSession(message){
+ if(!state)return;
+ pauseClock();
+ const oldKey=stateKey(),oldName=team,oldCode=classCode;
+ if(roomUnsubscribe){roomUnsubscribe();roomUnsubscribe=null;}
+ if(ownTeamUnsubscribe){ownTeamUnsubscribe();ownTeamUnsubscribe=null;}
+ window.NEXUS_FIREBASE.stopRanking();
+ localStorage.removeItem(oldKey);
+ rankingCode='';currentRanking=[];
+ state=null;team='';classCode='';activeRoom=null;submissionPending=false;executing=false;
+ $("joinTeam").value=oldName;$("joinCode").value=oldCode;
+ $("joinOverlay").style.display='';$("roundResultOverlay").classList.remove('show');
+ showNexusJoin(true);setLayer('joinOverlay');
+ $("joinError").textContent=message;
+}
 function updateRoomStatus(){
  if(!state)return;
  const done=state.history.some(h=>h.round===state.round+1),finished=state.history.length>=5;
@@ -221,7 +252,7 @@ function updateRoomStatus(){
  $("diagnosisCard").inert=!playable;$("decisionPanel").querySelectorAll('textarea,select,input,button').forEach(el=>el.disabled=!playable||executing);
  document.querySelectorAll('.practice').forEach(el=>{el.setAttribute('aria-disabled',String(!playable));});
  const r=activeRoom;
- let message=!r?'Reconectando con la sala. El avance se habilitará al recuperar la conexión.':finished?'Cinco rondas completadas. Revisa el ranking y lo que aprendió tu organización.':r.status!=='open'?'La sala está cerrada.':r.mode==='autonomous'?'Modalidad autónoma · Tu equipo decide cuándo avanzar a la siguiente ronda.':r.phase==='discussion'?`Ronda ${r.currentRound} · Ranking y conversación. La siguiente ronda la habilita el facilitador.`:done?`Decisión de la ronda ${state.round+1} registrada. Revisa el resultado y el ranking.`:state.round+1>r.currentRound?`En espera · El facilitador habilitará la ronda ${state.round+1}.`:`Sala dirigida · Ronda ${r.currentRound} abierta. Decide y revisa tu feedback antes de conversar.`;
+ let message=!r?'Reconectando con la sala. El avance se habilitará al recuperar la conexión.':finished?'Cinco rondas completadas. Revisa el ranking y lo que aprendió tu organización.':r.status!=='open'?'La sala está finalizada o en preparación.':r.mode==='guided'&&r.phase==='waiting'?`Ronda ${r.currentRound} preparada. Espera a que el facilitador la abra.`:r.mode==='autonomous'?'Modalidad autónoma · Tu equipo decide cuándo avanzar a la siguiente ronda.':r.phase==='discussion'?`Ronda ${r.currentRound} · Ranking y conversación. La siguiente ronda la habilita el facilitador.`:done?`Decisión de la ronda ${state.round+1} registrada. Revisa el resultado y el ranking.`:state.round+1>r.currentRound?`En espera · El facilitador habilitará la ronda ${state.round+1}.`:`Sala dirigida · Ronda ${r.currentRound} abierta. Decide y revisa tu feedback antes de conversar.`;
  $("roomStatus").textContent=message;
  $("roomStatus").classList.toggle('waiting',!playable);
  $("roundProgress").innerHTML=rounds.map((_,i)=>`<span class="${state.history.some(h=>h.round===i+1)?'complete':state.round===i?'active':''}"><b>${state.history.some(h=>h.round===i+1)?'✓':String(i+1).padStart(2,'0')}</b> Ronda ${i+1}</span>`).join('');
