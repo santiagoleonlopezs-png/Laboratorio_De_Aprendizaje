@@ -146,3 +146,6 @@ body.play-view{--bg:#080f20;--panel:#111e34;--panel2:#152641;--line:#293c58;--in
 .facRemove:disabled,.facDanger:disabled{opacity:.48;cursor:not-allowed}
 .facBoard .facTable td:last-child{text-align:right}
 @media(max-width:650px){.facManageBar{align-items:flex-start;flex-direction:column}.facManageBar .facDanger{width:100%}.facRoundHeader{align-items:flex-start;flex-wrap:wrap}}
+
+/* Los controles no disponibles deben permanecer ocultos aunque tengan estilos de botón. */
+#facRoomControl[hidden],#facRoomControl button[hidden]{display:none!important}
