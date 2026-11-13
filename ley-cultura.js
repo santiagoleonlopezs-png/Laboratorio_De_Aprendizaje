@@ -31,14 +31,33 @@ const pct=(a,b)=>b?Math.round(a*1000/b)/10+' %':'—';
 const codeOk=v=>/^[A-HJ-NP-Z2-9]{6}$/.test(v);
 const uid=()=>S.auth&&S.auth.currentUser?S.auth.currentUser.uid:'';
 const serverTime=()=>firebase.firestore.FieldValue.serverTimestamp();
-const S={auth:null,db:null,code:'',room:null,mode:'',tab:'prepare',participants:[],assignments:{},responses:[],events:[],perceptions:[],peer:null,myAssignment:null,myResponses:{},myPerception:null,unsubs:[],rosterUnsub:null,rosterWatch:null,rosterGeneration:0,roster:{state:'idle',verifiedAt:0,updatedAt:0,hasServer:false,error:'',syncing:false},startedAt:0,seenStep:'',projecting:false,historyUnsub:null,heartbeat:null,roomCodeForEvents:''};
+const S={auth:null,db:null,code:'',room:null,mode:'',tab:'prepare',participants:[],assignments:{},responses:[],events:[],perceptions:[],peer:null,myAssignment:null,myResponses:{},myPerception:null,unsubs:[],readErrors:{},rosterUnsub:null,rosterWatch:null,rosterGeneration:0,roster:{state:'idle',verifiedAt:0,updatedAt:0,hasServer:false,error:'',syncing:false},startedAt:0,seenStep:'',projecting:false,historyUnsub:null,heartbeat:null,roomCodeForEvents:''};
 function toast(message,error){const el=$('toast');el.textContent=message;el.classList.remove('hidden');el.classList.toggle('error',!!error);clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.add('hidden'),5400);}
 function failure(error){console.error('La ley y la cultura:',error);let message=error&&error.message?error.message:String(error);if(/permission-denied|insufficient permissions/i.test(message))message='Firebase no autorizó esta operación. La simulación identificará el paso que falló; ninguna respuesta se marca como guardada sin confirmación.';if(/auth\/unauthorized-domain/.test(message))message='Este dominio debe estar autorizado en Firebase Authentication.';toast(message,true);}
 function show(view){['landing','hostLoginView','hostView','studentView'].forEach(id=>$(id).classList.toggle('hidden',id!==view));window.scrollTo({top:0,behavior:'instant'});}
 function setTab(tab){S.tab=tab;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));['prepare','live','report'].forEach(t=>$(t+'Tab').classList.toggle('hidden',t!==tab));if(tab==='prepare'&&S.mode==='host')refreshHistory();if(tab==='live')renderLive();if(tab==='report')renderReport();}
-function clearListeners(){stopRosterSync();S.unsubs.forEach(f=>{try{f();}catch(_){}});S.unsubs=[];S.participants=[];S.assignments={};S.responses=[];S.events=[];S.perceptions=[];S.myResponses={};S.myPerception=null;S.myAssignment=null;S.peer=null;S.seenStep='';clearInterval(S.heartbeat);S.heartbeat=null;}
+function clearListeners(){stopRosterSync();S.unsubs.forEach(f=>{try{f();}catch(_){}});S.unsubs=[];S.readErrors={};S.participants=[];S.assignments={};S.responses=[];S.events=[];S.perceptions=[];S.myResponses={};S.myPerception=null;S.myAssignment=null;S.peer=null;S.seenStep='';clearInterval(S.heartbeat);S.heartbeat=null;}
 function roomRef(code){return S.db.collection(LC_ROOT).doc(code||S.code);}
-function subscribe(q,success){S.unsubs.push(q.onSnapshot(success,failure));}
+function readLabel(path){
+ const parts=String(path||'').split('/'),collection=parts[parts.length-2];
+ const labels={participants:'tu registro de participación',assignments:'tu mensaje asignado',responses:'tu respuesta de la ronda '+String(parts[parts.length-1]).split('_').pop(),peer_assignments:'el mensaje para valorar',perceptions:'tu valoración'};
+ return labels[collection]||'el estado de la sala';
+}
+function subscribe(q,success){
+ const key=q.path||'consulta',label=readLabel(key);
+ S.unsubs.push(q.onSnapshot(doc=>{delete S.readErrors[key];success(doc);},error=>{
+  console.error('La ley y la cultura · leer '+label,error);
+  if(S.mode==='student'){
+   S.readErrors[key]={label,code:error?.code||'unknown'};
+   renderStudent();
+  }else failure(error);
+ }));
+}
+function readErrorHtml(){
+ const errors=Object.values(S.readErrors);
+ const denied=errors.some(e=>e.code==='permission-denied');
+ return '<div role="alert"><h2>'+ (denied?'Firebase bloqueó la lectura de tu participación':'No pudimos sincronizar tu participación')+'</h2><p>'+escapeHtml(errors.map(e=>e.label+' ('+e.code+')').join(' · '))+'</p><p>'+(denied?'El facilitador debe revisar las reglas publicadas de La ley y la cultura en Firebase. Después de corregirlas, recarga esta página y entra con el mismo nombre.':'Comprueba tu conexión. Si el problema continúa, recarga esta página y entra con el mismo nombre.')+'</p><p>Tu acceso a la actividad está detenido hasta recuperar estas consultas. Las respuestas ya guardadas se conservan.</p></div>';
+}
 
 function rosterLabel(){
  const r=S.roster;
@@ -222,7 +241,7 @@ function decisionFormHtml(r){const data=LC_ROUNDS[r-1],v=existingValues(r),prior
  body+='<p class="disclaimer">Responde según lo que harías en esta situación. Una decisión experimental no determina por sí misma un incumplimiento legal.</p>';return body;}
 function peerReviewHtml(){if(!S.peer)return waitingHtml('Preparando mensajes','El facilitador está organizando la valoración anónima.');if(S.myPerception)return waitingHtml('Valoración registrada','Gracias. Espera a que el facilitador cierre la experiencia.');return '<span class="eyebrow">RONDA 4 · VALORACIÓN ANÓNIMA</span><h2>¿Qué percepción te genera este mensaje?</h2><p>Lee una comunicación de otra persona. No conocerás quién la escribió.</p><div class="message-card">'+escapeHtml(S.peer.message)+'</div><form id="peerForm"><div class="choice-list">'+[['trust','Confianza'],['uncertainty','Incertidumbre'],['pressure','Presión']].map(c=>'<label class="choice"><input type="radio" name="perception" value="'+c[0]+'" required> '+c[1]+'</label>').join('')+'</div><button class="btn primary" type="submit">Registrar percepción ↗</button></form>';}
 function renderStudent(){if(S.mode!=='student'||!S.room||!$('studentView'))return;renderStudentHeader();const r=S.room.round||1,stage=S.room.status,step=r+'|'+S.room.phase+'|'+stage;renderStepDots(r);
- const activity=$('studentActivity');if(step!==S.seenStep){S.seenStep=step;S.startedAt=Date.now();}if(stage==='waiting'){activity.innerHTML=waitingHtml('La experiencia comienza pronto','Ya estás dentro. Espera a que el facilitador inicie las rondas.');return;}if(stage==='paused'){activity.innerHTML=waitingHtml('Experiencia en pausa','Tu respuesta guardada se conserva. Espera a que el facilitador reanude.');return;}if(stage==='completed'){activity.innerHTML=waitingHtml('Has terminado la experiencia','Gracias por participar. El facilitador compartirá los aprendizajes del grupo.');return;}if(!S.myAssignment){activity.innerHTML=waitingHtml('Preparando tu participación','El facilitador está asignando los mensajes de la experiencia.');return;}
+ const activity=$('studentActivity');if(Object.keys(S.readErrors).length){activity.innerHTML=readErrorHtml();return;}if(step!==S.seenStep){S.seenStep=step;S.startedAt=Date.now();}if(stage==='waiting'){activity.innerHTML=waitingHtml('La experiencia comienza pronto','Ya estás dentro. Espera a que el facilitador inicie las rondas.');return;}if(stage==='paused'){activity.innerHTML=waitingHtml('Experiencia en pausa','Tu respuesta guardada se conserva. Espera a que el facilitador reanude.');return;}if(stage==='completed'){activity.innerHTML=waitingHtml('Has terminado la experiencia','Gracias por participar. El facilitador compartirá los aprendizajes del grupo.');return;}if(!S.myAssignment){activity.innerHTML=waitingHtml('Preparando tu participación','El facilitador está asignando los mensajes de la experiencia.');return;}
  if(!['A','B'].includes(S.myAssignment.condition)){activity.innerHTML=waitingHtml('Revisando tu asignación','Tu sala todavía no tiene un mensaje válido. Pide al facilitador que compruebe la asignación.');return;}
  if(r===4&&S.room.phase==='review'){activity.innerHTML=peerReviewHtml();return;}
  const previous=S.myResponses[r],reopened=S.room.reopenRound===r&&S.room.reopenToken>0;
