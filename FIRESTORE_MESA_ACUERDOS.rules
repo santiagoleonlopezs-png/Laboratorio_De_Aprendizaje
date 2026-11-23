@@ -1,0 +1,381 @@
+// Mesa de Acuerdos. Insertar dentro de match /databases/{database}/documents.
+// Los puntos solo los publica el facilitador propietario al cerrar una ronda.
+function maSigned() { return request.auth != null; }
+function maFac() { return maSigned() && request.auth.token.get('facilitator', false) == true; }
+function maRoom(code) { return get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)).data; }
+function maHost(code) { return maFac() && maRoom(code).hostUid == request.auth.uid; }
+function maHostAfter(code) { return maFac() && getAfter(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)).data.hostUid == request.auth.uid; }
+function maMember(code) {
+  return maSigned() && get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/members/$(request.auth.uid)).data.active == true;
+}
+function maRole(role) { return role in ['employer','union','hr']; }
+function maSpeaker(code, role) {
+  return maMember(code) && maRole(role)
+    && get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/members/$(request.auth.uid)).data.role == role
+    && get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/seats/$(role)).data.uid == request.auth.uid;
+}
+function maThree(code) {
+  let e = getAfter(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/seats/employer).data.uid;
+  let u = getAfter(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/seats/union).data.uid;
+  let h = getAfter(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/seats/hr).data.uid;
+  let em = getAfter(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/members/$(e)).data;
+  let un = getAfter(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/members/$(u)).data;
+  let hr = getAfter(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/members/$(h)).data;
+  return e != '' && u != '' && h != '' && e != u && e != h && u != h
+    && em.active == true && em.role == 'employer'
+    && un.active == true && un.role == 'union'
+    && hr.active == true && hr.role == 'hr';
+}
+function maValidRoom(d) {
+  return d.keys().hasOnly(['gameId','hostUid','title','mode','phase','round','totals','metrics','shared','createdAt','updatedAt','roundStartedAt'])
+    && d.gameId == 'mesa-acuerdos-v1' && d.hostUid is string
+    && d.mode in ['guided','autonomous']
+    && d.title is string && d.title.size() >= 2 && d.title.size() <= 70
+    && d.phase in ['lobby','negotiating','settling','review','finished','resetting']
+    && d.round is int && d.round >= 1 && d.round <= 6
+    && d.totals is map && d.metrics is map && d.shared is map
+    && d.updatedAt == request.time;
+}
+function maMemberData(d, uid) {
+  return d.keys().hasOnly(['uid','name','role','active','joinedAt'])
+    && d.uid == uid && d.name is string && d.name.size() >= 2 && d.name.size() <= 40
+    && (maRole(d.role) || d.role == '') && d.active is bool;
+}
+function maOfferData(d) {
+  return d.keys().hasOnly(['round','role','revision','uid','route','benefits','operations','implementation','days','owner','monitor','style','argument','commitment','createdAt'])
+    && d.uid == request.auth.uid && maRole(d.role)
+    && d.round is int && d.round >= 1 && d.round <= 6
+    && d.revision is int && d.revision >= 1 && d.revision <= 20
+    && ((d.round == 1 && d.route in ['listen','delay','condition'])
+      || (d.round == 2 && d.route in ['pact','convention','contract'])
+      || (d.round == 3 && d.route in ['members','announce','implement'])
+      || (d.round == 4 && d.route in ['supply','rename','audit'])
+      || (d.round == 5 && d.route in ['investigate','silence','expose'])
+      || (d.round == 6 && d.route in ['suspend','promise','follow']))
+    && d.benefits is int && d.benefits >= 0 && d.benefits <= 100
+    && d.operations is int && d.operations >= 0 && d.operations <= 100
+    && d.implementation is int && d.implementation >= 0 && d.implementation <= 100
+    && d.benefits + d.operations + d.implementation > 0
+    && d.benefits + d.operations + d.implementation <= 100
+    && d.days is int && d.days >= 1 && d.days <= 60 && maRole(d.owner)
+    && d.monitor in ['weekly','monthly','none'] && d.style in ['dialogue','conditional','pressure']
+    && d.argument is string && d.argument.size() >= 20 && d.argument.size() <= 600
+    && d.commitment is string && d.commitment.size() >= 12 && d.commitment.size() <= 350
+    && d.createdAt == request.time;
+}
+function maCanWrite(code, role) {
+  let path = /databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/readiness/$(string(maRoom(code).round) + '_close_' + role);
+  return maRoom(code).mode == 'guided' || !exists(path) || get(path).data.ready == false;
+}
+function maAllReady(code, stage) {
+  let n = string(maRoom(code).round) + '_' + stage + '_';
+  return get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/readiness/$(n + 'employer')).data.ready == true
+    && get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/readiness/$(n + 'union')).data.ready == true
+    && get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/readiness/$(n + 'hr')).data.ready == true;
+}
+function maPositionData(code, d) {
+  return d.keys().hasOnly(['round','role','uid','offerId','response','reason','updatedAt'])
+    && d.uid == request.auth.uid && maRole(d.role)
+    && d.round is int && d.round == maRoom(code).round
+    && d.offerId is string && d.offerId.size() <= 45
+    && ((d.response == 'pending' && d.offerId == '' && d.reason == '')
+      || (d.role == 'hr' && d.response in ['review','counter','reject'])
+      || (d.role != 'hr' && d.response in ['accept','counter','reject']))
+    && d.reason is string && (d.response == 'pending' || d.reason.size() >= 20) && d.reason.size() <= 400
+    && d.updatedAt == request.time
+    && ((d.offerId == '' && d.response in ['counter','reject','pending'])
+      || get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/offers/$(d.offerId)).data.round == d.round);
+}
+function maPos(code, role) {
+  let p = /databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/positions/$(string(maRoom(code).round) + '_' + role);
+  return get(p).data;
+}
+function maAgreementId(code) {
+  let e = maPos(code,'employer');
+  let u = maPos(code,'union');
+  return e != null && u != null && e.response == 'accept' && u.response == 'accept' && e.offerId == u.offerId ? e.offerId : '';
+}
+function maReviewed(code) {
+  let h = maPos(code,'hr');
+  let id = maAgreementId(code);
+  return id != '' && h != null && h.response == 'review' && h.offerId == id;
+}
+function maChosenId(code, role) {
+  let p = maPos(code, role);
+  let c = /databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/cursors/$(string(maRoom(code).round) + '_' + role);
+  return p != null && p.response in ['accept','review'] ? p.offerId : exists(c) ? get(c).data.offerId : '';
+}
+function maQuality(route) {
+  return route in ['listen','convention','implement','audit','investigate','follow'] ? 1.0
+    : route == 'delay' ? 0.5 : route in ['announce','promise'] ? 0.4 : route == 'silence' ? 0.35 : 0.0;
+}
+function maClamp(n) { return n < 0 ? 0 : n > 100 ? 100 : n; }
+function maContext(code, role) {
+  let room = maRoom(code);
+  let positions = {'employer':maPos(code,'employer'),'union':maPos(code,'union'),'hr':maPos(code,'hr')};
+  let p = positions[role];
+  let cursor = get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/cursors/$(string(room.round) + '_' + role)).data;
+  let id = p != null && p.response in ['accept','review'] ? p.offerId : cursor != null ? cursor.offerId : '';
+  let offer = id == '' ? null : get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/offers/$(id)).data;
+  let agreedId = positions.employer != null && positions.union != null && positions.employer.response == 'accept' && positions.union.response == 'accept' && positions.employer.offerId == positions.union.offerId ? positions.employer.offerId : '';
+  let adopted = agreedId == '' ? null : agreedId == id ? offer : get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/offers/$(agreedId)).data;
+  let brief = get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/briefings/$(role)).data.rounds[room.round-1];
+  return {'room':room,'positions':positions,'id':id,'offer':offer,'agreedId':agreedId,'adopted':adopted,'brief':brief,
+    'reviewed':agreedId != '' && positions.hr != null && positions.hr.response == 'review' && positions.hr.offerId == agreedId};
+}
+function maAchieved(c, role, q) {
+  let p = c.positions[role];
+  return c.agreedId != '' && q == 1 && p != null && p.response in ['accept','review'] && p.offerId == c.agreedId && c.id == p.offerId;
+}
+function maBreakdown(c, role) {
+  let o = c.offer;
+  let b = c.brief;
+  let q = maQuality(o.route);
+  let cost = o.benefits + o.operations + o.implementation;
+  let fit = role == 'employer' ? (o.operations >= b.operations ? 1 : 0.35) * 0.55 + (cost <= b.ceiling ? 1 : 0.2) * 0.45
+    : role == 'union' ? (o.benefits >= b.benefits ? 1 : 0.35) * 0.65 + q * 0.35
+    : (o.implementation >= b.execution ? 1 : 0.25) * 0.5 + (o.days <= b.deadline ? 1 : 0.4) * 0.25 + q * 0.25;
+  return {'legal': int(math.round(35 * q)),
+    'objective': int(math.round(20 * fit * (maAchieved(c,role,q) ? 1 : 0.7))),
+    'cooperation': o.style == 'dialogue' ? 15 : o.style == 'conditional' ? 10 : 0,
+    'feasibility': cost <= b.ceiling ? 15 : 5,
+    'implementation': (o.days <= 30 ? 5 : 2) + (o.monitor == 'weekly' ? 5 : o.monitor == 'monthly' ? 3 : 0) + (o.implementation >= b.execution ? 5 : 1)};
+}
+function maActorMetrics(c, role) {
+  let before = c.room.metrics[role];
+  let b = c.brief;
+  let o = c.offer;
+  let q = maQuality(o.route);
+  let co = o.style in ['dialogue','conditional'];
+  let imp = (o.days <= 30 ? 5 : 2) + (o.monitor == 'weekly' ? 5 : o.monitor == 'monthly' ? 3 : 0) + (o.implementation >= b.execution ? 5 : 1);
+  let d0 = role == 'employer' ? (o.benefits + o.operations + o.implementation <= b.ceiling ? 6 : -9) : role == 'union' ? (co ? 5 : -7) : (co ? 6 : -7);
+  let d1 = role == 'employer' ? (c.agreedId != '' ? (o.operations >= b.operations ? 6 : -5) : 0)
+    : role == 'union' ? (maAchieved(c,role,q) && o.benefits >= b.benefits ? 8 : 0) : (q == 1 ? 6 : q == 0 ? -14 : -3);
+  let d2 = (role == 'employer' ? (c.agreedId != '' ? (imp >= 12 ? 5 : -4) : 0) : role == 'union' ? (q == 1 ? 6 : q == 0 ? -15 : -3) : (imp >= 12 ? 7 : -5)) - (q == 0 ? 5 : 0);
+  return [maClamp(before[0]+d0),maClamp(before[1]+d1),maClamp(before[2]+d2)];
+}
+function maActorValid(c, role, a) {
+  let b = maBreakdown(c,role);
+  let gross = b.legal + b.objective + b.cooperation + b.feasibility + b.implementation;
+  let points = maQuality(c.offer.route) == 0 && gross > 20 ? 20 : gross;
+  return a.breakdown == b && a.points == points && a.penalty == gross - points
+    && a.total == c.room.totals[role] + points && a.before == c.room.metrics[role]
+    && a.offerId == c.id;
+}
+function maEmptyActorValid(c, role, a) {
+  let b = c.room.metrics[role];
+  return a.points == 0 && a.penalty == 0 && a.total == c.room.totals[role]
+    && a.breakdown == {'legal':0,'objective':0,'cooperation':0,'feasibility':0,'implementation':0}
+    && a.before == b && a.metrics == [maClamp(b[0]-3),maClamp(b[1]-3),maClamp(b[2]-3)] && a.offerId == '';
+}
+function maShared(c) {
+  let s = c.room.shared;
+  let q = c.agreedId == '' ? 0 : maQuality(c.adopted.route);
+  return {'trust':maClamp(s.trust + (c.agreedId == '' ? 0 : q == 1 ? 7 : q > 0 ? -3 : -11) + (c.reviewed ? 2 : 0)),
+    'rights':maClamp(s.rights + (c.agreedId == '' ? 0 : q == 1 ? 5 : q > 0 ? -4 : -18)),
+    'operation':maClamp(s.operation + (c.agreedId == '' ? -2 : c.adopted.operations >= 20 ? 5 : -6))};
+}
+function maScoreCheck(code,role,d) {
+  let c = maContext(code,role);
+  return d.keys().hasOnly(['round','role','uid','breakdown','points','total','penalty','offerId','createdAt'])
+    && d.round == c.room.round && d.role == role && d.uid == request.auth.uid && d.createdAt == request.time
+    && (c.id == '' ? d.points == 0 && d.penalty == 0 && d.total == c.room.totals[role] && d.offerId == ''
+      && d.breakdown == {'legal':0,'objective':0,'cooperation':0,'feasibility':0,'implementation':0}
+      : maActorValid(c,role,{'points':d.points,'penalty':d.penalty,'total':d.total,'breakdown':d.breakdown,'before':c.room.metrics[role],'offerId':d.offerId}));
+}
+function maEffects(code,role,d) {
+  let c = maContext(code,role);
+  let before = c.room.metrics[role];
+  return d.keys().hasOnly(['round','role','uid','before','metrics','createdAt'])
+    && d.round == c.room.round && d.role == role && d.uid == request.auth.uid && d.createdAt == request.time
+    && d.before == before
+    && d.metrics == (c.id == '' ? [maClamp(before[0]-3),maClamp(before[1]-3),maClamp(before[2]-3)] : maActorMetrics(c,role));
+}
+function maPublicContext(code, check) {
+  let room = maRoom(code);
+  let positions = {'employer':maPos(code,'employer'),'union':maPos(code,'union'),'hr':maPos(code,'hr')};
+  let id = check.offerId;
+  let offer = id == '' ? null : get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/offers/$(id)).data;
+  let agreedId = positions.employer != null && positions.union != null && positions.employer.response == 'accept' && positions.union.response == 'accept' && positions.employer.offerId == positions.union.offerId ? positions.employer.offerId : '';
+  let adopted = agreedId == '' ? null : agreedId == id ? offer : get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/offers/$(agreedId)).data;
+  return {'room':room,'positions':positions,'id':id,'offer':offer,'agreedId':agreedId,'adopted':adopted,
+    'reviewed':agreedId != '' && positions.hr != null && positions.hr.response == 'review' && positions.hr.offerId == agreedId};
+}
+function maEvaluation(code, role, d) {
+  let check = get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/scorechecks/$(string(maRoom(code).round) + '_' + role)).data;
+  let effect = get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/effects/$(string(maRoom(code).round) + '_' + role)).data;
+  let c = maPublicContext(code,check);
+  return d.keys().hasOnly(['round','role','uid','actor','offer','position','agreement','agreedOfferId','reviewed','sharedBefore','sharedAfter','createdAt'])
+    && d.round == c.room.round && d.role == role && d.uid == request.auth.uid && d.createdAt == request.time
+    && d.actor.keys().hasOnly(['points','total','breakdown','penalty','before','metrics','feedback','offerId','next'])
+    && d.actor.points == check.points && d.actor.total == check.total && d.actor.breakdown == check.breakdown && d.actor.penalty == check.penalty && d.actor.offerId == check.offerId
+    && d.actor.before == effect.before && d.actor.metrics == effect.metrics
+    && d.actor.feedback is list && d.actor.feedback.size() <= 10 && d.actor.next is string && d.actor.next.size() <= 350
+    && (c.id == '' ? d.offer == null : d.offer.id == c.id && d.offer.diff(c.offer).affectedKeys().hasOnly(['id']))
+    && d.position == c.positions[role] && d.agreement == (c.agreedId != '') && d.agreedOfferId == c.agreedId
+    && d.reviewed == c.reviewed && d.sharedBefore == c.room.shared && d.sharedAfter == maShared(c);
+}
+function maEval(code, role) { return get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/evaluations/$(string(maRoom(code).round) + '_' + role)).data; }
+function maRanking(rows, a, field) {
+  let e = a.employer[field];
+  let u = a.union[field];
+  let h = a.hr[field];
+  return rows is list && rows.size() == 3 && rows.hasAll([
+    {'role':'employer','score':e,'position':1+(u>e?1:0)+(h>e?1:0)},
+    {'role':'union','score':u,'position':1+(e>u?1:0)+(h>u?1:0)},
+    {'role':'hr','score':h,'position':1+(e>h?1:0)+(u>h?1:0)}]);
+}
+function maSummary(code, d) {
+  let e = maEval(code,'employer');
+  let u = maEval(code,'union');
+  let h = maEval(code,'hr');
+  return d.actors == {'employer':e.actor,'union':u.actor,'hr':h.actor}
+    && d.offers == {'employer':e.offer,'union':u.offer,'hr':h.offer}
+    && d.positions == {'employer':e.position,'union':u.position,'hr':h.position}
+    && d.sharedBefore == e.sharedBefore && d.sharedAfter == e.sharedAfter
+    && d.agreement == e.agreement && d.agreedOfferId == e.agreedOfferId && d.reviewed == e.reviewed
+    && maRanking(d.ranking,d.actors,'points') && maRanking(d.cumulativeRanking,d.actors,'total');
+}
+function maAutoControl(code, d) {
+  let old = maRoom(code);
+  let e = /databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/evaluations/$(string(old.round) + '_employer');
+  let u = /databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/evaluations/$(string(old.round) + '_union');
+  let h = /databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/evaluations/$(string(old.round) + '_hr');
+  let result = /databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/results/$(string(old.round));
+  return old.mode == 'autonomous' && maSigned()
+    && ((d.phase == 'negotiating' && (maSpeaker(code,'employer') || maSpeaker(code,'union') || maSpeaker(code,'hr'))
+      && ((old.phase == 'lobby' && d.round == 1) || (old.phase == 'review' && d.round == old.round + 1 && maAllReady(code,'next')))
+      && d.diff(old).affectedKeys().hasOnly(['phase','round','roundStartedAt','updatedAt']))
+    || (old.phase == 'negotiating' && d.phase == 'settling' && maMember(code) && maAllReady(code,'close')
+      && d.diff(old).affectedKeys().hasOnly(['phase','updatedAt']))
+    || (old.phase == 'settling' && d.phase == (old.round == 6 ? 'finished' : 'review') && maMember(code)
+      && d.diff(old).affectedKeys().hasOnly(['phase','totals','metrics','shared','updatedAt'])
+      && d.totals == {'employer':get(e).data.actor.total,'union':get(u).data.actor.total,'hr':get(h).data.actor.total}
+      && d.metrics == {'employer':get(e).data.actor.metrics,'union':get(u).data.actor.metrics,'hr':get(h).data.actor.metrics}
+      && d.shared == get(e).data.sharedAfter && getAfter(result).data.round == old.round
+      && getAfter(result).data.actors == {'employer':get(e).data.actor,'union':get(u).data.actor,'hr':get(h).data.actor}));
+}
+match /mesa_acuerdos_rooms/{code} {
+  allow get: if maSigned();
+  allow list, delete: if false;
+  allow create: if maFac() && maValidRoom(request.resource.data)
+    && request.resource.data.hostUid == request.auth.uid
+    && request.resource.data.createdAt == request.time
+    && request.resource.data.phase == 'lobby' && request.resource.data.round == 1;
+  allow update: if (maHost(code) || maAutoControl(code, request.resource.data)) && maValidRoom(request.resource.data)
+    && request.resource.data.hostUid == resource.data.hostUid
+    && request.resource.data.mode == resource.data.mode
+    && request.resource.data.createdAt == resource.data.createdAt
+    && (request.resource.data.phase != 'negotiating' || maThree(code));
+  match /members/{uid} {
+    allow get: if maSigned() && (request.auth.uid == uid || maHost(code) || maMember(code));
+    allow list: if maHost(code) || maMember(code);
+    allow create: if maSigned() && request.auth.uid == uid
+      && maRoom(code).phase == 'lobby' && maMemberData(request.resource.data, uid)
+      && request.resource.data.role == '' && request.resource.data.active == true
+      && request.resource.data.joinedAt == request.time;
+    allow update: if maHost(code) && maMemberData(request.resource.data, uid)
+      && request.resource.data.uid == resource.data.uid
+      && request.resource.data.name == resource.data.name
+      && request.resource.data.joinedAt == resource.data.joinedAt
+      && (request.resource.data.role == resource.data.role || maRoom(code).phase == 'lobby');
+    allow delete: if false;
+  }
+  match /seats/{role} {
+    allow read: if maHost(code) || maMember(code);
+    allow create, update: if maHostAfter(code) && maRole(role)
+      && request.resource.data.keys().hasOnly(['role','uid'])
+      && request.resource.data.role == role && request.resource.data.uid is string;
+    allow delete: if false;
+  }
+  match /briefings/{role} {
+    allow read: if maHost(code) || (maMember(code)
+      && get(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/members/$(request.auth.uid)).data.role == role);
+    allow create: if maHostAfter(code) && maRole(role)
+      && request.resource.data.keys().hasOnly(['role','rounds'])
+      && request.resource.data.role == role
+      && request.resource.data.rounds is list && request.resource.data.rounds.size() == 6;
+    allow update, delete: if false;
+  }
+  match /offers/{id} {
+    allow read: if maHost(code) || maMember(code);
+    allow create: if maSpeaker(code, request.resource.data.role)
+      && maRoom(code).phase == 'negotiating'
+      && request.resource.data.round == maRoom(code).round
+      && maCanWrite(code, request.resource.data.role)
+      && maOfferData(request.resource.data)
+      && (maRoom(code).mode == 'guided' || getAfter(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/cursors/$(string(request.resource.data.round) + '_' + request.resource.data.role)).data.offerId == id)
+      && id == string(request.resource.data.round) + '_' + request.resource.data.role + '_' + string(request.resource.data.revision);
+    allow update: if false;
+    allow delete: if maHost(code) && maRoom(code).phase == 'resetting';
+  }
+  match /positions/{id} {
+    allow read: if maHost(code) || maMember(code);
+    allow create, update: if maSpeaker(code, request.resource.data.role)
+      && maRoom(code).phase == 'negotiating'
+      && maCanWrite(code, request.resource.data.role)
+      && maPositionData(code, request.resource.data)
+      && id == string(request.resource.data.round) + '_' + request.resource.data.role;
+    allow delete: if maHost(code) && maRoom(code).phase == 'resetting';
+  }
+  match /results/{roundId} {
+    allow read: if maHost(code) || maMember(code);
+    allow create: if (maHost(code) || (maMember(code) && maRoom(code).mode == 'autonomous' && maSummary(code,request.resource.data))) && maRoom(code).phase == 'settling'
+      && request.resource.data.round == maRoom(code).round
+      && roundId == string(request.resource.data.round)
+      && request.resource.data.settledAt == request.time;
+    allow update: if false;
+    allow delete: if maHost(code) && maRoom(code).phase == 'resetting';
+  }
+  match /cursors/{id} {
+    allow read: if maHost(code) || maMember(code);
+    allow create, update: if maSpeaker(code, request.resource.data.role) && maRoom(code).phase == 'negotiating'
+      && maCanWrite(code, request.resource.data.role)
+      && request.resource.data.keys().hasOnly(['uid','role','round','revision','offerId'])
+      && request.resource.data.uid == request.auth.uid && request.resource.data.round == maRoom(code).round
+      && id == string(request.resource.data.round) + '_' + request.resource.data.role
+      && request.resource.data.revision is int && request.resource.data.revision >= 0 && request.resource.data.revision <= 20
+      && ((request.resource.data.revision == 0 && request.resource.data.offerId == '' && !exists(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/cursors/$(id)))
+       || (request.resource.data.revision >= 1 && request.resource.data.offerId == id + '_' + string(request.resource.data.revision)
+        && getAfter(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/offers/$(request.resource.data.offerId)).data.uid == request.auth.uid
+        && (!exists(/databases/$(database)/documents/mesa_acuerdos_rooms/$(code)/cursors/$(id)) ? request.resource.data.revision == 1 : request.resource.data.revision == resource.data.revision + 1)));
+    allow delete: if maHost(code) && maRoom(code).phase == 'resetting';
+  }
+  match /readiness/{id} {
+    allow read: if maHost(code) || maMember(code);
+    allow create, update: if maSpeaker(code, request.resource.data.role) && maRoom(code).mode == 'autonomous'
+      && request.resource.data.keys().hasOnly(['round','role','stage','ready','uid','updatedAt'])
+      && request.resource.data.round == maRoom(code).round && request.resource.data.uid == request.auth.uid
+      && request.resource.data.ready is bool && request.resource.data.updatedAt == request.time
+      && ((request.resource.data.stage == 'close' && maRoom(code).phase == 'negotiating') || (request.resource.data.stage == 'next' && maRoom(code).phase == 'review'))
+      && id == string(request.resource.data.round) + '_' + request.resource.data.stage + '_' + request.resource.data.role;
+    allow delete: if maHost(code) && maRoom(code).phase == 'resetting';
+  }
+  match /scorechecks/{id} {
+    allow read: if maHost(code) || maMember(code);
+    allow create: if maRoom(code).mode == 'autonomous' && maRoom(code).phase == 'settling'
+      && maSpeaker(code,request.resource.data.role)
+      && id == string(maRoom(code).round) + '_' + request.resource.data.role
+      && maScoreCheck(code,request.resource.data.role,request.resource.data);
+    allow update: if false;
+    allow delete: if maHost(code) && maRoom(code).phase == 'resetting';
+  }
+  match /effects/{id} {
+    allow read: if maHost(code) || maMember(code);
+    allow create: if maRoom(code).mode == 'autonomous' && maRoom(code).phase == 'settling'
+      && maSpeaker(code,request.resource.data.role)
+      && id == string(maRoom(code).round) + '_' + request.resource.data.role
+      && maEffects(code,request.resource.data.role,request.resource.data);
+    allow update: if false;
+    allow delete: if maHost(code) && maRoom(code).phase == 'resetting';
+  }
+  match /evaluations/{id} {
+    allow read: if maHost(code) || maMember(code);
+    allow create: if maRoom(code).mode == 'autonomous' && maRoom(code).phase == 'settling'
+      && maSpeaker(code,request.resource.data.role)
+      && id == string(maRoom(code).round) + '_' + request.resource.data.role
+      && maEvaluation(code, request.resource.data.role, request.resource.data);
+    allow update: if false;
+    allow delete: if maHost(code) && maRoom(code).phase == 'resetting';
+  }
+}
