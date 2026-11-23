@@ -24,7 +24,7 @@ jobs:
           node --check mesa-acuerdos-firebase.js
           node --check mesa-salas.js
           node --check mesa-salas-firebase.js
-          node --test tests/mesa-acuerdos-engine.test.cjs tests/mesa-salas-engine.test.cjs
+          node --test tests/mesa-acuerdos-engine.test.cjs tests/mesa-salas-engine.test.cjs tests/mesa-acuerdos-access.test.cjs
       - name: Preparar herramientas de pruebas
         run: npm install --no-save --no-package-lock firebase-tools@14 @firebase/rules-unit-testing@4 firebase@11
       - name: Validar permisos de salas

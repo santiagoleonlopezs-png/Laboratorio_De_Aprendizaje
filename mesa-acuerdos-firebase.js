@@ -12,7 +12,7 @@
  const ref=code=>db.collection(ROOT).doc(code);
  async function restored(){init();await new Promise(resolve=>{const stop=auth.onAuthStateChanged(()=>{stop();resolve();});});}
  async function signed(){await restored();if(!auth.currentUser)await auth.signInAnonymously();return auth.currentUser;}
- async function hostLogin(email,password){init();await auth.signInWithEmailAndPassword(email,password);const token=await auth.currentUser.getIdTokenResult(true);if(!token.claims.facilitator)throw Error('Esta cuenta necesita el rol de facilitador del Laboratorio.');return auth.currentUser;}
+ async function hostLogin(email,password){init();await auth.signInWithEmailAndPassword(email,password);const token=await auth.currentUser.getIdTokenResult(true);if(token.claims.facilitator!==true)throw Error('Esta cuenta necesita el rol de facilitador del Laboratorio.');return auth.currentUser;}
  async function hostSession(){await restored();if(!auth.currentUser||auth.currentUser.isAnonymous)return false;const token=await auth.currentUser.getIdTokenResult();return token.claims.facilitator===true;}
  async function logout(){init();await auth.signOut();}
  function randomCode(){const bytes=crypto.getRandomValues(new Uint8Array(6)),chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from(bytes,n=>chars[n%chars.length]).join('');}

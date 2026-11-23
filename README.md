@@ -224,7 +224,7 @@ El tablero permite ver participantes, propuestas, versiones, posiciones, acuerdo
 
 **Antes de usar las nuevas salas reales:** publicar el archivo completo y actualizado [`firestore.rules`](./firestore.rules) en el proyecto `simuladores-juegos`. GitHub Pages publica la aplicación, pero no despliega reglas de Firebase. El fragmento nuevo es [`FIRESTORE_MESA_SALAS.rules`](./FIRESTORE_MESA_SALAS.rules); depende de funciones puras del bloque anterior y no debe sustituir por sí solo el archivo completo. Los bloques de las experiencias existentes y de Mesa de Acuerdos v1 se conservan sin cambios.
 
-Se mantienen los proveedores Anónimo y Correo/Contraseña y el permiso `facilitator: true` existente. No se necesitan nuevos índices compuestos.
+El botón Facilitador siempre muestra el ingreso con correo y contraseña, incluso si el navegador conserva una sesión previa, como en Nexus. Después de validar la cuenta y el permiso se habilita la preparación de salas y se muestra el correo de la sesión. Se mantienen los proveedores Anónimo y Correo/Contraseña y el permiso `facilitator: true` existente. No se necesitan nuevos índices compuestos.
 
 Las nuevas salas usan `mesa_acuerdos_sessions/{code}`, con `attendees` y `tables`. Cada mesa guarda `rounds`, `history`, `briefings`, `personalResults`, `results`, `pointProofs`, `effectProofs` y `resolutionProofs`. Las instrucciones reservadas solo pueden leerse por el propio rol de esa mesa o por su facilitador. Los participantes no leen las negociaciones ni las instrucciones privadas de otras mesas. Los nombres y el ranking individual son visibles dentro de la sala; no se solicitan cédulas ni afiliaciones reales.
 
@@ -235,7 +235,7 @@ Las salas anteriores en `mesa_acuerdos_rooms/{code}` conservan su funcionamiento
 ## Pruebas reproducibles
 
 ```bash
-node --test tests/mesa-acuerdos-engine.test.cjs tests/mesa-salas-engine.test.cjs
+node --test tests/mesa-acuerdos-engine.test.cjs tests/mesa-salas-engine.test.cjs tests/mesa-acuerdos-access.test.cjs
 npm install --no-save --no-package-lock firebase-tools@14 @firebase/rules-unit-testing@4 firebase@11
 npx firebase emulators:exec --only firestore --project demo-mesa-acuerdos "node tests/mesa-acuerdos-rules.cjs && node tests/mesa-acuerdos-transport.cjs && node tests/mesa-salas-transport.cjs"
 ```

@@ -5,7 +5,7 @@
  <title>Mesa de Acuerdos | Laboratorio de Aprendizaje y Decisión</title>
  <meta name="theme-color" content="#080e1c">
  <meta name="description" content="Una simulación de relaciones sindicales por rondas. Representa a Gerencia, al Sindicato o a Gestión Humana; negocia, observa consecuencias y aprende con tu equipo.">
- <link rel="stylesheet" href="mesa-acuerdos.css?v=20261122-2">
+ <link rel="stylesheet" href="mesa-acuerdos.css?v=20261122-3">
 </head>
 <body>
  <header class="navigation"><a href="index.html#experiencias" class="lab-link"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 28 10v13L16 30 4 23V10Z M4 10l12 7 12-7M16 17v13"/></svg><span>LABORATORIO<small>APRENDIZAJE Y DECISIÓN</small></span></a><div class="nav-tools"><span class="nav-caption">El conocimiento se pone a prueba</span><button class="button subtle small" id="hostAccess" type="button">Facilitador</button></div></header>
@@ -17,7 +17,15 @@
    <div class="entry-layout" id="entry"><form id="joinForm" class="panel entry-panel"><p class="eyebrow">TU LUGAR EN LA MESA</p><h2>Entra a la negociación</h2><p class="muted">Ingresa desde tu dispositivo. El facilitador te asignará una mesa y un rol. Cada persona propone, decide y recibe sus propios resultados.</p><div class="two-fields"><label>Código de sala<input id="joinCode" maxlength="8" placeholder="Ej. MESA7K" autocomplete="off" autocapitalize="characters" required></label><label>Tu nombre<input id="joinName" maxlength="40" placeholder="¿Cómo te llamas?" autocomplete="given-name" required></label></div><button class="button primary" type="submit">Entrar a la sala</button><p id="joinMessage" class="inline-status" role="status" aria-live="polite"></p></form><aside class="practice-panel"><span class="practice-mark">M / A</span><p class="eyebrow">CONOCE LA EXPERIENCIA</p><h2>Antes de sentarte<br>a negociar.</h2><p class="muted">Explora las seis rondas con actores simulados. Puedes cambiar de rol y observar cómo funcionan las decisiones.</p><button id="practiceStart" class="button outline" type="button">Probar la experiencia</button><p class="fine">La práctica es individual y no crea una sala ni un ranking en vivo.</p></aside></div>
    <details class="panel explainer"><summary>Cómo funciona y cómo se obtienen puntos</summary><div class="explainer-content"><div><h3>Una historia, seis rondas</h3><p>Libertad sindical; instrumentos colectivos; forma y alcance de la convención; contrato sindical; prevención de represalias; cumplimiento de acuerdos.</p><p>En cada ronda hay 100 créditos de capacidad para distribuir entre mejoras para los trabajadores, continuidad operativa e implementación. Son unidades del juego.</p></div><div><h3>100 puntos por persona y ronda</h3><p>Fundamento de la ruta: 35 · Objetivos del actor: 20 · Cooperación: 15 · Viabilidad: 15 · Implementación: 15.</p><p>Un desacuerdo fundamentado conserva puntos. Las rutas que vulneran garantías limitan la puntuación a 20. Los argumentos escritos se conservan para la reflexión del grupo.</p></div></div></details>
   </section>
-  <section id="setupView" class="view narrow" hidden><div class="section-heading"><div><p class="eyebrow">FACILITACIÓN</p><h1>Prepara la mesa.</h1></div><button class="button subtle" id="setupBack">Volver</button></div><form id="loginForm" class="panel"><h2>Acceso del facilitador</h2><p class="muted">Usa tu cuenta de facilitador del Laboratorio.</p><label>Correo<input id="hostEmail" type="email" autocomplete="username" required></label><label>Contraseña<input id="hostPassword" type="password" autocomplete="current-password" required></label><button class="button primary">Ingresar</button></form><div id="hostSetup" hidden><div class="panel"><p class="eyebrow">UNA SALA · VARIAS MESAS</p><h2>Una conversación por construir</h2><label>Nombre de la sesión<input id="sessionName" maxlength="70" placeholder="Ej. Relaciones sindicales · Grupo A"></label><label>Modalidad de la sala<select id="sessionMode"><option value="guided">Dirigida por el facilitador</option><option value="autonomous">Autónoma entre los actores</option></select></label><p class="fine">Dirigida: controlas el cierre, la conversación y el avance. Autónoma: cada mesa avanza cuando todas sus personas confirman el cierre y luego el avance; observas sus decisiones desde tu tablero.</p><button id="createRoom" class="button primary">Crear sala</button><p class="fine">Desde tres participantes. Organiza mesas de tres; usa cuatro o cinco cuando sea necesario para incluir a todos. En cada mesa deben estar los tres roles.</p></div><form id="resumeForm" class="panel"><h3>Retomar una sala</h3><div class="inline-form"><label>Código<input id="resumeCode" maxlength="8" required></label><button class="button outline">Cargar sala</button></div></form><button id="hostSignOut" class="button subtle">Cambiar cuenta</button></div><p id="setupMessage" class="inline-status" role="status" aria-live="polite"></p></section>
+  <section id="setupView" class="view narrow" hidden>
+   <div class="section-heading"><div><p class="eyebrow">FACILITACIÓN</p><h1 id="setupTitle">Acceso del facilitador.</h1></div><button class="button subtle" id="setupBack">Volver</button></div>
+   <form id="loginForm" class="panel"><h2>Ingresa a tu tablero</h2><p class="muted">Usa el mismo correo y contraseña de facilitador de las otras experiencias del Laboratorio.</p><label>Correo de facilitador<input id="hostEmail" type="email" autocomplete="username" required></label><label>Contraseña de cuenta<input id="hostPassword" type="password" autocomplete="current-password" required></label><button class="button primary">Ingresar al tablero</button></form>
+   <div id="hostSetup" hidden>
+    <div class="notice"><div><strong>Sesión de facilitador</strong><span id="hostAccount"></span></div><button id="hostSignOut" class="button subtle small" type="button">Cerrar sesión</button></div>
+    <div class="panel"><p class="eyebrow">UNA SALA · VARIAS MESAS</p><h2>Una conversación por construir</h2><label>Nombre de la sesión<input id="sessionName" maxlength="70" placeholder="Ej. Relaciones sindicales · Grupo A"></label><label>Modalidad de la sala<select id="sessionMode"><option value="guided">Dirigida por el facilitador</option><option value="autonomous">Autónoma entre los actores</option></select></label><p class="fine">Dirigida: controlas el cierre, la conversación y el avance. Autónoma: cada mesa avanza cuando todas sus personas confirman el cierre y luego el avance; observas sus decisiones desde tu tablero.</p><button id="createRoom" class="button primary">Crear sala</button><p class="fine">Desde tres participantes. Organiza mesas de tres; usa cuatro o cinco cuando sea necesario para incluir a todos. En cada mesa deben estar los tres roles.</p></div>
+    <form id="resumeForm" class="panel"><h3>Retomar una sala</h3><div class="inline-form"><label>Código<input id="resumeCode" maxlength="8" required></label><button class="button outline">Cargar sala</button></div></form>
+   </div><p id="setupMessage" class="inline-status" role="status" aria-live="polite"></p>
+  </section>
   <section id="gameView" class="view game-view" hidden>
    <div class="game-heading"><div><p class="eyebrow" id="sessionLabel">MESA DE ACUERDOS</p><h1>Mesa de <span>Acuerdos.</span></h1></div><div class="session-tools"><span id="myRole" class="role-pill"></span><button id="copyCode" class="room-code" title="Copiar enlace de la sala">SALA <strong id="roomCode">—</strong></button><button id="leaveGame" class="button subtle small">Salir</button></div></div>
    <div id="practiceNotice" class="notice" hidden><div><strong>Estás en una práctica individual.</strong><span>Los otros actores son simulados. Las salas en vivo requieren tres personas.</span></div><label>Explorar como<select id="practiceRole"><option value="employer">Gerencia</option><option value="union">Sindicato</option><option value="hr">Gestión Humana</option></select></label></div>
@@ -43,12 +51,12 @@
  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
  <script src="firebase-config.js"></script>
  <script src="vendor/qrcode-generator.js"></script>
- <script src="mesa-acuerdos-data.js?v=20261122-2"></script>
- <script src="mesa-acuerdos-engine.js?v=20261122-2"></script>
- <script src="mesa-acuerdos-firebase.js?v=20261122-2"></script>
- <script src="mesa-acuerdos.js?v=20261122-2"></script>
- <script src="mesa-salas-engine.js?v=20261122-2"></script>
- <script src="mesa-salas-firebase.js?v=20261122-2"></script>
- <script src="mesa-salas.js?v=20261122-2"></script>
+ <script src="mesa-acuerdos-data.js?v=20261122-3"></script>
+ <script src="mesa-acuerdos-engine.js?v=20261122-3"></script>
+ <script src="mesa-acuerdos-firebase.js?v=20261122-3"></script>
+ <script src="mesa-acuerdos.js?v=20261122-3"></script>
+ <script src="mesa-salas-engine.js?v=20261122-3"></script>
+ <script src="mesa-salas-firebase.js?v=20261122-3"></script>
+ <script src="mesa-salas.js?v=20261122-3"></script>
 </body>
 </html>
