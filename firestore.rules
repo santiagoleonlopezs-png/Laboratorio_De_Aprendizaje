@@ -1321,6 +1321,250 @@ match /mesa_acuerdos_rooms/{code} {
 }
 
 
+// MESAS E INDIVIDUOS · MESA DE ACUERDOS V2
+// Mesas e individuos v2. Requiere las funciones puras de Mesa de Acuerdos del archivo completo.
+function msParent(code) { return get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)).data; }
+function msHost(code) { return maFac() && msParent(code).hostUid == request.auth.uid; }
+function msAttendee(code) { return maSigned() && get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/attendees/$(request.auth.uid)).data.active == true; }
+function msTable(code,id) { return get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)).data; }
+function msMember(code,id) {
+  return maSigned() && msTable(code,id).roster.hasAny([request.auth.uid])
+    && get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/attendees/$(request.auth.uid)).data.active == true
+    && get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/attendees/$(request.auth.uid)).data.tableId == id
+    && msParent(code).tableIds.hasAny([id]);
+}
+function msState(code,id) { return get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)/rounds/$(string(msTable(code,id).round))).data; }
+function msAll(t,s,stage) {
+  let flags = stage == 'close' ? s.readyClose : s.readyNext;
+  return flags.get(t.roster[0],false) && flags.get(t.roster[1],false) && flags.get(t.roster[2],false)
+    && (t.roster.size() < 4 || flags.get(t.roster[3],false)) && (t.roster.size() < 5 || flags.get(t.roster[4],false));
+}
+function msVote(s,uid,role) {
+  let p = s.positions.get(uid,null);
+  return p != null && p.response == (role == 'hr' ? 'review' : 'accept') ? p.offer.id : '';
+}
+function msPosture(t,s,role) {
+  let ids = t.byRole[role];
+  let a = msVote(s,ids[0],role);
+  let b = ids.size() > 1 ? msVote(s,ids[1],role) : '';
+  let c = ids.size() > 2 ? msVote(s,ids[2],role) : '';
+  return ids.size() == 1 ? a : ids.size() == 2 ? (a == b ? a : '') : a != '' && (a == b || a == c) ? a : b != '' && b == c ? b : '';
+}
+function msAdopted(t,s,id) {
+  let ids = t.byRole.employer;
+  return id == '' ? null : msVote(s,ids[0],'employer') == id ? s.positions[ids[0]].offer
+    : ids.size() > 1 && msVote(s,ids[1],'employer') == id ? s.positions[ids[1]].offer : s.positions[ids[2]].offer;
+}
+function msScoreContext(code,id,uid) {
+  let t = msTable(code,id);
+  let s = msState(code,id);
+  let p = s.positions.get(uid,null);
+  let o = p != null && p.response in ['accept','review'] ? p.offer : s.offers.get(uid,null);
+  let g = msPosture(t,s,'employer');
+  let pos = p == null ? null : {'response':p.response,'offerId':p.offer.id};
+  return {'room':{'metrics':{'employer':t.people[uid].metrics,'union':t.people[uid].metrics,'hr':t.people[uid].metrics},
+      'totals':{'employer':t.people[uid].total,'union':t.people[uid].total,'hr':t.people[uid].total},'shared':t.shared},
+    'positions':{'employer':pos,'union':pos,'hr':pos},'id':o == null ? '' : o.id,'offer':o,
+    'agreedId':g != '' && g == msPosture(t,s,'union') ? g : '',
+    'brief':get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)/briefings/$(t.roles[uid])).data.rounds[t.round-1]};
+}
+function msOffer(code,id,d,previous) {
+  let t = msTable(code,id);
+  return d.keys().hasOnly(['round','role','revision','uid','id','route','benefits','operations','implementation','days','owner','monitor','style','argument','commitment'])
+    && d.uid == request.auth.uid && d.role == t.roles[request.auth.uid] && d.round == t.round
+    && d.revision == (previous == null ? 1 : previous.revision + 1)
+    && d.id == string(t.round) + '_' + request.auth.uid + '_' + string(d.revision)
+    && maOfferData({'round':d.round,'role':d.role,'revision':d.revision,'uid':d.uid,'route':d.route,'benefits':d.benefits,'operations':d.operations,'implementation':d.implementation,'days':d.days,'owner':d.owner,'monitor':d.monitor,'style':d.style,'argument':d.argument,'commitment':d.commitment,'createdAt':request.time})
+    && getAfter(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)/history/$(d.id)).data.diff(d).affectedKeys().hasOnly(['createdAt']);
+}
+function msPosition(code,id,d) {
+  let t = msTable(code,id);
+  return d.keys().hasOnly(['uid','role','round','response','reason','offer'])
+    && d.uid == request.auth.uid && d.role == t.roles[request.auth.uid] && d.round == t.round
+    && ((d.role == 'hr' && d.response in ['review','counter','reject']) || (d.role != 'hr' && d.response in ['accept','counter','reject']))
+    && d.reason is string && d.reason.size() >= 20 && d.reason.size() <= 400
+    && d.offer.round == t.round
+    && d.offer.diff(get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)/history/$(d.offer.id)).data).affectedKeys().hasOnly(['createdAt']);
+}
+function msChangeState(code,id,n,o) {
+  let t = msTable(code,id);
+  let uid = request.auth.uid;
+  return n.keys().hasOnly(['round','offers','positions','readyClose','readyNext','updatedAt']) && n.round == t.round && n.updatedAt == request.time
+    && n.offers.keys().hasOnly(t.roster) && n.positions.keys().hasOnly(t.roster) && n.readyClose.keys().hasOnly(t.roster) && n.readyNext.keys().hasOnly(t.roster)
+    && n.offers.diff(o.offers).affectedKeys().hasOnly([uid]) && n.positions.diff(o.positions).affectedKeys().hasOnly([uid])
+    && n.readyClose.diff(o.readyClose).affectedKeys().hasOnly([uid]) && n.readyNext.diff(o.readyNext).affectedKeys().hasOnly([uid])
+    && (n.offers == o.offers || (t.phase == 'negotiating' && o.readyClose.get(uid,false) == false && msOffer(code,id,n.offers[uid],o.offers.get(uid,null))))
+    && (n.positions == o.positions || (t.phase == 'negotiating' && o.readyClose.get(uid,false) == false && msPosition(code,id,n.positions[uid])))
+    && (n.readyClose == o.readyClose || (t.phase == 'negotiating' && n.readyClose.get(uid,false) is bool))
+    && (n.readyNext == o.readyNext || (t.phase == 'review' && n.readyNext.get(uid,false) is bool));
+}
+function msPoint(code,id,d) {
+  let t = msTable(code,id);
+  let c = msScoreContext(code,id,request.auth.uid);
+  return d.keys().hasOnly(['uid','round','role','points','total','breakdown','penalty','offerId','createdAt'])
+    && d.uid == request.auth.uid && d.round == t.round && d.role == t.roles[request.auth.uid] && d.createdAt == request.time
+    && (c.id == '' ? d.points == 0 && d.total == t.people[request.auth.uid].total && d.penalty == 0 && d.offerId == ''
+      && d.breakdown == {'legal':0,'objective':0,'cooperation':0,'feasibility':0,'implementation':0}
+      : maActorValid(c,d.role,{'points':d.points,'total':d.total,'breakdown':d.breakdown,'penalty':d.penalty,'offerId':d.offerId,'before':t.people[request.auth.uid].metrics}));
+}
+function msEffect(code,id,d) {
+  let t = msTable(code,id);
+  let c = msScoreContext(code,id,request.auth.uid);
+  let b = t.people[request.auth.uid].metrics;
+  return d.keys().hasOnly(['uid','round','before','metrics','createdAt']) && d.uid == request.auth.uid && d.round == t.round && d.createdAt == request.time
+    && d.before == b && d.metrics == (c.id == '' ? [maClamp(b[0]-3),maClamp(b[1]-3),maClamp(b[2]-3)] : maActorMetrics(c,t.roles[request.auth.uid]));
+}
+function msResolution(code,id,d) {
+  let t = msTable(code,id);
+  let s = msState(code,id);
+  let g = msPosture(t,s,'employer');
+  let agreed = g != '' && g == msPosture(t,s,'union') ? g : '';
+  let reviewed = agreed != '' && msPosture(t,s,'hr') == agreed;
+  return d.keys().hasOnly(['round','agreement','agreedOfferId','reviewed','sharedBefore','sharedAfter','createdAt'])
+    && d.round == t.round && d.createdAt == request.time && d.agreement == (agreed != '') && d.agreedOfferId == agreed && d.reviewed == reviewed
+    && d.sharedBefore == t.shared && d.sharedAfter == maShared({'room':{'shared':t.shared},'agreedId':agreed,'adopted':msAdopted(t,s,agreed),'reviewed':reviewed});
+}
+function msPersonal(code,id,d) {
+  let t = msTable(code,id);
+  let s = msState(code,id);
+  let pos = s.positions.get(request.auth.uid,null);
+  let offer = pos != null && pos.response in ['accept','review'] ? pos.offer : s.offers.get(request.auth.uid,null);
+  let points = get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)/pointProofs/$(string(t.round) + '_' + request.auth.uid)).data;
+  let effects = get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)/effectProofs/$(string(t.round) + '_' + request.auth.uid)).data;
+  let outcome = get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)/resolutionProofs/$(string(t.round))).data;
+  return d.keys().hasOnly(['uid','role','round','actor','ownOffer','offer','position','agreement','agreedOfferId','reviewed','sharedBefore','sharedAfter','createdAt'])
+    && d.uid == request.auth.uid && d.role == t.roles[request.auth.uid] && d.round == t.round && d.createdAt == request.time
+    && d.actor.keys().hasOnly(['points','total','breakdown','penalty','before','metrics','feedback','offerId','next'])
+    && d.actor.points == points.points && d.actor.total == points.total && d.actor.breakdown == points.breakdown && d.actor.penalty == points.penalty && d.actor.offerId == points.offerId
+    && d.actor.before == effects.before && d.actor.metrics == effects.metrics
+    && d.actor.feedback is list && d.actor.feedback.size() <= 10 && d.actor.next is string && d.actor.next.size() <= 350
+    && d.ownOffer == s.offers.get(request.auth.uid,null) && d.offer == offer && d.position == pos
+    && d.agreement == outcome.agreement && d.agreedOfferId == outcome.agreedOfferId && d.reviewed == outcome.reviewed
+    && d.sharedBefore == outcome.sharedBefore && d.sharedAfter == outcome.sharedAfter;
+}
+function msPersonResult(code,id,uid) { return get(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)/personalResults/$(string(msTable(code,id).round) + '_' + uid)).data; }
+function msPersonMatches(code,id,d,uid) { return d.people[uid] == msPersonResult(code,id,uid).actor; }
+function msSummary(code,id,d) {
+  let t = msTable(code,id);
+  let first = msPersonResult(code,id,t.roster[0]);
+  return d.keys().hasOnly(['round','people','agreement','agreedOfferId','reviewed','sharedBefore','sharedAfter','createdAt'])
+    && d.round == t.round && d.createdAt == request.time && d.people.keys().hasOnly(t.roster) && d.people.size() == t.roster.size()
+    && msPersonMatches(code,id,d,t.roster[0]) && msPersonMatches(code,id,d,t.roster[1]) && msPersonMatches(code,id,d,t.roster[2])
+    && (t.roster.size() < 4 || msPersonMatches(code,id,d,t.roster[3])) && (t.roster.size() < 5 || msPersonMatches(code,id,d,t.roster[4]))
+    && d.agreement == first.agreement && d.agreedOfferId == first.agreedOfferId && d.reviewed == first.reviewed
+    && d.sharedBefore == first.sharedBefore && d.sharedAfter == first.sharedAfter;
+}
+function msUpdatedPerson(n,result,uid,round) { return n.people[uid] == {'total':result.people[uid].total,'metrics':result.people[uid].metrics,'completed':round}; }
+function msAutoTable(code,id,n,o) {
+  let s = msState(code,id);
+  let result = /databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(id)/results/$(string(o.round));
+  return msParent(code).mode == 'autonomous' && msParent(code).phase != 'lobby'
+    && ((n.phase == 'negotiating' && ((o.phase == 'lobby' && n.round == 1) || (o.phase == 'review' && n.round == o.round+1 && msAll(o,s,'next')))
+      && n.diff(o).affectedKeys().hasOnly(['phase','round','roundStartedAt','updatedAt']))
+    || (o.phase == 'negotiating' && n.phase == 'settling' && msAll(o,s,'close') && n.diff(o).affectedKeys().hasOnly(['phase','updatedAt']))
+    || (o.phase == 'settling' && n.phase == (o.round == 6 ? 'finished' : 'review')
+      && n.diff(o).affectedKeys().hasOnly(['phase','people','shared','updatedAt']) && n.people.keys().hasOnly(o.roster) && n.people.size() == o.roster.size()
+      && getAfter(result).data.round == o.round && n.shared == getAfter(result).data.sharedAfter
+      && msUpdatedPerson(n,getAfter(result).data,o.roster[0],o.round) && msUpdatedPerson(n,getAfter(result).data,o.roster[1],o.round) && msUpdatedPerson(n,getAfter(result).data,o.roster[2],o.round)
+      && (o.roster.size()<4 || msUpdatedPerson(n,getAfter(result).data,o.roster[3],o.round)) && (o.roster.size()<5 || msUpdatedPerson(n,getAfter(result).data,o.roster[4],o.round))));
+}
+match /mesa_acuerdos_sessions/{code} {
+  allow get: if maSigned();
+  allow list, delete: if false;
+  allow create: if maFac() && request.resource.data.hostUid == request.auth.uid && request.resource.data.gameId == 'mesa-salas-v2'
+    && request.resource.data.keys().hasOnly(['gameId','hostUid','title','mode','phase','tableIds','enrollmentRevision','createdAt','updatedAt'])
+    && request.resource.data.title is string && request.resource.data.title.size() >= 2 && request.resource.data.title.size() <= 70
+    && request.resource.data.mode in ['guided','autonomous'] && request.resource.data.phase == 'lobby' && request.resource.data.tableIds == [] && request.resource.data.enrollmentRevision == 0
+    && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+  allow update: if msHost(code) && request.resource.data.hostUid == resource.data.hostUid && request.resource.data.gameId == resource.data.gameId
+    && request.resource.data.mode == resource.data.mode && request.resource.data.createdAt == resource.data.createdAt
+    && request.resource.data.phase in ['lobby','ready','active','resetting'] && request.resource.data.updatedAt == request.time;
+  allow update: if maSigned() && resource.data.phase == 'lobby'
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrollmentRevision','updatedAt'])
+    && request.resource.data.enrollmentRevision == resource.data.enrollmentRevision + 1 && request.resource.data.updatedAt == request.time
+    && !exists(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/attendees/$(request.auth.uid))
+    && getAfter(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/attendees/$(request.auth.uid)).data.uid == request.auth.uid;
+  match /attendees/{uid} {
+    allow get: if maSigned() && (request.auth.uid == uid || msHost(code) || msAttendee(code));
+    allow list: if msHost(code) || msAttendee(code);
+    allow create: if maSigned() && request.auth.uid == uid && msParent(code).phase == 'lobby'
+      && request.resource.data.keys().hasOnly(['uid','name','active','role','tableId','joinedAt']) && request.resource.data.uid == uid
+      && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 40
+      && request.resource.data.active == true && request.resource.data.role == '' && request.resource.data.tableId == '' && request.resource.data.joinedAt == request.time
+      && getAfter(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)).data.enrollmentRevision == msParent(code).enrollmentRevision + 1;
+    allow update: if msHost(code) && request.resource.data.uid == resource.data.uid && request.resource.data.name == resource.data.name && request.resource.data.joinedAt == resource.data.joinedAt;
+    allow delete: if false;
+  }
+  match /tables/{tableId} {
+    allow read: if msHost(code) || msAttendee(code);
+    allow create: if msHost(code) && request.resource.data.tableId == tableId && request.resource.data.sessionCode == code
+      && request.resource.data.phase == 'lobby' && request.resource.data.round == 1 && request.resource.data.roster.size() >= 3 && request.resource.data.roster.size() <= 5
+      && request.resource.data.byRole.employer.size() >= 1 && request.resource.data.byRole.union.size() >= 1 && request.resource.data.byRole.hr.size() >= 1;
+    allow update: if msHost(code) || (msMember(code,tableId) && request.resource.data.updatedAt == request.time && msAutoTable(code,tableId,request.resource.data,resource.data));
+    allow delete: if false;
+    match /briefings/{role} {
+      allow read: if msHost(code) || (msMember(code,tableId) && msTable(code,tableId).roles[request.auth.uid] == role);
+      allow create, update: if msHost(code) && maRole(role) && request.resource.data.role == role && request.resource.data.rounds.size() == 6;
+      allow delete: if false;
+    }
+    match /rounds/{roundId} {
+      allow read: if msHost(code) || msMember(code,tableId);
+      allow create: if msHost(code) || (msMember(code,tableId) && msParent(code).mode == 'autonomous'
+        && request.resource.data.keys().hasOnly(['round','offers','positions','readyClose','readyNext','updatedAt'])
+        && roundId == string(request.resource.data.round)
+        && getAfter(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(tableId)).data.phase == 'negotiating'
+        && getAfter(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(tableId)).data.round == request.resource.data.round
+        && request.resource.data.offers == {} && request.resource.data.positions == {} && request.resource.data.readyClose == {} && request.resource.data.readyNext == {} && request.resource.data.updatedAt == request.time);
+      allow update: if msMember(code,tableId) && roundId == string(msTable(code,tableId).round) && msChangeState(code,tableId,request.resource.data,resource.data);
+      allow delete: if msHost(code) && msTable(code,tableId).phase == 'resetting';
+    }
+    match /history/{offerId} {
+      allow read: if msHost(code) || msMember(code,tableId);
+      allow create: if msMember(code,tableId) && msTable(code,tableId).phase == 'negotiating' && request.resource.data.uid == request.auth.uid
+        && offerId == request.resource.data.id && request.resource.data.createdAt == request.time
+        && request.resource.data.diff(getAfter(/databases/$(database)/documents/mesa_acuerdos_sessions/$(code)/tables/$(tableId)/rounds/$(string(msTable(code,tableId).round))).data.offers[request.auth.uid]).affectedKeys().hasOnly(['createdAt']);
+      allow update: if false;
+      allow delete: if msHost(code) && msTable(code,tableId).phase == 'resetting';
+    }
+    match /pointProofs/{key} {
+      allow read: if msHost(code) || msMember(code,tableId);
+      allow create: if msMember(code,tableId) && msParent(code).mode == 'autonomous' && msTable(code,tableId).phase == 'settling'
+        && key == string(msTable(code,tableId).round) + '_' + request.auth.uid && msPoint(code,tableId,request.resource.data);
+      allow update: if false;
+      allow delete: if msHost(code) && msTable(code,tableId).phase == 'resetting';
+    }
+    match /effectProofs/{key} {
+      allow read: if msHost(code) || msMember(code,tableId);
+      allow create: if msMember(code,tableId) && msParent(code).mode == 'autonomous' && msTable(code,tableId).phase == 'settling'
+        && key == string(msTable(code,tableId).round) + '_' + request.auth.uid && msEffect(code,tableId,request.resource.data);
+      allow update: if false;
+      allow delete: if msHost(code) && msTable(code,tableId).phase == 'resetting';
+    }
+    match /resolutionProofs/{roundId} {
+      allow read: if msHost(code) || msMember(code,tableId);
+      allow create: if msMember(code,tableId) && msParent(code).mode == 'autonomous' && msTable(code,tableId).phase == 'settling'
+        && roundId == string(msTable(code,tableId).round) && msResolution(code,tableId,request.resource.data);
+      allow update: if false;
+      allow delete: if msHost(code) && msTable(code,tableId).phase == 'resetting';
+    }
+    match /personalResults/{key} {
+      allow read: if msHost(code) || msMember(code,tableId);
+      allow create: if msTable(code,tableId).phase == 'settling' && (msHost(code) || (msMember(code,tableId) && msParent(code).mode == 'autonomous'
+        && key == string(msTable(code,tableId).round) + '_' + request.auth.uid && msPersonal(code,tableId,request.resource.data)));
+      allow update: if false;
+      allow delete: if msHost(code) && msTable(code,tableId).phase == 'resetting';
+    }
+    match /results/{roundId} {
+      allow read: if msHost(code) || msMember(code,tableId);
+      allow create: if msTable(code,tableId).phase == 'settling' && roundId == string(msTable(code,tableId).round)
+        && (msHost(code) || (msMember(code,tableId) && msParent(code).mode == 'autonomous' && msSummary(code,tableId,request.resource.data)));
+      allow update: if false;
+      allow delete: if msHost(code) && msTable(code,tableId).phase == 'resetting';
+    }
+  }
+}
+
+
     // =====================================================
     // TODO LO DEMÁS CONTINÚA CERRADO
     // =====================================================

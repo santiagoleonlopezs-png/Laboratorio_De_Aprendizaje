@@ -3,7 +3,7 @@
 (function(root){
  'use strict';
  const roles={
-  employer:{name:'Empleador',short:'Gerencia',color:'#78a8ff',mission:'Sostén la operación y construye compromisos que la empresa pueda cumplir.',metrics:['Viabilidad económica','Continuidad operativa','Cumplimiento de compromisos']},
+  employer:{name:'Gerencia',short:'Gerencia',color:'#78a8ff',mission:'Sostén la operación y construye compromisos que la empresa pueda cumplir.',metrics:['Viabilidad económica','Continuidad operativa','Cumplimiento de compromisos']},
   union:{name:'Sindicato',short:'Sindicato',color:'#9de3ca',mission:'Representa las prioridades de los trabajadores y protege sus garantías.',metrics:['Representación','Mejoras alcanzadas','Garantías laborales']},
   hr:{name:'Gestión Humana',short:'Gestión Humana',color:'#ccb1ff',mission:'Articula el diálogo, advierte riesgos y convierte propuestas en compromisos ejecutables.',metrics:['Calidad del diálogo','Coherencia de propuestas','Capacidad de ejecución']}
  };

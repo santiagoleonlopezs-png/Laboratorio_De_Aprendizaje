@@ -194,31 +194,50 @@ Las claves web de Firebase son claves *públicas de cliente*, no credenciales ad
 
 # Mesa de Acuerdos · relaciones sindicales
 
-Experiencia en [`mesa-acuerdos.html`](./mesa-acuerdos.html), integrada en el catálogo del Laboratorio. Seis rondas de una empresa privada manufacturera de Colombia, con tres actores: Empleador, Sindicato y Gestión Humana. Mínimo tres participantes con identidades distintas, activos y con los tres roles cubiertos. Los equipos pueden tener varias personas; cada actor tiene un portavoz que publica propuestas y posiciones.
+Experiencia en [`mesa-acuerdos.html`](./mesa-acuerdos.html), integrada en el catálogo del Laboratorio. Seis rondas en una empresa privada manufacturera de Colombia. Los roles visibles son **Gerencia, Sindicato y Gestión Humana**; se conserva el identificador interno `employer` para mantener compatibles las salas anteriores.
 
-**Modalidades de sala:**
+## Mesas y participación individual
 
-- **Dirigida:** el facilitador crea la sala, asigna roles, abre y cierra cada ronda. Su tablero muestra las propuestas y contrapropuestas, los respaldos sobre versiones exactas, los acuerdos y desacuerdos, indicadores, feedback, ranking por ronda y acumulado. Puede revisar las rondas anteriores para conversar antes de habilitar la siguiente.
-- **Autónoma:** después de la preparación de la sala y la asignación de roles, los portavoces pueden iniciar. Cada actor confirma que terminó de negociar. Con las tres confirmaciones se congelan las decisiones, se verifican las puntuaciones y se publican los resultados. Los tres actores confirman después que están listos para continuar. El facilitador puede observar la sala, conversar e intervenir, pero su conexión no es necesaria para conducir el ciclo. Los portavoces deben mantener sus dispositivos conectados durante el cierre; si uno pierde conexión puede retomar desde el mismo navegador. El facilitador puede completar un cierre pendiente desde su tablero.
-- **Práctica individual:** recorre las seis rondas con dos actores simulados y permite explorar los roles. Se conserva en la sesión del navegador y no crea participantes ni salas en Firebase. Se identifica expresamente como práctica; no sustituye el mínimo de tres personas de una sala real.
+Un código y un QR para toda la clase. Cada persona entra desde su propio dispositivo; el facilitador organiza mesas independientes de tres participantes, con cuatro o cinco cuando sea necesario para incluir a todos. Siete personas forman 4 + 3; ocho, 4 + 4; cinco forman una mesa de cinco. La asignación automática se puede revisar y cambiar antes de guardarla. Cada mesa debe tener los tres roles y al menos tres identidades distintas.
 
-**Negociación y resultados.** Las propuestas tienen ruta, reparto de 100 créditos pedagógicos por ronda, argumento, compromiso, responsable, plazo y seguimiento. Cada versión se conserva. El acuerdo requiere que empleador y sindicato respalden el mismo identificador de propuesta, no solo un contenido parecido. Gestión Humana registra una revisión técnica y no sustituye la aceptación de las partes. El desacuerdo fundamentado conserva puntos; una ruta que vulnera garantías limita el puntaje a 20. La calidad del texto no se califica automáticamente.
+**Todos participan en cada ronda.** Cada persona publica sus propuestas y registra su respaldo, petición de ajustes o desacuerdo. Conserva tres indicadores propios, puntos, feedback y posición en el ranking. Compartir rol no copia el puntaje de otra persona ni convierte a nadie en observador. Los roles se mantienen durante la partida; la reasignación requiere reiniciar.
 
-Los puntos tienen cinco componentes: fundamento de la ruta (35), objetivos del actor (20), cooperación observada mediante la elección de estilo (15), viabilidad (15) e implementación (15). Sin un acuerdo respaldado se reconocen hasta el 70 % de los puntos por preparación de objetivos, sin dar por materializadas las mejoras. Los demás componentes se conservan. Cada rol tiene tres indicadores y la mesa comparte confianza, garantías y operación. Las magnitudes y efectos son un modelo educativo, no una predicción ni una evaluación legal automática de textos libres.
+Si un rol tiene dos integrantes, ambos deben respaldar la misma versión para consolidar su postura; si tiene tres, se requiere una mayoría estricta de dos. El acuerdo de mesa requiere posturas consolidadas de Gerencia y Sindicato sobre el mismo identificador y versión de propuesta. Gestión Humana registra revisión favorable sin sustituir la aceptación de las partes. La divergencia individual queda visible.
 
-**Antes de usar salas reales:** publicar el archivo completo y actualizado [`firestore.rules`](./firestore.rules) en el proyecto `simuladores-juegos`. El bloque independiente está en [`FIRESTORE_MESA_ACUERDOS.rules`](./FIRESTORE_MESA_ACUERDOS.rules). GitHub Pages no despliega reglas de Firebase. Se mantienen los proveedores de acceso Anónimo y Correo/Contraseña y el rol `facilitator: true` existente. No se necesitan nuevos índices compuestos.
+## Modalidades
 
-**Datos y permisos:** `mesa_acuerdos_rooms/{code}` contiene la sala y subcolecciones `members`, `seats`, `briefings`, `offers`, `cursors`, `positions`, `readiness`, `scorechecks`, `effects`, `evaluations` y `results`. Las instrucciones y umbrales aleatorios se generan al crear la sala, se guardan por actor y solo los lee ese equipo o el propietario. Los nombres se comparten dentro de la sala; no se piden cédulas ni afiliaciones reales. Los roles quedan fijos al iniciar. En dirigida solo el propietario publica resultados; en autónoma las reglas verifican los componentes, el total, las penalizaciones y los indicadores de cada evaluación frente a las decisiones y la información reservada, y verifican el consolidado. Los resultados y las versiones se bloquean después del cierre.
+- **Dirigida:** el facilitador abre y cierra las rondas para todas las mesas, revisa decisiones y acuerdos y conversa antes de abrir la siguiente. Puede inspeccionar cada mesa y completar un cierre pendiente.
+- **Autónoma:** cada mesa inicia y avanza de forma independiente. Se requieren las confirmaciones de **todos** sus integrantes para cerrar y para abrir la siguiente ronda, incluida la cuarta o quinta persona. Confirmar el cierre bloquea las decisiones propias; se puede retirar la confirmación mientras la ronda siga abierta. Cada dispositivo verifica y publica su resultado. Si alguien pierde conexión, puede reingresar con el mismo navegador; el facilitador puede completar el cierre con las decisiones disponibles. No se requiere la conexión permanente del facilitador.
+- **Práctica individual:** explora seis rondas con dos actores simulados. Se conserva en la sesión del navegador y no crea una sala en Firebase. Las salas reales requieren tres personas como mínimo.
 
-El CSV incluye ronda, actor, integrantes actuales, portavoz actual, propuesta evaluada, argumento, posición, acuerdos, componentes del puntaje, indicadores, feedback y posiciones del ranking por ronda y acumulado. Los empates comparten posición. Los nombres actuales se identifican como tales para no presentarlos como un padrón histórico de cada ronda. La descarga incluye BOM UTF-8, separador `;` y neutralización de fórmulas. El QR se genera con una dependencia MIT incluida en el repositorio, sin un servicio externo de QR.
+## Resultados y facilitación
 
-**Pruebas reproducibles:**
+Las propuestas tienen ruta, reparto de hasta 100 créditos pedagógicos, argumento, compromiso, responsable, plazo y seguimiento. Cada versión se conserva. Para puntuar a una persona se usa la versión que respaldó o revisó favorablemente; si no hubo ese respaldo, se usa su última propuesta propia. Sin propuesta evaluable se registran cero puntos y feedback.
+
+Hay 100 puntos por persona y ronda: fundamento de la ruta (35), objetivos de su rol (20), cooperación mediante el estilo elegido (15), viabilidad (15) e implementación (15). Sin acuerdo se reconoce hasta el 70 % del componente de objetivos por preparación, conservando los demás componentes. Un desacuerdo fundamentado también obtiene puntos. Una ruta que vulnera garantías limita el resultado a 20 puntos. El texto de los argumentos se conserva para la conversación y no se califica automáticamente.
+
+Cada mesa comparte confianza, garantías laborales y continuidad operativa. Los indicadores personales dependen de la decisión individual y del acuerdo de su mesa. El ranking individual acumulado abarca toda la sala; el ranking por ronda se consulta dentro de cada mesa. Los empates comparten posición. En autónoma se muestra cuántas rondas cerró cada persona. El indicador comparativo de mesa promedia primero a las personas de cada rol y luego los tres roles, para que un rol repetido no pese más.
+
+El tablero permite ver participantes, propuestas, versiones, posiciones, acuerdos, puntuaciones y feedback. La bitácora distingue la propuesta propia de la versión evaluada y conserva los registros de todas las rondas. El CSV del facilitador consolida toda la sala e incluye posiciones por ronda y acumulado al cierre de cada ronda. La descarga personal conserva las decisiones propias y su posición dentro de la mesa. El CSV usa BOM UTF-8, separador `;` y neutralización de fórmulas. El QR se genera con una dependencia MIT incluida en el repositorio.
+
+## Firebase y compatibilidad
+
+**Antes de usar las nuevas salas reales:** publicar el archivo completo y actualizado [`firestore.rules`](./firestore.rules) en el proyecto `simuladores-juegos`. GitHub Pages publica la aplicación, pero no despliega reglas de Firebase. El fragmento nuevo es [`FIRESTORE_MESA_SALAS.rules`](./FIRESTORE_MESA_SALAS.rules); depende de funciones puras del bloque anterior y no debe sustituir por sí solo el archivo completo. Los bloques de las experiencias existentes y de Mesa de Acuerdos v1 se conservan sin cambios.
+
+Se mantienen los proveedores Anónimo y Correo/Contraseña y el permiso `facilitator: true` existente. No se necesitan nuevos índices compuestos.
+
+Las nuevas salas usan `mesa_acuerdos_sessions/{code}`, con `attendees` y `tables`. Cada mesa guarda `rounds`, `history`, `briefings`, `personalResults`, `results`, `pointProofs`, `effectProofs` y `resolutionProofs`. Las instrucciones reservadas solo pueden leerse por el propio rol de esa mesa o por su facilitador. Los participantes no leen las negociaciones ni las instrucciones privadas de otras mesas. Los nombres y el ranking individual son visibles dentro de la sala; no se solicitan cédulas ni afiliaciones reales.
+
+En autónoma las reglas verifican puntos, componentes, penalizaciones, indicadores y acuerdo frente a las decisiones, la información reservada y el respaldo por versión. Las validaciones se reparten en comprobaciones inmutables para respetar los límites de evaluación de Firestore. Los datos no se pueden modificar después del cierre. El facilitador puede reiniciar toda la sala, borrando decisiones y resultados y conservando las personas y sus roles. La inscripción y la organización se coordinan para no omitir a quien ingrese durante la preparación.
+
+Las salas anteriores en `mesa_acuerdos_rooms/{code}` conservan su funcionamiento y pueden retomarse con su código. Las nuevas salas creadas desde la interfaz usan el modelo de mesas e individuos.
+
+## Pruebas reproducibles
 
 ```bash
-node --test tests/mesa-acuerdos-engine.test.cjs
+node --test tests/mesa-acuerdos-engine.test.cjs tests/mesa-salas-engine.test.cjs
 npm install --no-save --no-package-lock firebase-tools@14 @firebase/rules-unit-testing@4 firebase@11
-npx firebase emulators:exec --only firestore --project demo-mesa-acuerdos "node tests/mesa-acuerdos-rules.cjs && node tests/mesa-acuerdos-transport.cjs"
+npx firebase emulators:exec --only firestore --project demo-mesa-acuerdos "node tests/mesa-acuerdos-rules.cjs && node tests/mesa-acuerdos-transport.cjs && node tests/mesa-salas-transport.cjs"
 ```
 
-Las referencias oficiales se incluyen en el simulador, con corte de consulta 22/11/2026. El caso excluye empleados públicos y prestadores de salud; la transición sectorial del Decreto 1432 de 2026 se identifica para no extrapolarla a esta empresa. Revisar la vigencia de las fuentes al reutilizar la experiencia.
-
+Se prueban seis rondas de ambas modalidades, dos mesas y siete personas, privacidad entre mesas y roles, puntajes individuales, rechazo de puntuaciones alteradas, grupos de cinco y cierres sin decisiones. Las referencias oficiales están incluidas en el simulador, con corte de consulta 22/11/2026. Las magnitudes son un modelo educativo; revisar la vigencia de las fuentes al reutilizar la experiencia. El caso excluye empleados públicos y prestadores de salud.

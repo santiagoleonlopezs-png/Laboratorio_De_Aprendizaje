@@ -1,9 +1,9 @@
 name: Validar Mesa de Acuerdos
 on:
   push:
-    paths: ['mesa-acuerdos*', 'FIRESTORE_MESA_ACUERDOS.rules', 'firestore.rules', 'tests/mesa-acuerdos*', '.github/workflows/validate-mesa-acuerdos.yml']
+    paths: ['mesa-acuerdos*', 'mesa-salas*', 'FIRESTORE_MESA_SALAS.rules', 'FIRESTORE_MESA_ACUERDOS.rules', 'firestore.rules', 'tests/mesa-acuerdos*', 'tests/mesa-salas*', '.github/workflows/validate-mesa-acuerdos.yml']
   pull_request:
-    paths: ['mesa-acuerdos*', 'firestore.rules', 'tests/mesa-acuerdos*']
+    paths: ['mesa-acuerdos*', 'mesa-salas*', 'FIRESTORE_MESA_SALAS.rules', 'firestore.rules', 'tests/mesa-acuerdos*', 'tests/mesa-salas*']
   workflow_dispatch:
 jobs:
   simulation:
@@ -22,8 +22,10 @@ jobs:
         run: |
           node --check mesa-acuerdos.js
           node --check mesa-acuerdos-firebase.js
-          node --test tests/mesa-acuerdos-engine.test.cjs
+          node --check mesa-salas.js
+          node --check mesa-salas-firebase.js
+          node --test tests/mesa-acuerdos-engine.test.cjs tests/mesa-salas-engine.test.cjs
       - name: Preparar herramientas de pruebas
         run: npm install --no-save --no-package-lock firebase-tools@14 @firebase/rules-unit-testing@4 firebase@11
       - name: Validar permisos de salas
-        run: npx firebase emulators:exec --only firestore --project demo-mesa-acuerdos "node tests/mesa-acuerdos-rules.cjs && node tests/mesa-acuerdos-transport.cjs"
+        run: npx firebase emulators:exec --only firestore --project demo-mesa-acuerdos "node tests/mesa-acuerdos-rules.cjs && node tests/mesa-acuerdos-transport.cjs && node tests/mesa-salas-transport.cjs"

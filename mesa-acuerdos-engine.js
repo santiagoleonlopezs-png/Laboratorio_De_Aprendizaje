@@ -29,10 +29,10 @@
   const rows=D.roleIds.map(role=>({role,score:Math.round(Number(values[role])||0)})).sort((a,b)=>b.score-a.score||D.roleIds.indexOf(a.role)-D.roleIds.indexOf(b.role));
   rows.forEach((r,i)=>r.position=i&&r.score===rows[i-1].score?rows[i-1].position:i+1);return rows;
  }
- function settle({round,offers,positions={},briefs,shared=initial(),metrics=actorInitial(),totals={}}){
+ function settle({round,offers,positions={},briefs,shared=initial(),metrics=actorInitial(),totals={},resolution=null}){
   const c=D.rounds[round-1];if(!c)throw Error('Ronda inválida.');
   const valid=offers.filter(o=>validOffer(o,round));
-  const a=agreement(round,valid,positions),actors={};
+  const a=resolution||agreement(round,valid,positions),actors={};
   const latest=role=>valid.filter(o=>o.role===role).sort((x,y)=>y.revision-x.revision)[0];
   const quality=o=>c.routes.find(r=>r.id===o?.route)?.quality??0;
   const adopted=a.offer,adoptedQuality=quality(adopted);
@@ -69,7 +69,7 @@
     if(!a.agreed&&q===1)feedback.push('El desacuerdo conserva los puntos de una ruta fundada, cooperativa y viable. No se exige aceptar una propuesta perjudicial.');
     if(p?.response==='reject')feedback.push('Tu desacuerdo y su motivo quedaron registrados para la conversación.');
     if(penalty)feedback.push(`La ruta que vulnera garantías limita el puntaje a 20: se descontaron ${penalty} puntos.`);
-    if(a.agreed&&!a.reviewed)feedback.push('Empleador y sindicato coincidieron; falta revisión favorable de Gestión Humana sobre esa misma versión.');
+    if(a.agreed&&!a.reviewed)feedback.push('Gerencia y Sindicato coincidieron; falta revisión favorable de Gestión Humana sobre esa misma versión.');
    }
    const previous=metrics[role]||[50,50,50];
    const delta=choice?role==='employer'?[cost<=b.ceiling?6:-9,a.agreed?(choice.operations>=b.operations?6:-5):0,a.agreed?(implementation>=12?5:-4):0]
