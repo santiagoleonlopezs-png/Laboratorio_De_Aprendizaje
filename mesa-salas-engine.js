@@ -40,6 +40,6 @@
   return {uid,role,round:table.round,actor,ownOffer:own||null,offer:offers.find(o=>o.id===actor.offerId)||null,position:p||null,agreement:resolution.agreed,agreedOfferId:resolution.offer?.id||'',reviewed:resolution.reviewed,sharedBefore:table.shared,sharedAfter:result.sharedAfter};
  }
  function rank(rows,field='total'){const sorted=rows.map(x=>({...x,score:Math.round(Number(x[field])||0)})).sort((a,b)=>b.score-a.score||String(a.name||a.uid).localeCompare(String(b.name||b.uid),'es'));sorted.forEach((x,i)=>x.position=i&&x.score===sorted[i-1].score?sorted[i-1].position:i+1);return sorted;}
- function tableScore(table){return Math.round(D.roleIds.reduce((sum,r)=>sum+table.byRole[r].reduce((s,uid)=>s+table.people[uid].total,0)/table.byRole[r].length,0)/3);}
+ function tableScore(table){return Math.round(D.roleIds.reduce((sum,r)=>sum+table.byRole[r].reduce((s,uid)=>s+(table.people[uid].total-(table.scoreBaselines?.[uid]||0)),0)/table.byRole[r].length,0)/3);}
  const api={initialPerson,blankRound,distribute,validateAssignments,posture,resolve,allReady,evaluate,rank,tableScore};root.MESA_SALAS_ENGINE=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
