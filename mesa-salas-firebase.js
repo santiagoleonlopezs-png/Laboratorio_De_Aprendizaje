@@ -6,6 +6,16 @@
  const room=code=>{init();return db.collection('mesa_acuerdos_sessions').doc(code);};
  const table=(code,id)=>room(code).collection('tables').doc(id);
  const user=()=>A.user();
+ const DEFAULT_ROUND_SECONDS=300, LIMITS=[180,300,480,600];
+ const NO_REASON='Sin justificación aportada.',REASON_PREFIX='Justificación opcional: ';
+ const reasonEncode=value=>{const s=String(value??'').trim().slice(0,400);return !s?NO_REASON:s.length<20||s===NO_REASON||s.startsWith(REASON_PREFIX)?(REASON_PREFIX+s).slice(0,400):s;};
+ const reasonText=value=>value===NO_REASON?'':String(value??'').startsWith(REASON_PREFIX)?String(value).slice(REASON_PREFIX.length):String(value??'');
+ const roundLimit=p=>LIMITS.includes(p?.roundLimitSeconds)?p.roundLimitSeconds:DEFAULT_ROUND_SECONDS;
+ const remaining=(t,now=Date.now())=>{const start=t?.roundStartedAt?.toMillis?.();return t?.phase==='negotiating'&&Number.isFinite(start)&&LIMITS.includes(t.roundLimitSeconds)?Math.max(0,Math.ceil((start+t.roundLimitSeconds*1000-now)/1000)):null;};
+ async function setRoundLimit(code,seconds){
+  if(!await A.hostSession()||!LIMITS.includes(seconds))throw Error('Selecciona un tiempo válido.');
+  const r=room(code);await db.runTransaction(async tx=>{const s=(await tx.get(r)).data();if(!s||s.hostUid!==user().uid||s.mode!=='guided'||s.phase==='resetting')throw Error('Solo el facilitador de una sala dirigida puede cambiar el tiempo.');tx.update(r,{roundLimitSeconds:seconds,updatedAt:stamp()});});
+ }
  async function exists(code){await A.signed();return (await room(code).get()).exists;}
  async function create(title,mode){
   if(!await A.hostSession())throw Error('Ingresa con tu cuenta de facilitador.');
@@ -113,7 +123,7 @@
   const t=table(code,id);await db.runTransaction(async tx=>{
    const [p,s]=await Promise.all([tx.get(room(code)),tx.get(t)]);const a=s.data();if(p.data()?.phase==='lobby')throw Error('El facilitador debe guardar la organización de las mesas.');if(!a||!['lobby','review'].includes(a.phase))throw Error('La mesa no está lista para avanzar.');
    const n=a.phase==='lobby'?(a.startRound||1):a.round+1;if(n>6)throw Error('La mesa ya terminó.');const next=t.collection('rounds').doc(String(n)),existing=await tx.get(next);
-   if(!existing.exists)tx.set(next,{...X.blankRound(n),updatedAt:stamp()});tx.update(t,{phase:'negotiating',round:n,roundStartedAt:stamp(),updatedAt:stamp()});
+   if(!existing.exists)tx.set(next,{...X.blankRound(n),updatedAt:stamp()});tx.update(t,{phase:'negotiating',round:n,roundStartedAt:stamp(),updatedAt:stamp(),...(p.data().mode==='guided'?{roundLimitSeconds:roundLimit(p.data())}:{})});
   });
  }
  async function openAll(code){
@@ -126,7 +136,7 @@
  async function offer(code,id,values){
   const u=await A.signed(),t=table(code,id);await db.runTransaction(async tx=>{
    const a=(await tx.get(t)).data(),ref=t.collection('rounds').doc(String(a.round)),s=await tx.get(ref),state=s.data();
-   if(a.phase!=='negotiating'||!a.roster.includes(u.uid)||state.readyClose[u.uid])throw Error('La ronda está cerrada para tu participación.');
+   if(remaining(a)===0)throw Error('El tiempo de esta ronda terminó.');if(a.phase!=='negotiating'||!a.roster.includes(u.uid)||state.readyClose[u.uid])throw Error('La ronda está cerrada para tu participación.');
    const revision=(state.offers[u.uid]?.revision||0)+1;if(revision>20)throw Error('Se alcanzó el límite de veinte versiones por persona.');
    const o={...values,uid:u.uid,role:a.roles[u.uid],round:a.round,revision,id:`${a.round}_${u.uid}_${revision}`};if(!E.validOffer(o,a.round))throw Error('Completa la propuesta y verifica el reparto de créditos.');
    tx.set(t.collection('history').doc(o.id),{...o,createdAt:stamp()});tx.update(ref,{offers:{...state.offers,[u.uid]:o},updatedAt:stamp()});
@@ -134,15 +144,15 @@
  }
  async function position(code,id,offerId,response,reason){
   const u=await A.signed(),t=table(code,id);await db.runTransaction(async tx=>{
-   const [a,o]=await Promise.all([tx.get(t),tx.get(t.collection('history').doc(offerId))]);const v=a.data();if(v.phase!=='negotiating'||!o.exists)throw Error('La propuesta ya no está disponible para esta ronda.');const ref=t.collection('rounds').doc(String(v.round)),s=await tx.get(ref),state=s.data();
-   const {createdAt,...snapshot}=o.data();if(snapshot.round!==v.round||state.readyClose[u.uid])throw Error('La ronda está cerrada para tu participación.');
-   tx.update(ref,{positions:{...state.positions,[u.uid]:{uid:u.uid,role:v.roles[u.uid],round:v.round,response,reason,offer:snapshot}},updatedAt:stamp()});
+   const [a,o]=await Promise.all([tx.get(t),tx.get(t.collection('history').doc(offerId))]);const v=a.data();if(remaining(v)===0)throw Error('El tiempo de esta ronda terminó.');if(v.phase!=='negotiating'||!o.exists)throw Error('La propuesta ya no está disponible para esta ronda.');const ref=t.collection('rounds').doc(String(v.round)),s=await tx.get(ref),state=s.data();
+   const {createdAt,...snapshot}=o.data();if(!v.roster.includes(u.uid)||snapshot.round!==v.round||state.readyClose[u.uid])throw Error('La ronda está cerrada para tu participación.');
+   tx.update(ref,{positions:{...state.positions,[u.uid]:{uid:u.uid,role:v.roles[u.uid],round:v.round,response,reason:reasonEncode(reason),offer:snapshot}},updatedAt:stamp()});
   });
  }
  async function ready(code,id,stage,value){
   const u=await A.signed(),t=table(code,id);await db.runTransaction(async tx=>{const a=(await tx.get(t)).data(),ref=t.collection('rounds').doc(String(a.round)),s=(await tx.get(ref)).data();const field=stage==='next'?'readyNext':'readyClose';tx.update(ref,{[field]:{...s[field],[u.uid]:value},updatedAt:stamp()});});
  }
- async function freeze(code,id){const t=table(code,id);await db.runTransaction(async tx=>{const a=(await tx.get(t)).data();if(a.phase==='settling')return;if(a.phase!=='negotiating')throw Error('La mesa ya no está negociando.');tx.update(t,{phase:'settling',updatedAt:stamp()});});}
+ async function freeze(code,id,expectedRound){const t=table(code,id);return db.runTransaction(async tx=>{const a=(await tx.get(t)).data();if(expectedRound!==undefined&&(a.round!==expectedRound||!['negotiating','settling'].includes(a.phase)))return false;if(a.phase==='settling')return true;if(a.phase!=='negotiating')throw Error('La mesa ya no está negociando.');if(expectedRound!==undefined&&remaining(a)!==0)return false;tx.update(t,{phase:'settling',updatedAt:stamp()});return true;});}
  async function publishOwn(code,id){
   const u=await A.signed(),t=table(code,id),a=(await t.get()).data();if(a.phase!=='settling'||!a.roster.includes(u.uid))return;
   const key=`${a.round}_${u.uid}`,target=t.collection('personalResults').doc(key);if((await target.get()).exists)return;
@@ -160,8 +170,8 @@
    tx.set(t.collection('results').doc(String(a.round)),result);tx.update(t,{phase:a.round===6?'finished':'review',people:Object.fromEntries(a.roster.map(uid=>[uid,{total:people[uid].total,metrics:people[uid].metrics,completed:a.round}])),shared:first.sharedAfter,updatedAt:stamp()});
   });
  }
- async function close(code,id){
-  await freeze(code,id);const t=table(code,id),a=(await t.get()).data(),[s,bs]=await Promise.all([t.collection('rounds').doc(String(a.round)).get(),t.collection('briefings').get()]);const b=Object.fromEntries(bs.docs.map(d=>[d.id,d.data()]));
+ async function close(code,id,expectedRound){
+  if(!await freeze(code,id,expectedRound))return;const t=table(code,id),a=(await t.get()).data();if(a.phase!=='settling'||expectedRound!==undefined&&a.round!==expectedRound)return;const [s,bs]=await Promise.all([t.collection('rounds').doc(String(a.round)).get(),t.collection('briefings').get()]);const b=Object.fromEntries(bs.docs.map(d=>[d.id,d.data()]));
   for(const uid of a.roster){const target=t.collection('personalResults').doc(`${a.round}_${uid}`);if(!(await target.get()).exists)await target.set({...X.evaluate(a,s.data(),uid,b[a.roles[uid]].rounds[a.round-1]),createdAt:stamp()});}
   await consolidate(code,id);
  }
@@ -185,5 +195,5 @@
   if(host)stops.push(t.collection('briefings').onSnapshot(s=>handlers.briefs(Object.fromEntries(s.docs.map(d=>[d.id,d.data()]))),handlers.error));return ()=>{stops.forEach(f=>f());roundStops.forEach(f=>f());if(briefStop)briefStop();};
  }
  async function report(code){const p=(await room(code).get()).data();const data=[];for(const id of p.tableIds){const t=table(code,id),a=(await t.get()).data(),rows=await t.collection('personalResults').get();data.push({table:a,rows:rows.docs.map(d=>d.data())});}return data;}
- root.MESA_SALAS={create,join,exists,load,prepare,assignLate,createLateTable,reopenEnrollment,remove,open,openAll,offer,position,ready,freeze,publishOwn,consolidate,close,closeAll,reset,watch,watchTable,report};
+ root.MESA_SALAS={remaining,roundLimit,setRoundLimit,reasonText,create,join,exists,load,prepare,assignLate,createLateTable,reopenEnrollment,remove,open,openAll,offer,position,ready,freeze,publishOwn,consolidate,close,closeAll,reset,watch,watchTable,report};
 })(window);
