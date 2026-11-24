@@ -43,6 +43,21 @@
    tx.update(r,{phase:'ready',tableIds:Object.keys(groups).sort(),updatedAt:stamp()});
   });
  }
+ async function assignLate(code,uid,id,role){
+  if(!await A.hostSession())throw Error('Ingresa con tu cuenta de facilitador.');
+  if(!D.roleIds.includes(role))throw Error('Selecciona un rol válido.');
+  const r=room(code),t=table(code,id),member=r.collection('attendees').doc(uid);
+  await db.runTransaction(async tx=>{
+   const [ps,ts,ms]=await Promise.all([tx.get(r),tx.get(t),tx.get(member)]);
+   const p=ps.data(),a=ts.data(),m=ms.data();
+   if(!p||p.hostUid!==user().uid||!p.tableIds.includes(id))throw Error('Selecciona una mesa existente de tu sala.');
+   if(!a||a.phase!=='review'||a.round>=6)throw Error('La mesa debe estar entre rondas. Espera el cierre y asigna antes de avanzar.');
+   if(!m?.active||m.uid!==uid||m.tableId||m.role||a.roster.includes(uid))throw Error('La persona ya no está pendiente de asignación.');
+   if(a.roster.length>=5)throw Error('La mesa ya tiene cinco participantes.');
+   tx.update(t,{roster:[...a.roster,uid],roles:{...a.roles,[uid]:role},names:{...a.names,[uid]:m.name},byRole:{...a.byRole,[role]:[...a.byRole[role],uid]},people:{...a.people,[uid]:X.initialPerson()},startedRounds:{...(a.startedRounds||{}),[uid]:a.round+1},updatedAt:stamp()});
+   tx.update(member,{tableId:id,role});
+  });
+ }
  async function reopenEnrollment(code){
   const r=room(code);await db.runTransaction(async tx=>{const p=await tx.get(r),ts=await Promise.all(p.data().tableIds.map(id=>tx.get(table(code,id))));if(ts.some(t=>t.data()?.phase!=='lobby'))throw Error('Una mesa ya comenzó. La inscripción permanece cerrada.');tx.update(r,{phase:'lobby',updatedAt:stamp()});});
  }
@@ -109,7 +124,7 @@
  async function reset(code){
   const r=room(code),p=(await r.get()).data();await r.update({phase:'resetting',updatedAt:stamp()});
   for(const id of p.tableIds){const t=table(code,id);await t.update({phase:'resetting',updatedAt:stamp()});for(const name of ['rounds','history','personalResults','results','pointProofs','effectProofs','resolutionProofs'])for(;;){const rows=await t.collection(name).limit(150).get();if(rows.empty)break;const batch=db.batch();rows.docs.forEach(d=>batch.delete(d.ref));await batch.commit();}
-   const a=(await t.get()).data(),batch=db.batch();batch.set(t.collection('rounds').doc('1'),{...X.blankRound(1),updatedAt:stamp()});batch.update(t,{phase:'lobby',round:1,people:Object.fromEntries(a.roster.map(uid=>[uid,X.initialPerson()])),shared:E.initial(),roundStartedAt:null,updatedAt:stamp()});await batch.commit();
+   const a=(await t.get()).data(),batch=db.batch();batch.set(t.collection('rounds').doc('1'),{...X.blankRound(1),updatedAt:stamp()});batch.update(t,{phase:'lobby',round:1,people:Object.fromEntries(a.roster.map(uid=>[uid,X.initialPerson()])),shared:E.initial(),startedRounds:{},roundStartedAt:null,updatedAt:stamp()});await batch.commit();
   }await r.update({phase:'ready',updatedAt:stamp()});
  }
  function watch(code,handlers){
@@ -125,5 +140,5 @@
   if(host)stops.push(t.collection('briefings').onSnapshot(s=>handlers.briefs(Object.fromEntries(s.docs.map(d=>[d.id,d.data()]))),handlers.error));return ()=>{stops.forEach(f=>f());roundStops.forEach(f=>f());if(briefStop)briefStop();};
  }
  async function report(code){const p=(await room(code).get()).data();const data=[];for(const id of p.tableIds){const t=table(code,id),a=(await t.get()).data(),rows=await t.collection('personalResults').get();data.push({table:a,rows:rows.docs.map(d=>d.data())});}return data;}
- root.MESA_SALAS={create,join,exists,load,prepare,reopenEnrollment,remove,open,openAll,offer,position,ready,freeze,publishOwn,consolidate,close,closeAll,reset,watch,watchTable,report};
+ root.MESA_SALAS={create,join,exists,load,prepare,assignLate,reopenEnrollment,remove,open,openAll,offer,position,ready,freeze,publishOwn,consolidate,close,closeAll,reset,watch,watchTable,report};
 })(window);
