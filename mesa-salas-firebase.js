@@ -27,12 +27,15 @@
   const r=room(code),enrollment=await r.get(),profiles=await r.collection('attendees').get(),members=profiles.docs.map(d=>d.data()).filter(m=>m.active),groups=X.validateAssignments(members,assignments);
   await db.runTransaction(async tx=>{
    const parent=await tx.get(r);if(parent.data()?.enrollmentRevision!==enrollment.data()?.enrollmentRevision)throw Error('La inscripción cambió. Vuelve a organizar las mesas para incluir a todos.');if(!['lobby','ready'].includes(parent.data()?.phase))throw Error('La sala ya comenzó. Reinicia antes de cambiar la asignación.');
-   const previous=await Promise.all((parent.data().tableIds||[]).map(id=>tx.get(table(code,id))));if(previous.some(s=>s.exists&&s.data().phase!=='lobby'))throw Error('Hay una mesa que ya comenzó. Conserva su asignación.');
+   const ids=[...new Set([...(parent.data().tableIds||[]),...Object.keys(groups)])];
+   const previous=await Promise.all(ids.map(id=>tx.get(table(code,id))));if(previous.some(s=>s.exists&&s.data().phase!=='lobby'))throw Error('Hay una mesa que ya comenzó. Conserva su asignación.');
+   const firstRounds=new Map(await Promise.all(Object.keys(groups).map(async id=>[id,await tx.get(table(code,id).collection('rounds').doc('1'))])));
+   if([...firstRounds.values()].some(s=>s.exists&&(s.data().round!==1||['offers','positions','readyClose','readyNext'].some(k=>Object.keys(s.data()[k]||{}).length))))throw Error('Hay una ronda con actividad registrada. Conserva la asignación o reinicia la experiencia de forma explícita.');
    const snapshots=await Promise.all(members.map(m=>tx.get(r.collection('attendees').doc(m.uid))));if(snapshots.some(s=>!s.data()?.active))throw Error('La inscripción cambió. Actualiza antes de organizar las mesas.');
    for(const [id,list]of Object.entries(groups)){
     const roster=list.map(a=>a.uid),roles=Object.fromEntries(list.map(a=>[a.uid,a.role])),names=Object.fromEntries(roster.map(uid=>[uid,members.find(m=>m.uid===uid).name])),byRole=Object.fromEntries(D.roleIds.map(role=>[role,roster.filter(uid=>roles[uid]===role)]));
     const t=table(code,id);tx.set(t,{tableId:id,sessionCode:code,title:'Mesa '+Number(id.slice(1)),phase:'lobby',round:1,roster,roles,names,byRole,people:Object.fromEntries(roster.map(uid=>[uid,X.initialPerson()])),shared:E.initial(),roundStartedAt:null,updatedAt:stamp()});
-    tx.set(t.collection('rounds').doc('1'),{...X.blankRound(1),updatedAt:stamp()});
+    if(!firstRounds.get(id).exists)tx.set(t.collection('rounds').doc('1'),{...X.blankRound(1),updatedAt:stamp()});
     const sets=Array.from({length:6},()=>E.makeBriefs(()=>crypto.getRandomValues(new Uint32Array(1))[0]/4294967296));
     for(const role of D.roleIds)tx.set(t.collection('briefings').doc(role),{role,rounds:sets.map(s=>s[role])});
     for(const a of list)tx.update(r.collection('attendees').doc(a.uid),{role:a.role,tableId:id});
