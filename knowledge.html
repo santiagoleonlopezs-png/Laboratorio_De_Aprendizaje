@@ -104,7 +104,7 @@ textarea{resize:vertical}.adminGrid{display:grid;grid-template-columns:1fr auto;
 </details>
 <details id="questionEditor" class="card" style="margin-top:18px">
   <summary style="cursor:pointer;font-weight:800">Editar / reemplazar preguntas</summary>
-  <p class="muted" style="margin-top:12px">Puedes cargar las preguntas actuales, editarlas y guardarlas. También puedes pegar varias desde Excel.</p>
+  <p class="muted" style="margin-top:12px">Puedes editar el banco en cualquier momento o pegar varias preguntas desde Excel.</p><p id="bankEditScope" class="mini" role="status"></p>
   <p class="muted"><b>Formato:</b> Pregunta [TAB] A [TAB] B [TAB] C [TAB] D [TAB] Correcta. En “Correcta” escribe A, B, C o D.</p>
   
   <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
@@ -175,7 +175,7 @@ const firebaseConfig = {
 const app=initializeApp(firebaseConfig), db=getFirestore(app), facilitatorAuth=getAuth(app);
 const ROOT="gc_quiz_live", DEFAULT_ROOM="GC2026";
 const BANKS="gc_quiz_banks";
-let currentBankId="agilismo", banks=[], editingIndex=null;
+let currentBankId="agilismo", banks=[], editingIndex=null, editorQuestions=[], editorBusy=false;
 let Q=[
 ["Seguridad psicológica","Un equipo realiza sesiones de lecciones aprendidas después de cada proyecto. Sin embargo, los integrantes comparten principalmente los logros y evitan hablar de errores. ¿Qué condición parece estar limitando más la gestión del conocimiento?",["La capacidad para almacenar conocimiento explícito.","La seguridad psicológica para compartir conocimiento relevante.","La metodología utilizada para documentar aprendizajes.","La frecuencia con la que se realizan las sesiones."],1],
 ["Bitácoras de aprendizaje","Un estudiante registra después de cada clase qué aprendió, qué cambió frente a lo que pensaba y cómo podría utilizarlo en su trabajo. ¿Qué función cumple principalmente esta práctica?",["Convertir la experiencia en aprendizaje consciente.","Organizar cronológicamente los contenidos estudiados.","Construir un repositorio personal de información.","Evidenciar el cumplimiento de las actividades académicas."],0],
@@ -375,7 +375,7 @@ async function enterHostRun(runId){
  if(Array.isArray(rd.questions))Q=questionsFromFirestore(rd.questions);
  $("hostRoom").textContent=classAlias||room;show("hostPanel");listenHost();await loadBanks();
  // loadBanks only loads the editor; restore the run's own question snapshot.
- if(Array.isArray(rd.questions)){Q=questionsFromFirestore(rd.questions);renderQuestionAdmin();renderHost();}
+ if(Array.isArray(rd.questions)){Q=questionsFromFirestore(rd.questions);renderHost();}
 }
 async function reopenClass(){
  if(roomDeletionBusy)return;
@@ -479,6 +479,7 @@ async function submitAnswer(k,b){
 }
 function listenHost(){hostUnsubs.forEach(u=>u());hostUnsubs=[onSnapshot(roomRef(),s=>{if(s.exists()){state=s.data();selectedQuestions=Array.isArray(state.selectedQuestions)?state.selectedQuestions:null;if(Array.isArray(state.questions))Q=questionsFromFirestore(state.questions);renderHost()}}),onSnapshot(playersRef(),s=>{players=s.docs.map(d=>({id:d.id,...d.data()}));renderHost()})]}
 function instrumentLocked(){return isSelfPaced(state)&&!!state.selfPacedStatus&&state.selfPacedStatus!=='draft';}
+function bankOnly(run=state){return (isSelfPaced(run)&&!!run.selfPacedStatus&&run.selfPacedStatus!=='draft')||(!isSelfPaced(run)&&((run.status&&run.status!=='lobby')||players.length>0));}
 function assertInstrumentEditable(){if(instrumentLocked())throw Error('El instrumento ya está habilitado. Crea una nueva partida para cambiar preguntas, selección o tiempo sin mezclar los resultados.');}
 function renderParticipantSettings(){
  if($("participantSettings").dataset.editing!=='true'){$("rankingVisibility").value=rankingVisibility(state);$("participantIdentity").value=participantIdentity(state);}
@@ -520,7 +521,9 @@ function renderModeSettings(){
  const started=players.some(p=>Object.keys(p.answers||{}).length||p.selfPaced?.startedAt)||state.status==='open';
  ['quizMode','questionDuration','saveQuizSettings'].forEach(id=>$(id).disabled=locked||!!started);
  ['pickAll','pickNone','applySelection'].forEach(id=>$(id).disabled=locked);$("questionPicker").querySelectorAll('input').forEach(el=>el.disabled=locked);
- $("questionEditor").querySelectorAll('button,input,select,textarea').forEach(el=>el.disabled=locked&&el.id!=='exportBank');
+ $("questionEditor").querySelectorAll('button,input,select,textarea').forEach(el=>el.disabled=editorBusy);
+ $("bankEditScope").textContent=bankOnly()?"Puedes editar el banco. La partida en curso o histórica conserva sus preguntas, respuestas y puntajes; los cambios se usarán en una nueva partida.":"Los cambios del banco se aplican también a esta partida en preparación.";
+ $("deleteBank").disabled=editorBusy||bankOnly();
  if(!autonomous)return;
  const status=state.selfPacedStatus||'draft',count=selectedIndices().length;
  $("phaseLabel").textContent={draft:'En preparación',published:'Autónomo habilitado',closed:'Instrumento cerrado'}[status]||status;
@@ -719,85 +722,89 @@ async function loadBanks(){
   await selectBank(currentBankId,false);
 }
 async function selectBank(id,syncRoom=true){
-  if(syncRoom)assertInstrumentEditable();
-  const s=await getDoc(bankRef(id)); if(!s.exists())return;
-  currentBankId=id; const d=s.data();
-  if(Array.isArray(d.questions)&&!instrumentLocked()) Q=questionsFromFirestore(d.questions);
+  const previous=currentBankId, snapshot=await getDoc(bankRef(id)); if(!snapshot.exists())return;
+  const next=questionsFromFirestore(snapshot.data().questions);
+  if(syncRoom&&!bankOnly()){
+    await runTransaction(db,async tx=>{
+      const live=await tx.get(roomRef());if(!live.exists())throw Error('La partida ya no está disponible.');
+      if(!bankOnly(live.data()))tx.update(roomRef(),{questions:questionsToFirestore(next),bankId:id,selectedQuestions:null,questionIndex:0,status:"lobby",openedAt:0,updatedAt:serverTimestamp()});
+    });
+  }
+  currentBankId=id; editorQuestions=next;editingIndex=null;$("singleEditor").classList.add("hidden");
   renderQuestionAdmin();
-  $("bulkQuestions").value=Q.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");
-  if(syncRoom){selectedQuestions=null;await setDoc(roomRef(),{questions:questionsToFirestore(Q),bankId:id,selectedQuestions:null,questionIndex:0,status:"lobby",openedAt:0,updatedAt:serverTimestamp()},{merge:true});}
+  $("bulkQuestions").value=editorQuestions.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");
   renderHost();
 }
 function renderQuestionAdmin(){
   const box=$("questionList"); if(!box)return;
-  box.innerHTML=Q.map((q,i)=>`<div class="qrow"><div class="qrowhead"><div><b>${i+1}. ${escapeHtml(q[1])}</b><div class="mini">Correcta: ${String.fromCharCode(65+q[3])} · ${escapeHtml(q[2][q[3]])}</div></div><div class="qactions"><button class="secondary" onclick="window.editQ(${i})">✏️ Editar</button><button class="secondary" onclick="window.dupQ(${i})">📋 Duplicar</button><button class="secondary" onclick="window.moveQ(${i},-1)">↑</button><button class="secondary" onclick="window.moveQ(${i},1)">↓</button><button class="danger" onclick="window.delQ(${i})">🗑️</button></div></div></div>`).join("");
+  box.innerHTML=editorQuestions.map((q,i)=>`<div class="qrow"><div class="qrowhead"><div><b>${i+1}. ${escapeHtml(q[1])}</b><div class="mini">Correcta: ${String.fromCharCode(65+q[3])} · ${escapeHtml(q[2][q[3]])}</div></div><div class="qactions"><button class="secondary" onclick="window.editQ(${i})">✏️ Editar</button><button class="secondary" onclick="window.dupQ(${i})">📋 Duplicar</button><button class="secondary" onclick="window.moveQ(${i},-1)">↑</button><button class="secondary" onclick="window.moveQ(${i},1)">↓</button><button class="danger" onclick="window.delQ(${i})">🗑️</button></div></div></div>`).join("");
 }
-async function persistBank(){
-  assertInstrumentEditable();selectedQuestions=null;
-  const b=banks.find(x=>x.id===currentBankId);
-  await setDoc(bankRef(currentBankId),{
-    name:b?.name||currentBankId,
-    questions:questionsToFirestore(Q),
-    updatedAt:serverTimestamp()
-  },{merge:true});
-  await setDoc(roomRef(),{
-    questions:questionsToFirestore(Q),
-    bankId:currentBankId,
-    questionIndex:0,
-    status:"lobby",
-    openedAt:0,
-    selectedQuestions:null,
-    updatedAt:serverTimestamp()
-  },{merge:true});
-  renderQuestionAdmin();
-  renderHost();
+async function persistBank(next){
+  if(editorBusy)return false;
+  if(next.length>100)throw Error("Máximo 100 preguntas.");
+  editorBusy=true;renderModeSettings();
+  const id=currentBankId, runDocument=roomRef(), bankDocument=bankRef(id), payload=questionsToFirestore(next);
+  try{
+    const applied=await runTransaction(db,async tx=>{
+      const live=await tx.get(runDocument), bank=await tx.get(bankDocument);
+      if(!live.exists()||!bank.exists())throw Error("La partida o el banco ya no están disponibles.");
+      const apply=!bankOnly(live.data());
+      tx.update(bankDocument,{questions:payload,updatedAt:serverTimestamp()});
+      if(apply)tx.update(runDocument,{questions:payload,bankId:id,questionIndex:0,status:"lobby",openedAt:0,selectedQuestions:null,updatedAt:serverTimestamp()});
+      return apply;
+    });
+    if(currentBankId===id){editorQuestions=next;renderQuestionAdmin();$("bulkQuestions").value=next.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");}
+    $("editorMsg").textContent=applied?"✓ Cambios guardados en el banco y la partida en preparación.":"✓ Banco actualizado. Las respuestas y el ranking de esta partida se conservan. Usa una nueva partida para aplicar estos cambios.";
+    return true;
+  }finally{editorBusy=false;renderHost();}
 }
-window.editQ=i=>{assertInstrumentEditable();editingIndex=i;const q=Q[i];$("singleEditorTitle").textContent=`Editar pregunta ${i+1}`;$("editQuestion").value=q[1];["A","B","C","D"].forEach((x,k)=>$("edit"+x).value=q[2][k]);$("editCorrect").value=q[3];$("singleEditor").classList.remove("hidden");$("singleEditor").scrollIntoView({behavior:"smooth",block:"center"});}
-window.dupQ=async i=>{assertInstrumentEditable();Q.splice(i+1,0,JSON.parse(JSON.stringify(Q[i])));await persistBank();}
-window.delQ=async i=>{assertInstrumentEditable();if(Q.length<=1)return alert("El banco debe conservar al menos una pregunta.");if(confirm("¿Eliminar esta pregunta?")){Q.splice(i,1);await persistBank();}}
-window.moveQ=async(i,d)=>{assertInstrumentEditable();const j=i+d;if(j<0||j>=Q.length)return;[Q[i],Q[j]]=[Q[j],Q[i]];await persistBank();}
+async function changeEditorQuestions(transform){
+  if(editorBusy)return;
+  try{const next=editorQuestions.map(q=>[q[0],q[1],[...q[2]],q[3]]);transform(next);await persistBank(next);}
+  catch(e){$("editorMsg").textContent="Error al guardar: "+(e?.message||e);}
+}
+window.editQ=i=>{if(editorBusy||!editorQuestions[i])return;editingIndex=i;const q=editorQuestions[i];$("singleEditorTitle").textContent=`Editar pregunta ${i+1}`;$("editQuestion").value=q[1];["A","B","C","D"].forEach((x,k)=>$("edit"+x).value=q[2][k]);$("editCorrect").value=q[3];$("singleEditor").classList.remove("hidden");$("singleEditor").scrollIntoView({behavior:"smooth",block:"center"});}
+window.dupQ=i=>changeEditorQuestions(next=>{next.splice(i+1,0,JSON.parse(JSON.stringify(next[i])));});
+window.delQ=i=>{if(editorQuestions.length<=1)return alert("El banco debe conservar al menos una pregunta.");if(confirm("¿Eliminar esta pregunta del banco?"))return changeEditorQuestions(next=>next.splice(i,1));};
+window.moveQ=(i,d)=>{const j=i+d;if(j<0||j>=editorQuestions.length)return;return changeEditorQuestions(next=>{[next[i],next[j]]=[next[j],next[i]];});};
 $("addQuestion").onclick=()=>{editingIndex=null;$("singleEditorTitle").textContent="Nueva pregunta";$("editQuestion").value="";["A","B","C","D"].forEach(x=>$("edit"+x).value="");$("editCorrect").value="0";$("singleEditor").classList.remove("hidden");};
 $("cancelSingle").onclick=()=>$("singleEditor").classList.add("hidden");
 $("saveSingle").onclick=async()=>{
   try{
-    assertInstrumentEditable();
+    if(editorBusy)return;
     const text=$("editQuestion").value.trim(),opts=["A","B","C","D"].map(x=>$("edit"+x).value.trim()),correct=Number($("editCorrect").value);
     if(!text||opts.some(x=>!x))return alert("Completa la pregunta y las cuatro opciones.");
     const q=["Pregunta",text,opts,correct];
-    if(editingIndex===null)Q.push(q);else Q[editingIndex]=q;
-    $("singleEditor").classList.add("hidden");
-    await persistBank();
-    $("editorMsg").textContent="✓ Pregunta guardada.";
+    const next=editorQuestions.slice();if(editingIndex===null)next.push(q);else next[editingIndex]=q;
+    if(await persistBank(next))$("singleEditor").classList.add("hidden");
   }catch(e){console.error(e);$("editorMsg").textContent="Error al guardar: "+(e?.message||e);}
 };
 $("bankSelect").onchange=async e=>{try{await selectBank(e.target.value,true);}catch(error){hostFailure(error);$("bankSelect").value=currentBankId;}};
 $("newBank").onclick=async()=>{
   try{
-    assertInstrumentEditable();
+    if(editorBusy)return;
     const name=prompt("Nombre del nuevo banco:"); if(!name?.trim())return;
     const id=name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+"-"+Date.now().toString().slice(-5);
     await setDoc(bankRef(id),{name:name.trim(),questions:[],createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
-    banks.push({id,name:name.trim(),questions:[]}); currentBankId=id; Q=[];selectedQuestions=null;
+    banks.push({id,name:name.trim(),questions:[]});
     $("bankSelect").innerHTML=banks.map(b=>`<option value="${escapeHtml(b.id)}">${escapeHtml(b.name||b.id)}</option>`).join("");
-    $("bankSelect").value=id; $("bulkQuestions").value=""; renderQuestionAdmin();
-    await setDoc(roomRef(),{questions:[],bankId:id,selectedQuestions:null,questionIndex:0,status:"lobby",openedAt:0,updatedAt:serverTimestamp()},{merge:true});
-    renderHost();
+    $("bankSelect").value=id; await selectBank(id,true);
     $("editorMsg").textContent="Banco creado. Agrega preguntas o pégalas en Importación masiva.";
   }catch(e){console.error(e);$("editorMsg").textContent="Error al crear banco: "+(e?.message||e);}
 };
 $("renameBank").onclick=async()=>{const b=banks.find(x=>x.id===currentBankId);const name=prompt("Nuevo nombre:",b?.name||currentBankId);if(!name?.trim())return;await setDoc(bankRef(currentBankId),{name:name.trim(),updatedAt:serverTimestamp()},{merge:true});if(b)b.name=name.trim();$("bankSelect").selectedOptions[0].textContent=name.trim();};
-$("deleteBank").onclick=async()=>{assertInstrumentEditable();if(banks.length<=1)return alert("Debe existir al menos un banco.");if(!confirm("¿Eliminar este banco de preguntas?"))return;await deleteDoc(bankRef(currentBankId));await loadBanks();};
-$("exportBank").onclick=()=>{const esc=v=>'"'+String(v).replaceAll('"','""')+'"';const csv=["Pregunta,Opción A,Opción B,Opción C,Opción D,Correcta",...Q.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].map(esc).join(","))].join("\n");const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(banks.find(x=>x.id===currentBankId)?.name||"preguntas")+".csv";a.click();URL.revokeObjectURL(a.href);};
+$("deleteBank").onclick=async()=>{if(bankOnly()||editorBusy)return;if(banks.length<=1)return alert("Debe existir al menos un banco.");if(!confirm("¿Eliminar este banco de preguntas?"))return;await deleteDoc(bankRef(currentBankId));await loadBanks();};
+$("exportBank").onclick=()=>{const esc=v=>'"'+String(v).replaceAll('"','""')+'"';const csv=["Pregunta,Opción A,Opción B,Opción C,Opción D,Correcta",...editorQuestions.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].map(esc).join(","))].join("\n");const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(banks.find(x=>x.id===currentBankId)?.name||"preguntas")+".csv";a.click();URL.revokeObjectURL(a.href);};
 $("toggleEditor").onclick=()=>{
   const ed=$("questionEditor");
   ed.open=!ed.open;
   if(ed.open && !$("bulkQuestions").value.trim()){
-    $("bulkQuestions").value=Q.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");
+    $("bulkQuestions").value=editorQuestions.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");
   }
 };
 $("loadCurrent").onclick=()=>{
-  $("bulkQuestions").value=Q.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");
-  $("editorMsg").textContent=`${Q.length} preguntas cargadas para editar.`;
+  $("bulkQuestions").value=editorQuestions.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].join("\t")).join("\n");
+  $("editorMsg").textContent=`${editorQuestions.length} preguntas cargadas para editar.`;
 };
 $("chooseQuestionFile").onclick=()=>$("questionFile").click();
 $("questionFile").onchange=async e=>{
@@ -835,7 +842,7 @@ $("questionFile").onchange=async e=>{
 $("saveQuestions").onclick=async()=>{
   const msg=$("editorMsg");
   try{
-    assertInstrumentEditable();
+    if(editorBusy)return;
     msg.textContent="Validando y guardando...";
     const raw=$("bulkQuestions").value.replace(/\r/g,"").trim();
     if(!raw) throw new Error("El cuadro está vacío.");
@@ -857,28 +864,7 @@ $("saveQuestions").onclick=async()=>{
     });
 
     if(parsed.length>100) throw new Error("Máximo 100 preguntas.");
-    Q=parsed;selectedQuestions=null;
-
-    const active=banks.find(x=>x.id===currentBankId);
-    await setDoc(bankRef(currentBankId),{
-      name:active?.name||currentBankId,
-      questions:questionsToFirestore(Q),
-      updatedAt:serverTimestamp()
-    },{merge:true});
-
-    await setDoc(roomRef(),{
-      questions:questionsToFirestore(Q),
-      bankId:currentBankId,
-      questionIndex:0,
-      status:"lobby",
-      openedAt:0,
-      selectedQuestions:null,
-      updatedAt:serverTimestamp()
-    },{merge:true});
-
-    renderQuestionAdmin();
-    renderHost();
-    msg.textContent=`✓ ${Q.length} preguntas importadas y guardadas.`;
+    await persistBank(parsed);
   }catch(e){
     console.error(e);
     msg.textContent="ERROR: "+(e?.message||String(e));
