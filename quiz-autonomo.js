@@ -1,5 +1,5 @@
 import {onSnapshot, runTransaction, serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-import {attemptView, evaluateSelfPacedAnswer, answerTotals, questionOrder, milliseconds, selfPacedRanking, canShowParticipantRanking, rankingVisibility, participantLabel} from './quiz-engine.mjs';
+import {attemptView, evaluateSelfPacedAnswer, answerTotals, questionOrder, milliseconds, selfPacedRanking, canShowParticipantRanking, rankingVisibility, participantLabel} from './quiz-engine.mjs?v=5options';
 
 export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQuestions, getPlayerId, getPlayerName, $, show, escapeHtml}) {
   let run = null, player = null, participants = [], key = '', viewKey = '', busy = false, failedOperation = null;
@@ -102,7 +102,7 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
       $('pAnswers').innerHTML = '';
       questions[view.activeIndex][2].forEach((option, i) => {
         const button = document.createElement('button'); button.className = 'answer';
-        button.innerHTML = `<span class="answer-letter">${'ABCD'[i]}</span><span>${escapeHtml(option)}</span>`; button.disabled = !!view.answer || busy;
+        button.innerHTML = `<span class="answer-letter">${'ABCDE'[i]}</span><span>${escapeHtml(option)}</span>`; button.disabled = !!view.answer || busy;
         button.onclick = () => answer(i, view.activeIndex);
         if (view.answer?.option === i) button.classList.add('chosen');
         $('pAnswers').appendChild(button);
@@ -162,7 +162,7 @@ export function createSelfPacedQuiz({db, roomRef, playerRef, playersRef, getQues
         if (!started || !order.includes(index)) throw Error('Abre la pregunta antes de responder.');
         const correctOption = live.questions[index].correct;
         const elapsed = Math.max(0, (Date.now() - started) / 1000);
-        const result = evaluateSelfPacedAnswer(option, correctOption, elapsed);
+        const result = evaluateSelfPacedAnswer(option, correctOption, elapsed, live.questions[index].options.length);
         const answers = {...(data.answers || {}), [index]: result};
         const complete = order.every(i => !!answers[i]);
         transaction.update(playerDocument, {answers, ...answerTotals(answers, order),

@@ -30,16 +30,16 @@ export function milliseconds(value) {
   if (typeof value?.toMillis === 'function') return value.toMillis();
   return Number.isFinite(value) ? value : 0;
 }
-export function evaluateAnswer(option, correctOption, elapsed, duration) {
+export function evaluateAnswer(option, correctOption, elapsed, duration, optionCount = 5) {
   const time = Math.max(0, Math.min(duration, Number(elapsed) || 0));
-  const timedOut = time >= duration || !Number.isInteger(option) || option < 0 || option > 3;
+  const timedOut = time >= duration || !Number.isInteger(option) || option < 0 || option >= optionCount;
   const correct = !timedOut && option === correctOption;
   return {option: timedOut ? -1 : option, elapsed: Math.floor(time * 1000) / 1000,
     correct, points: correct ? Math.max(1, 10 - Math.floor(time / duration * 10)) : 0, timedOut};
 }
-export function evaluateSelfPacedAnswer(option, correctOption, elapsed) {
+export function evaluateSelfPacedAnswer(option, correctOption, elapsed, optionCount = 5) {
   const time = Math.max(0, Number(elapsed) || 0);
-  const valid = Number.isInteger(option) && option >= 0 && option < 4;
+  const valid = Number.isInteger(option) && option >= 0 && option < optionCount;
   const correct = valid && option === correctOption;
   // Same 6-second scoring bands as the original quiz, with no expiry.
   return {option: valid ? option : -1, elapsed: Math.floor(time * 1000) / 1000,
@@ -79,4 +79,16 @@ export function attemptView(run, player, questions) {
     startedAt: milliseconds(progress?.questionStartedAt),
     answer: progress && order.includes(activeIndex) ? answers[activeIndex] : null,
     ...answerTotals(answers, order)};
+}
+
+// Variable-width or spreadsheet-padded question rows; the last column is the key.
+export function parseQuestionRow(row, number=1) {
+  const fields=row.map(value=>String(value??'').trim());
+  if(fields.length<4||fields.length>7)throw Error(`Fila ${number}: usa pregunta, entre 2 y 5 opciones y la letra correcta.`);
+  const key=fields.pop().toUpperCase().replace(/[.)]/g,'').trim(), text=fields.shift();
+  while(fields.length&&fields.at(-1)==='')fields.pop();
+  const correct='ABCDE'.indexOf(key);
+  if(!text||fields.length<2||fields.length>5||fields.some(x=>!x))throw Error(`Fila ${number}: completa la pregunta y entre 2 y 5 opciones consecutivas.`);
+  if(key.length!==1||correct<0||correct>=fields.length)throw Error(`Fila ${number}: la respuesta correcta debe corresponder a una opción disponible.`);
+  return [`Pregunta ${number}`,text,fields,correct];
 }

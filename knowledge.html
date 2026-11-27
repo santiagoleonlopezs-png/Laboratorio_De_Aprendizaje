@@ -186,7 +186,7 @@ body:not(.play-view){color-scheme:light}
 <details id="questionEditor" class="card" style="margin-top:18px">
   <summary style="cursor:pointer;font-weight:800">Editar / reemplazar preguntas</summary>
   <p class="muted" style="margin-top:12px">Puedes editar el banco en cualquier momento o pegar varias preguntas desde Excel.</p><p id="bankEditScope" class="mini" role="status"></p>
-  <p class="muted"><b>Formato:</b> Pregunta [TAB] A [TAB] B [TAB] C [TAB] D [TAB] Correcta. En “Correcta” escribe A, B, C o D.</p>
+  <p class="muted"><b>Formato:</b> Pregunta [TAB] opciones A a E (entre 2 y 5) [TAB] Correcta. Escribe la letra de la respuesta correcta. Si usas Excel, puedes dejar vacías las columnas de opciones que no necesites, al final.</p>
   
   <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
   <h3>Administrar bancos</h3>
@@ -205,12 +205,13 @@ body:not(.play-view){color-scheme:light}
   <div id="singleEditor" class="card hidden" style="margin-top:14px">
     <h3 id="singleEditorTitle">Nueva pregunta</h3>
     <label>Pregunta</label><textarea id="editQuestion" style="width:100%;min-height:90px;padding:10px;border:1px solid var(--line);border-radius:10px"></textarea>
+    <label for="editOptionCount" style="display:block;margin-top:10px">Cantidad de opciones</label><select id="editOptionCount"><option value="2">2 opciones</option><option value="3">3 opciones</option><option value="4" selected>4 opciones</option><option value="5">5 opciones</option></select>
     <div class="grid2" style="margin-top:10px">
       <div><label>Opción A</label><input id="editA"></div><div><label>Opción B</label><input id="editB"></div>
-      <div><label>Opción C</label><input id="editC"></div><div><label>Opción D</label><input id="editD"></div>
+      <div id="editFieldC"><label>Opción C</label><input id="editC"></div><div id="editFieldD"><label>Opción D</label><input id="editD"></div><div id="editFieldE" class="hidden"><label>Opción E</label><input id="editE"></div>
     </div>
     <label style="display:block;margin-top:10px">Respuesta correcta</label>
-    <select id="editCorrect"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select>
+    <select id="editCorrect"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option><option value="4">E</option></select>
     <div class="row" style="margin-top:12px"><button id="saveSingle" type="button">Guardar pregunta</button><button id="cancelSingle" class="secondary" type="button">Cancelar</button></div>
   </div>
 
@@ -243,9 +244,9 @@ body:not(.play-view){color-scheme:light}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, getDocFromServer, updateDoc, deleteDoc, collection, onSnapshot, serverTimestamp, writeBatch, getDocs, getDocsFromServer, runTransaction } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import {getAuth, signInWithEmailAndPassword, getIdTokenResult} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {isSelfPaced, questionSeconds, questionOrder, evaluateAnswer, selfPacedRanking, rankingVisibility, participantIdentity, identityError, participantLabel, canShowParticipantRanking} from './quiz-engine.mjs';
-import {createSelfPacedQuiz} from './quiz-autonomo.js';
-import {buildQuizResponseExport} from './quiz-export.mjs';
+import {isSelfPaced, questionSeconds, questionOrder, evaluateAnswer, selfPacedRanking, rankingVisibility, participantIdentity, identityError, participantLabel, canShowParticipantRanking, parseQuestionRow} from './quiz-engine.mjs?v=5options';
+import {createSelfPacedQuiz} from './quiz-autonomo.js?v=5options';
+import {buildQuizResponseExport} from './quiz-export.mjs?v=5options';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBnHTbmdSPWjYKTiLjv7HPKkqzpD4SOmJY",
@@ -545,7 +546,7 @@ function listenPlayer(){
   });
   playerUnsub=()=>{if(unsubRoom)unsubRoom();clearRanking();selfPaced.stop();clearInterval(tick);};
 }
-function renderPlayer(){let i=state.questionIndex,q=Q[i];if(!q)return;show("playerGame");const order=questionOrder(state,Q);$("pMsg").textContent='';$("pNum").textContent=`Pregunta ${order.indexOf(i)+1} / ${order.length}`;$("pQuestion").textContent=q[1];$("pAnswers").innerHTML="";q[2].forEach((a,k)=>{let b=document.createElement("button");b.className="answer";b.innerHTML=`<span class="answer-letter">${'ABCD'[k]}</span><span>${escapeHtml(a)}</span>`;b.onclick=()=>submitAnswer(k,b);$("pAnswers").appendChild(b)});runPlayerTimer()}
+function renderPlayer(){let i=state.questionIndex,q=Q[i];if(!q)return;show("playerGame");const order=questionOrder(state,Q);$("pMsg").textContent='';$("pNum").textContent=`Pregunta ${order.indexOf(i)+1} / ${order.length}`;$("pQuestion").textContent=q[1];$("pAnswers").innerHTML="";q[2].forEach((a,k)=>{let b=document.createElement("button");b.className="answer";b.innerHTML=`<span class="answer-letter">${'ABCDE'[k]}</span><span>${escapeHtml(a)}</span>`;b.onclick=()=>submitAnswer(k,b);$("pAnswers").appendChild(b)});runPlayerTimer()}
 function runPlayerTimer(){clearInterval(tick);const duration=questionSeconds(state);const update=()=>{let remain=Math.max(0,duration-(Date.now()-(state.openedAt||Date.now()))/1000);$("pTimer").textContent=Math.ceil(remain);$("pTimeBar").style.width=(remain/duration*100)+"%";if(remain<=0){clearInterval(tick);$("pAnswers").querySelectorAll("button").forEach(b=>b.disabled=true);$("pMsg").textContent="Tiempo agotado."}};update();tick=setInterval(update,250)}
 async function submitAnswer(k,b){
   $("pAnswers").querySelectorAll("button").forEach(x=>x.disabled=true);
@@ -554,7 +555,7 @@ async function submitAnswer(k,b){
   const q=Q[state.questionIndex];
   const ps=await getDoc(pRef(playerId)),d=ps.data(),ans=d.answers||{};
   if(ans[state.questionIndex]!=null)return;
-  ans[state.questionIndex]={...evaluateAnswer(k,q[3],elapsed,duration),points:0};
+  ans[state.questionIndex]={...evaluateAnswer(k,q[3],elapsed,duration,q[2].length),points:0};
   await updateDoc(pRef(playerId),{answers:ans});
   $("pMsg").textContent="Respuesta registrada. Espera a que el facilitador continúe.";
 }
@@ -661,7 +662,7 @@ function renderHost(){
  }
  if(!Q.length){$("answered").textContent='0';$("hNum").textContent='Sin preguntas';$("hQuestion").textContent='Este banco está vacío. Agrega una pregunta o usa la carga masiva.';$("hOptions").innerHTML='';$("distribution").innerHTML='';$("ranking").innerHTML='';['openQ','closeQ','revealQ','nextQ'].forEach(id=>$(id).disabled=true);return;}
  const i=Math.min(state.questionIndex||0,Q.length-1),q=Q[i];$("answered").textContent=players.filter(p=>p.answers&&p.answers[i]!=null).length;
- $("hNum").textContent=`Pregunta ${i+1} / ${Q.length}`;$("hQuestion").textContent=q[1];$("hOptions").innerHTML=q[2].map((x,k)=>`<div class="${state.status==='revealed'&&k===q[3]?'correct':''}" style="padding:8px;border-radius:8px">${'ABCD'[k]}. ${escapeHtml(x)}</div>`).join('');
+ $("hNum").textContent=`Pregunta ${i+1} / ${Q.length}`;$("hQuestion").textContent=q[1];$("hOptions").innerHTML=q[2].map((x,k)=>`<div class="${state.status==='revealed'&&k===q[3]?'correct':''}" style="padding:8px;border-radius:8px">${'ABCDE'[k]}. ${escapeHtml(x)}</div>`).join('');
  $("phaseLabel").textContent={lobby:'En espera',open:'Pregunta abierta',closed:'Respuestas cerradas',revealed:'Respuesta revelada'}[state.status]||state.status;
  $("openQ").disabled=state.status==='open';$("closeQ").disabled=state.status!=='open';$("revealQ").disabled=state.status==='open'||state.status==='lobby';$("nextQ").disabled=state.status!=='revealed'||selectedIndices().length<2;
  renderDist(i);renderRank();renderPicker();runHostTimer();
@@ -677,12 +678,12 @@ function renderDist(i){
     $("distribution").innerHTML='<p class="muted">Los resultados se revelarán al finalizar la pregunta.</p>'; $("responseDetails").innerHTML="";
     return;
   }
-  let counts=[0,0,0,0];
-  players.forEach(p=>{let a=p.answers&&p.answers[i];if(a&&a.option>=0&&a.option<4)counts[a.option]++});
+  let counts=Array(Q[i]?.[2]?.length||0).fill(0);
+  players.forEach(p=>{let a=p.answers&&p.answers[i];if(a&&a.option>=0&&a.option<counts.length)counts[a.option]++});
   let total=counts.reduce((a,b)=>a+b,0);
   $("distribution").innerHTML=counts.map((n,k)=>`<div class="optbar"><b>${String.fromCharCode(65+k)}</b><div class="track"><div class="fill" style="width:${total?n/total*100:0}%"></div></div><span>${n} · ${total?Math.round(n/total*100):0}%</span></div>`).join("");
   const rows=[...players].map(p=>({p,a:p.answers&&p.answers[i]})).filter(x=>x.a).sort((x,y)=>Number(x.a.elapsed)-Number(y.a.elapsed));
-  $("responseDetails").innerHTML='<h3>Detalle por participante</h3>'+(rows.length?`<div style="overflow:auto"><table class="resultTable"><thead><tr><th>Participante</th><th>Respuesta</th><th>Resultado</th><th>Tiempo</th><th>Puntos</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${escapeHtml(x.p.name)}</td><td>${String.fromCharCode(65+Number(x.a.option))}</td><td>${x.a.correct?"✓ Correcta":"✕ Incorrecta"}</td><td>${Number(x.a.elapsed).toFixed(1)} s</td><td>${x.a.points||0}</td></tr>`).join("")}</tbody></table></div>`:'<p class="muted">No hubo respuestas.</p>');
+  $("responseDetails").innerHTML='<h3>Detalle por participante</h3>'+(rows.length?`<div style="overflow:auto"><table class="resultTable"><thead><tr><th>Participante</th><th>Respuesta</th><th>Resultado</th><th>Tiempo</th><th>Puntos</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${escapeHtml(x.p.name)}</td><td>${x.a.option<0?"—":String.fromCharCode(65+Number(x.a.option))}</td><td>${x.a.correct?"✓ Correcta":"✕ Incorrecta"}</td><td>${Number(x.a.elapsed).toFixed(1)} s</td><td>${x.a.points||0}</td></tr>`).join("")}</tbody></table></div>`:'<p class="muted">No hubo respuestas.</p>');
 }
 function rankComparator(x,y){
   const byScore=(y.score||0)-(x.score||0);
@@ -726,7 +727,7 @@ $("revealQ").onclick=async()=>{
       const p=d.data(),ans={...(p.answers||{})};
       if(ans[i]!=null){
         const duration=questionSeconds(state),elapsed=Math.max(0,Number(ans[i].elapsed??duration));
-        ans[i]={...ans[i],...evaluateAnswer(Number(ans[i].option),Number(Q[i][3]),elapsed,duration)};
+        ans[i]={...ans[i],...evaluateAnswer(Number(ans[i].option),Number(Q[i][3]),elapsed,duration,Q[i][2].length)};
       }
       let score=0,correctTime=0;
       Object.values(ans).forEach(a=>{score+=Number(a.points||0);if(a.correct)correctTime+=Number(a.elapsed||0);});
@@ -844,17 +845,24 @@ async function changeEditorQuestions(transform){
   try{const next=editorQuestions.map(q=>[q[0],q[1],[...q[2]],q[3]]);transform(next);await persistBank(next);}
   catch(e){$("editorMsg").textContent="Error al guardar: "+(e?.message||e);}
 }
-window.editQ=i=>{if(editorBusy||!editorQuestions[i])return;editingIndex=i;const q=editorQuestions[i];$("singleEditorTitle").textContent=`Editar pregunta ${i+1}`;$("editQuestion").value=q[1];["A","B","C","D"].forEach((x,k)=>$("edit"+x).value=q[2][k]);$("editCorrect").value=q[3];$("singleEditor").classList.remove("hidden");$("singleEditor").scrollIntoView({behavior:"smooth",block:"center"});}
+function syncEditOptions(count,correct=Number($("editCorrect").value)){
+  count=Number(count); $("editOptionCount").value=String(count);
+  for(const [i,letter] of [..."CDE"].entries())$("editField"+letter).classList.toggle("hidden",i+2>=count);
+  $("editCorrect").innerHTML=[..."ABCDE"].slice(0,count).map((letter,i)=>`<option value="${i}">${letter}</option>`).join("");
+  $("editCorrect").value=String(Number.isInteger(correct)&&correct>=0&&correct<count?correct:0);
+}
+$("editOptionCount").onchange=()=>syncEditOptions($("editOptionCount").value);
+window.editQ=i=>{if(editorBusy||!editorQuestions[i])return;editingIndex=i;const q=editorQuestions[i];$("singleEditorTitle").textContent=`Editar pregunta ${i+1}`;$("editQuestion").value=q[1];[..."ABCDE"].forEach((x,k)=>$("edit"+x).value=q[2][k]||"");syncEditOptions(q[2].length,q[3]);$("singleEditor").classList.remove("hidden");$("singleEditor").scrollIntoView({behavior:"smooth",block:"center"});}
 window.dupQ=i=>changeEditorQuestions(next=>{next.splice(i+1,0,JSON.parse(JSON.stringify(next[i])));});
 window.delQ=i=>{if(editorQuestions.length<=1)return alert("El banco debe conservar al menos una pregunta.");if(confirm("¿Eliminar esta pregunta del banco?"))return changeEditorQuestions(next=>next.splice(i,1));};
 window.moveQ=(i,d)=>{const j=i+d;if(j<0||j>=editorQuestions.length)return;return changeEditorQuestions(next=>{[next[i],next[j]]=[next[j],next[i]];});};
-$("addQuestion").onclick=()=>{editingIndex=null;$("singleEditorTitle").textContent="Nueva pregunta";$("editQuestion").value="";["A","B","C","D"].forEach(x=>$("edit"+x).value="");$("editCorrect").value="0";$("singleEditor").classList.remove("hidden");};
+$("addQuestion").onclick=()=>{editingIndex=null;$("singleEditorTitle").textContent="Nueva pregunta";$("editQuestion").value="";[..."ABCDE"].forEach(x=>$("edit"+x).value="");syncEditOptions(4,0);$("singleEditor").classList.remove("hidden");};
 $("cancelSingle").onclick=()=>$("singleEditor").classList.add("hidden");
 $("saveSingle").onclick=async()=>{
   try{
     if(editorBusy)return;
-    const text=$("editQuestion").value.trim(),opts=["A","B","C","D"].map(x=>$("edit"+x).value.trim()),correct=Number($("editCorrect").value);
-    if(!text||opts.some(x=>!x))return alert("Completa la pregunta y las cuatro opciones.");
+    const text=$("editQuestion").value.trim(),opts=[..."ABCDE"].slice(0,Number($("editOptionCount").value)).map(x=>$("edit"+x).value.trim()),correct=Number($("editCorrect").value);
+    if(!text||opts.length<2||opts.length>5||opts.some(x=>!x)||!Number.isInteger(correct)||correct<0||correct>=opts.length)return alert("Completa la pregunta, entre 2 y 5 opciones y una respuesta correcta válida.");
     const q=["Pregunta",text,opts,correct];
     const next=editorQuestions.slice();if(editingIndex===null)next.push(q);else next[editingIndex]=q;
     if(await persistBank(next))$("singleEditor").classList.add("hidden");
@@ -875,7 +883,7 @@ $("newBank").onclick=async()=>{
 };
 $("renameBank").onclick=async()=>{const b=banks.find(x=>x.id===currentBankId);const name=prompt("Nuevo nombre:",b?.name||currentBankId);if(!name?.trim())return;await setDoc(bankRef(currentBankId),{name:name.trim(),updatedAt:serverTimestamp()},{merge:true});if(b)b.name=name.trim();$("bankSelect").selectedOptions[0].textContent=name.trim();};
 $("deleteBank").onclick=async()=>{if(bankOnly()||editorBusy)return;if(banks.length<=1)return alert("Debe existir al menos un banco.");if(!confirm("¿Eliminar este banco de preguntas?"))return;await deleteDoc(bankRef(currentBankId));await loadBanks();};
-$("exportBank").onclick=()=>{const esc=v=>'"'+String(v).replaceAll('"','""')+'"';const csv=["Pregunta,Opción A,Opción B,Opción C,Opción D,Correcta",...editorQuestions.map(q=>[q[1],...q[2],String.fromCharCode(65+q[3])].map(esc).join(","))].join("\n");const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(banks.find(x=>x.id===currentBankId)?.name||"preguntas")+".csv";a.click();URL.revokeObjectURL(a.href);};
+$("exportBank").onclick=()=>{const esc=v=>'"'+String(v).replaceAll('"','""')+'"';const csv=["Pregunta,Opción A,Opción B,Opción C,Opción D,Opción E,Correcta",...editorQuestions.map(q=>[q[1],...q[2],...Array(5-q[2].length).fill(""),String.fromCharCode(65+q[3])].map(esc).join(","))].join("\n");const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(banks.find(x=>x.id===currentBankId)?.name||"preguntas")+".csv";a.click();URL.revokeObjectURL(a.href);};
 $("toggleEditor").onclick=()=>{
   const ed=$("questionEditor");
   ed.open=!ed.open;
@@ -911,9 +919,9 @@ $("questionFile").onchange=async e=>{
       };
       const rows=lines.map(parseCSV);
       const first=rows[0].map(x=>x.trim().toLowerCase());
-      const hasHeader=first[0].includes("pregunta") && first.length>=6;
+      const hasHeader=first[0].includes("pregunta") && first.length>=4 && /correcta/.test(first.at(-1));
       const data=hasHeader?rows.slice(1):rows;
-      normalized=data.map(r=>r.slice(0,6).join("\t")).join("\n");
+      normalized=data.map(r=>r.join("\t")).join("\n");
     }
     $("bulkQuestions").value=normalized;
     $("editorMsg").textContent=`Archivo ${f.name} cargado. Pulsa “Guardar cambios” para importarlo a Firebase.`;
@@ -928,20 +936,14 @@ $("saveQuestions").onclick=async()=>{
     const raw=$("bulkQuestions").value.replace(/\r/g,"").trim();
     if(!raw) throw new Error("El cuadro está vacío.");
 
-    const lines=raw.split("\n").map(x=>x.trim()).filter(Boolean);
+    const lines=raw.split("\n").filter(x=>x.trim());
     const parsed=lines.map((line,idx)=>{
       let c;
       if(line.includes("\t")) c=line.split("\t");
       else if(line.includes(";")) c=line.split(";");
       else if(line.includes("|")) c=line.split("|");
       else throw new Error(`Fila ${idx+1}: no encuentro separadores. Pega desde Excel o usa ; entre columnas.`);
-      c=c.map(x=>x.trim()).filter((x,i,a)=>!(i===0&&x==="") && !(i===a.length-1&&x===""));
-      if(c.length!==6) throw new Error(`Fila ${idx+1}: encontré ${c.length} columnas; deben ser 6: Pregunta, A, B, C, D, Correcta.`);
-      const key=c[5].toUpperCase().replace(/[.)]/g,"").trim();
-      const correct={A:0,B:1,C:2,D:3}[key];
-      if(correct===undefined) throw new Error(`Fila ${idx+1}: la correcta debe ser A, B, C o D.`);
-      if(c.slice(0,5).some(x=>!x)) throw new Error(`Fila ${idx+1}: hay campos vacíos.`);
-      return [`Pregunta ${idx+1}`,c[0],[c[1],c[2],c[3],c[4]],correct];
+      return parseQuestionRow(c,idx+1);
     });
 
     if(parsed.length>100) throw new Error("Máximo 100 preguntas.");

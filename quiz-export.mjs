@@ -1,4 +1,4 @@
-import {isSelfPaced, participantIdentity, questionOrder} from './quiz-engine.mjs';
+import {isSelfPaced, participantIdentity, questionOrder} from './quiz-engine.mjs?v=5options';
 
 const HEADERS = ['Sala', 'Partida', 'Modalidad', 'ID participante', 'Tipo de ingreso',
   'Nombre', 'Cédula', 'Fecha de ingreso (hora Colombia)', 'Número de pregunta', 'Pregunta',
@@ -27,8 +27,8 @@ function dateLabel(value) {
 }
 
 const numberOrBlank = value => typeof value === 'number' && Number.isFinite(value) ? value : '';
-const optionIndex = value => Number.isInteger(value) && value >= 0 && value < 4 ? value : null;
-const letter = value => value === null ? '' : 'ABCD'[value];
+const optionIndex = value => Number.isInteger(value) && value >= 0 && value < 5 ? value : null;
+const letter = value => value === null ? '' : 'ABCDE'[value];
 
 // One row per participant and question, including unanswered questions and saved
 // responses outside the current selection. No Firebase or browser dependency.
